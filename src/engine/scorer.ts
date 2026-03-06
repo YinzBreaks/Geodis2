@@ -39,10 +39,16 @@ export function calculateScore(
   const accuracyRate = totalScans > 0 ? correctFirstScans / totalScans : 0
   const accuracyScore = Math.round(accuracyRate * 100)
 
-  // Per CLAUDE.md: TBD — confirm actual picks-per-hour benchmark with GEODIS operations.
-  // Defaults to 150 until confirmed.
+  // TODO: Replace 150 with confirmed facility benchmark
+  //       from GEODIS operations. See CLAUDE.md open decisions.
   const TARGET_PICKS_PER_HOUR = scenario.targetPicksPerHour ?? 150
-  const elapsedHours = (session.totalTimeMs ?? 0) / 3_600_000
+
+  // When totalTimeMs has not yet been stamped (session still in progress),
+  // fall back to actual wall-clock elapsed time so speed scoring remains live.
+  // Per task spec: totalTimeMs null/undefined → use Date.now() − startedAt.
+  const elapsedMs =
+    session.totalTimeMs ?? (Date.now() - session.startedAt.getTime())
+  const elapsedHours = elapsedMs / 3_600_000
 
   // Guard against zero elapsed time to prevent divide-by-zero
   const actualPicksPerHour =

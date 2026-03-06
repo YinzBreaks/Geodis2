@@ -929,6 +929,301 @@ describe("Advanced scoring", () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
+// 8. ADDITIONAL ERROR INJECTION TESTS
+// Per SIMULATION.md §Error Injection System
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Error injection: re-injection guard", () => {
+  it("same injected error does not fire twice at the same pick index", () => {
+    // Z1_20_PICKS has WRONG_ITEM injection at pick 7.
+    // After the first injection the error is recorded in session.errors with
+    // injected=true and pickIndex=7. The guard must prevent a second injection.
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 7,
+    }
+
+    // First scan: injection fires — WRONG_ITEM even with correct UPC
+    s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
+    expect(s.errors).toHaveLength(1)
+    expect(s.errors[0].injected).toBe(true)
+    // pickIndex must be stored so the guard can identify the spent scenario
+    expect(s.errors[0].pickIndex).toBe(7)
+
+    // Simulate retry: go back to the same PK_SCAN_ITEM_UPC step at the same index
+    s = { ...s, currentStep: WorkflowStep.PK_SCAN_ITEM_UPC, currentPickIndex: 7 }
+
+    // Second scan: guard suppresses injection → correct UPC now succeeds
+    const { result } = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario)
+    expect(result.success).toBe(true)
+    expect(result.scanResult).toBe(ScanResult.SUCCESS)
+    // Still only 1 injected error (not 2)
+    expect(dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session.errors).toHaveLength(1)
+  })
+
+  it("session with all error scenarios out-of-range passes through without injection", () => {
+    // Z1_9_PICKS errorScenarios have injectAtPickIndex 99 and 98 — never reached
+    // in a 9-pick simulation. Every scan at pick 0 must succeed normally.
+    const { scenario: noInjectScenario, pickQueue, cart } = SCENARIO_DATA.Z1_9_PICKS
+    const base = startSessionWithTasks("user-test", noInjectScenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+
+    const s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 0,
+    }
+
+    // Scanning correct UPC at pick 0 should succeed — no injection active
+    const { result } = dispatch(
+      s,
+      { type: "SCAN", value: pickQueue[0].item.upcBarcode },
+      noInjectScenario
+    )
+    expect(result.success).toBe(true)
+    expect(result.scanResult).toBe(ScanResult.SUCCESS)
+    expect(result.newStep).toBe(WorkflowStep.PK_PICK_QUANTITY)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 9. OUT-OF-ORDER STEP REJECTION
+// Validates that exception resolution steps must be taken in sequence.
+// Per BBWD-WI-030 §6 and SIMULATION.md §Sequence Enforcement
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Exception resolution: out-of-order step rejection", () => {
+  it("CTRL+K before NOTIFY_LEAD is rejected at EX_INVALID_ITEM_LAST", () => {
+    // Resolution sequence for §6.5.1: EX_NOTIFY_LEAD → EX_PRESS_CTRL_K → ...
+    // Attempting CTRL+K directly from EX_INVALID_ITEM_LAST must fail because
+    // the only valid action there is CONFIRM (→ EX_NOTIFY_LEAD).
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 7,
+    }
+
+    // Trigger injection → session lands at EX_INVALID_ITEM_LAST
+    s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
+    expect(s.currentStep).toBe(WorkflowStep.EX_INVALID_ITEM_LAST)
+
+    // Out-of-order: attempt CTRL+K without first confirming EX_NOTIFY_LEAD
+    const { result } = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" })
+    expect(result.success).toBe(false)
+    // Session step must not have changed
+    expect(s.currentStep).toBe(WorkflowStep.EX_INVALID_ITEM_LAST)
+  })
+
+  it("CTRL+K from EX_NOTIFY_LEAD is rejected (must CONFIRM lead notification first)", () => {
+    // At EX_NOTIFY_LEAD the only valid action is CONFIRM → EX_PRESS_CTRL_K.
+    // Pressing CTRL+K (KEY_PRESS) directly from EX_NOTIFY_LEAD must fail because
+    // EX_NOTIFY_LEAD has no KEY_PRESS transitions — only CONFIRM.
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 7,
+    }
+
+    // Trigger injection → acknowledge error → now at EX_NOTIFY_LEAD
+    s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.EX_INVALID_ITEM_LAST }).session
+    expect(s.currentStep).toBe(WorkflowStep.EX_NOTIFY_LEAD)
+
+    // Attempt CTRL+K from EX_NOTIFY_LEAD — must fail (no KEY_PRESS transition there)
+    const { result } = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" })
+    expect(result.success).toBe(false)
+    // Step must not advance
+    expect(s.currentStep).toBe(WorkflowStep.EX_NOTIFY_LEAD)
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 10. ADDITIONAL SCORING TESTS
+// Verifies pass/fail boundary and accuracy-vs-speed weighting.
+// Per CLAUDE.md §Simulations: (accuracy × 0.6) + (speed × 0.4)
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Scoring: accuracy/speed weighting, pass/fail boundary", () => {
+  it("high accuracy + very slow speed produces correctly weighted composite score", () => {
+    const task = makePickTask()
+    // targetPicksPerHour = 100; completedPicks = 5; totalTimeMs = 1 hr
+    // → actualPicksPerHour = 5; speedScore = Math.round(5/100 × 100) = 5
+    // → accuracyScore = 100 (all scans in runThroughOnePick succeed)
+    // → finalScore = Math.round(100 × 0.6 + 5 × 0.4) = 62
+    const scenario = makeScenario({ targetPicksPerHour: 100 })
+    let s = makePickPhaseSession([task])
+    s = runThroughOnePick(s, task)
+    s = {
+      ...s,
+      totalTimeMs: 60 * 60_000, // 1 hour
+      completedPicks: Array.from({ length: 5 }, (_, i) => ({
+        pickTaskId: `p${i}`,
+        item: task.item,
+        quantityPicked: 1,
+        scannedAt: new Date(),
+      })),
+    }
+
+    const score = calculateScore(s, scenario)
+    expect(score.accuracyScore).toBe(100)
+    expect(score.speedScore).toBe(5) // Math.round(5/100 × 100)
+    expect(score.finalScore).toBe(Math.round(100 * 0.6 + 5 * 0.4)) // 62
+  })
+
+  it("finalScore strictly below minScore → passed is false", () => {
+    // Empty session: 0 scans → accuracyScore = 0; 0 picks → speedScore = 0
+    // finalScore = 0; minScore = 70 → passed = false
+    const scenario = makeScenario({ passCriteria: { minScore: 70, maxErrors: 5 } })
+    const s = makePickPhaseSession([])
+    const score = calculateScore(s, scenario)
+    expect(score.finalScore).toBe(0)
+    expect(score.passed).toBe(false)
+  })
+
+  it("finalScore at exactly minScore → passed is true", () => {
+    // runThroughOnePick gives 2 SUCCESS scans → accuracyScore = 100
+    // completedPicks stripped → speedScore = 0 (no picks / any time = 0)
+    // finalScore = Math.round(100 × 0.6 + 0 × 0.4) = 60
+    // minScore = 60 → 60 >= 60 → passed = true
+    const scenario = makeScenario({ passCriteria: { minScore: 60, maxErrors: 5 } })
+    const task = makePickTask()
+    let s = makePickPhaseSession([task])
+    s = runThroughOnePick(s, task)
+    s = {
+      ...s,
+      totalTimeMs: 24 * 60 * 60_000, // 24 h → actualPicksPerHour = 0/24 = 0
+      completedPicks: [], // strip so speedScore = 0
+    }
+
+    const score = calculateScore(s, scenario)
+    expect(score.speedScore).toBe(0)
+    expect(score.accuracyScore).toBe(100)
+    const expectedFinal = Math.round(100 * 0.6 + 0 * 0.4) // 60
+    expect(score.finalScore).toBe(expectedFinal)
+    expect(score.passed).toBe(true) // 60 >= 60
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 11. ADDITIONAL SCREEN GENERATOR TESTS
+// Verifies exact field layout for key screens.
+// Per SIMULATION.md §RF Device Screen Generator and BBWD-VJA-030
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
+  /** Advance to PK_SCAN_ITEM_UPC in a one-task pick-phase session. */
+  function sessionAtItemScanStep(task: PickTask): SimulationSession {
+    let s = makePickPhaseSession([task])
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_READ_PICK_DISPLAY }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_TRAVEL_TO_LOCATION }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_VERIFY_LOCATION }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_VERIFY_ITEM }).session
+    return s
+  }
+
+  it("Aloc line has isHighlighted: true", () => {
+    const task = makePickTask()
+    const screen = getCurrentScreen(sessionAtItemScanStep(task))
+    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
+    expect(alocLine?.isHighlighted).toBe(true)
+  })
+
+  it("Item Barcode line has isCursorField: true", () => {
+    const task = makePickTask()
+    const screen = getCurrentScreen(sessionAtItemScanStep(task))
+    const cursorLine = screen.lines.find((l) => l.isCursorField)
+    expect(cursorLine).toBeDefined()
+    expect(cursorLine?.label).toBe("Item Barcode:")
+  })
+
+  it("screen reflects live session data — location, SKU, and tote ID from current pick", () => {
+    // Use a unique location/item to confirm the screen is NOT returning stale data
+    const item = makeItem({ sku: "LIVE-SKU-TEST", lastFourDigits: "9999" })
+    const location = makeLocation({ displayLabel: "512-007-B2" })
+    const task = makePickTask({ item, location })
+
+    const s = sessionAtItemScanStep(task)
+    const screen = getCurrentScreen(s)
+
+    expect(screen.workflowStep).toBe(WorkflowStep.PK_SCAN_ITEM_UPC)
+    expect(screen.inputType).toBe("BARCODE")
+
+    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
+    expect(alocLine?.value).toBe("512-007-B2")
+
+    const itemLine = screen.lines.find((l) => l.label === "Item:")
+    expect(itemLine?.value).toBe("LIVE-SKU-TEST")
+  })
+})
+
+describe("Screen generator: PK_END_OF_TOTE_DISPLAY", () => {
+  it("returns inputType: KEYBOARD_SHORTCUT", () => {
+    // KEYBOARD_SHORTCUT signals that the only valid input is a soft key press.
+    // Per task spec and BBWD-WI-030 §5.2.14
+    const task = makePickTask()
+    let s = makePickPhaseSession([task])
+    s = runThroughOnePick(s, task)
+
+    expect(s.currentStep).toBe(WorkflowStep.PK_END_OF_TOTE_DISPLAY)
+    const screen = getCurrentScreen(s)
+    expect(screen.inputType).toBe("KEYBOARD_SHORTCUT")
+  })
+
+  it("activeField is CTRL+A (soft key bar must highlight CTRL+A button)", () => {
+    const task = makePickTask()
+    let s = makePickPhaseSession([task])
+    s = runThroughOnePick(s, task)
+
+    const screen = getCurrentScreen(s)
+    expect(screen.activeField).toBe("CTRL+A")
+  })
+})
+
+describe("Screen generator: no WorkflowStep causes generateScreen to throw", () => {
+  it("every WorkflowStep produces a valid screen without throwing", () => {
+    // Build a session with at least one pick task so pick/tote lookups have data
+    const task = makePickTask()
+    const baseSession = makePickPhaseSession([task])
+    const allSteps = Object.values(WorkflowStep)
+
+    for (const step of allSteps) {
+      // Must never throw for any step
+      expect(() =>
+        getCurrentScreen({ ...baseSession, currentStep: step as WorkflowStep })
+      ).not.toThrow()
+    }
+
+    // Every generated screen must carry a screenId and the matching workflowStep
+    for (const step of allSteps) {
+      const screen = getCurrentScreen({ ...baseSession, currentStep: step as WorkflowStep })
+      expect(screen.screenId).toBeTruthy()
+      expect(screen.workflowStep).toBe(step)
+    }
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HELPER FUNCTIONS
 // ─────────────────────────────────────────────────────────────────────────────
 

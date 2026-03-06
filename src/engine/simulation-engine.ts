@@ -233,6 +233,10 @@ function handleScan(
       correctionSteps: [],
       occurredAt: new Date(),
       isLastItemAtLocation: injectedError?.isLastItemAtLocation,
+      // Record pick index so the re-injection guard in error-injector can
+      // identify that this error has already fired at this position.
+      // Per SIMULATION.md §Error Injection System
+      pickIndex: session.currentPickIndex,
     }
 
     const newSession: SimulationSession = {

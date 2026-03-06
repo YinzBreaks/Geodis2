@@ -123,13 +123,19 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
       }
 
     case WorkflowStep.BC_PLACE_TOTE_IN_SLOT:
-    case WorkflowStep.BC_SCAN_TOTE_BARCODE:
+    case WorkflowStep.BC_SCAN_TOTE_BARCODE: {
+      // Show the already-scanned barcode for the current slot (if any), or blank.
+      // Per task spec: "Tote: {toteId or blank if not yet scanned}"
+      const currentTote = session.cart.totes[session.currentToteSlot - 1]
+      const toteLabel = currentTote?.barcode ?? ""
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
           { value: "Make Tote Cart BB" },
+          { label: "Pick Cart #:", value: session.cart.cartBarcode },
           { label: "Slot:", value: String(session.currentToteSlot) },
+          { label: "Tote:", value: toteLabel || undefined },
           { label: "Scan Tote:", isCursorField: true },
         ],
         activeField: "Scan Tote",
@@ -137,8 +143,10 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         contextualData: {
           slot: String(session.currentToteSlot),
           cartId: session.cart.cartId,
+          cartBarcode: session.cart.cartBarcode,
         },
       }
+    }
 
     // ── Pick screens ────────────────────────────────────────────────────
 
@@ -226,7 +234,10 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         inputType: "BARCODE",
       }
 
-    // Per SIMULATION.md §RF Device Screen Generator example
+    // Per SIMULATION.md §RF Device Screen Generator example and task spec.
+    // inputType is KEYBOARD_SHORTCUT: the only valid input is pressing CTRL+A
+    // via the soft key bar. activeField tells the soft key renderer which button
+    // to highlight. Per BBWD-WI-030 §5.2.14–15.
     case WorkflowStep.PK_END_OF_TOTE_DISPLAY:
       return {
         screenId: `screen-${step}`,
@@ -235,7 +246,8 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
           { value: "--- Info ---" },
           { value: "End Of Tote" },
         ],
-        inputType: undefined,
+        inputType: "KEYBOARD_SHORTCUT",
+        activeField: "CTRL+A",
       }
 
     case WorkflowStep.PK_PRESS_CTRL_A:

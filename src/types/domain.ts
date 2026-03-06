@@ -252,6 +252,13 @@ export interface SimulationError {
    * Per BBWD-WI-030 §6.5.1 vs §6.5.2
    */
   isLastItemAtLocation?: boolean
+  /**
+   * Zero-based index into pickQueue at which this error occurred.
+   * Used by the re-injection guard to prevent the same injected error
+   * from firing twice at the same pick index.
+   * Per SIMULATION.md §Error Injection System
+   */
+  pickIndex?: number
 }
 
 /**
@@ -326,7 +333,14 @@ export interface RFDeviceScreen {
   lines: RFScreenLine[]
   /** Which field has cursor/input focus */
   activeField?: string
-  inputType?: "TEXT" | "BARCODE" | "NUMERIC"
+  /**
+   * How the RF Device expects input at this screen:
+   *   "TEXT"              — keyboard text entry
+   *   "BARCODE"           — scanner (side-trigger or SCAN button)
+   *   "NUMERIC"           — numeric keypad
+   *   "KEYBOARD_SHORTCUT" — soft-key only; e.g. CTRL+A on End Of Tote
+   */
+  inputType?: "TEXT" | "BARCODE" | "NUMERIC" | "KEYBOARD_SHORTCUT"
   /** Dynamic data for the screen, e.g. { toteId, location, item } */
   contextualData?: Record<string, string>
 }

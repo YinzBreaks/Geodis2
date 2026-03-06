@@ -128,6 +128,15 @@ export function getInjectedError(
   )
   if (!injectScenario) return null
 
+  // Guard: do not re-inject if this error already fired at this pick index.
+  // An injected SimulationError records the pick index at which it occurred;
+  // once it exists in session.errors the injection is considered "spent".
+  // Per SIMULATION.md §Error Injection System: each injected error fires exactly once.
+  const alreadyInjected = session.errors.some(
+    (e) => e.injected && e.pickIndex === session.currentPickIndex
+  )
+  if (alreadyInjected) return null
+
   return {
     scanResult: injectScenario.errorType,
     isLastItemAtLocation: injectScenario.isLastItemAtLocation ?? true,
