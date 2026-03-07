@@ -20,6 +20,14 @@ export default function UnauthorizedPage() {
           If you believe this is an error, contact your facility administrator.
         </p>
         <Link
+          href="/login"
+          className="inline-block px-6 py-2 bg-green-800 hover:bg-green-700
+                     text-green-100 font-mono text-sm rounded-lg transition-colors mb-2"
+        >
+          Sign In
+        </Link>
+        <br />
+        <Link
           href="/"
           className="inline-block px-6 py-2 bg-zinc-800 hover:bg-zinc-700
                      text-zinc-300 font-mono text-sm rounded-lg transition-colors"

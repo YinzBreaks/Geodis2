@@ -24,6 +24,7 @@ import {
   selectScreen,
   selectIsComplete,
 } from "@/hooks/useSimulation"
+import { getExpectedKey } from "@/lib/stepKeyMap"
 
 export function RFDevice() {
   const { session, result, sendAction, activeDeviceModelId, coaching } = useSimulation()
@@ -196,28 +197,33 @@ export function RFDevice() {
               </button>
             </div>
           ) : (
-            <button
-              onClick={handleSubmit}
-              className="w-full text-sm font-mono py-2 rounded border transition-colors"
-              style={{
-                backgroundColor: isAndroid ? "#f1f5f9" : "#27272a",
-                color: sc.textColor,
-                borderColor: ly.screenBorderColor,
-                fontFamily: sc.fontFamily,
-                minHeight: touchTarget,
-              }}
-            >
-              Continue
-            </button>
+            // Hide Continue on key-only steps — the trainee must press the pulsing soft key.
+            // getExpectedKey returns the key string if this step has no CONFIRM transition.
+            !getExpectedKey(session.currentStep) && (
+              <button
+                onClick={handleSubmit}
+                className="w-full text-sm font-mono py-2 rounded border transition-colors"
+                style={{
+                  backgroundColor: isAndroid ? "#f1f5f9" : "#27272a",
+                  color: sc.textColor,
+                  borderColor: ly.screenBorderColor,
+                  fontFamily: sc.fontFamily,
+                  minHeight: touchTarget,
+                }}
+              >
+                Continue
+              </button>
+            )
           )}
         </>
       )}
 
-      {/* Soft key row */}
+      {/* Soft key row — highlightKey pulses on key-only steps */}
       <SoftKeyBar
         onKey={handleSoftKey}
         disabled={isComplete}
         uiStyle={device.uiStyle}
+        highlightKey={session ? getExpectedKey(session.currentStep) : undefined}
       />
 
       {/* Step indicator (training aid) */}

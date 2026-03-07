@@ -112,8 +112,8 @@ export function TraineeDetailClient({
               {trainee.name}
             </h1>
             <p className="text-zinc-500 font-mono text-sm">
-              ID: {trainee.employeeId} · {trainee.daysInTraining} days in
-              training
+              ID: {trainee.employeeId} &middot; {trainee.daysInTraining}{" "}
+              {trainee.daysInTraining === 1 ? "day" : "days"} in training
             </p>
           </div>
 

@@ -7,6 +7,7 @@
  */
 "use client"
 
+import { useEffect, useState } from "react"
 import { RFDevice } from "@/components/simulator/RFDevice"
 import { DeviceSelector } from "@/components/simulator/DeviceSelector"
 import { CoachingPanel } from "@/components/simulator/CoachingPanel"
@@ -120,7 +121,23 @@ export default function SimPage() {
 // SCENARIO SELECTOR
 // ─────────────────────────────────────────────────────────────────────────────
 
+/** Best session result per moduleId, fetched from /api/sessions. */
+type SessionBest = { bestScore: number; passed: boolean }
+
 function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
+  const [sessionBests, setSessionBests] = useState<Record<string, SessionBest>>(
+    {}
+  )
+
+  useEffect(() => {
+    fetch("/api/sessions")
+      .then((r) => (r.ok ? r.json() : {}))
+      .then((data: Record<string, SessionBest>) => setSessionBests(data))
+      .catch(() => {
+        // Not authenticated or network error — silently skip badges
+      })
+  }, [])
+
   return (
     <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-8 p-4">
       <div className="text-center">
@@ -136,6 +153,7 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
         {SCENARIO_OPTIONS.map(({ key, levelLabel }) => {
           const bundle = SCENARIO_DATA[key] as ScenarioBundle
           const { scenario } = bundle
+          const best = sessionBests[scenario.moduleId]
           return (
             <button
               key={key}
@@ -150,9 +168,22 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
                 <span className="text-green-400 font-mono font-bold text-sm leading-tight">
                   {scenario.title}
                 </span>
-                <span className="text-zinc-600 font-mono text-[10px] shrink-0 mt-0.5">
-                  {levelLabel}
-                </span>
+                <div className="flex items-center gap-2 shrink-0 mt-0.5">
+                  {best && (
+                    <span
+                      className={`font-mono text-[10px] px-1.5 py-0.5 border ${
+                        best.passed
+                          ? "text-green-400 border-green-800 bg-green-950"
+                          : "text-amber-400 border-amber-800 bg-amber-950"
+                      }`}
+                    >
+                      ✓ Best: {best.bestScore}
+                    </span>
+                  )}
+                  <span className="text-zinc-600 font-mono text-[10px]">
+                    {levelLabel}
+                  </span>
+                </div>
               </div>
               <p className="text-zinc-500 text-xs font-mono mb-2">
                 {scenario.description}

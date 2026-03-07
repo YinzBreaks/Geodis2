@@ -46,6 +46,7 @@ export interface CohortTrendPoint {
   date: string
   avgScore: number
   passRate: number
+  avgAccuracy: number
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -188,6 +189,14 @@ export default async function SupervisorDashboardPage() {
           daySessions.length
         : 0
 
+    const avgAccuracy =
+      daySessions.length > 0
+        ? Math.round(
+            daySessions.reduce((sum, s) => sum + (s.accuracyScore ?? 0), 0) /
+              daySessions.length
+          )
+        : 0
+
     trendData.push({
       date: day.toLocaleDateString("en-US", {
         month: "short",
@@ -195,6 +204,7 @@ export default async function SupervisorDashboardPage() {
       }),
       avgScore: Math.round(avgScore),
       passRate: Math.round(passRate * 100),
+      avgAccuracy,
     })
   }
 

@@ -47,6 +47,15 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
 
   const { content } = coaching
   const { badge, rest } = extractSopRef(content.sopContext)
+  const isException = coaching.step != null && String(coaching.step).startsWith("EX_")
+
+  // Amber for exception steps, green for normal flow
+  const headerBg    = isException ? "#2d1a00" : "#0d2d0d"
+  const headerBorder = isException ? "#7a3a00" : "#1a4d1a"
+  const panelBorder  = isException ? "#7a3a00" : "#1a4d1a"
+  const panelBg      = isException ? "#1a0f00" : "#0f1a0f"
+  const headerText   = isException ? "#ffb347" : "#00ff41"
+  const headerLabel  = isException ? "⚡ EXCEPTION SCENARIO" : "▸ Step Guide"
 
   return (
     <div
@@ -55,8 +64,8 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
         width: 280,
         minWidth: 280,
         fontFamily: "'Courier New', 'Lucida Console', monospace",
-        backgroundColor: "#0f1a0f",
-        border: "1px solid #1a4d1a",
+        backgroundColor: panelBg,
+        border: `1px solid ${panelBorder}`,
         display: "flex",
         flexDirection: "column",
         gap: 0,
@@ -68,21 +77,21 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
       {/* Header */}
       <div
         style={{
-          backgroundColor: "#0d2d0d",
-          borderBottom: "1px solid #1a4d1a",
+          backgroundColor: headerBg,
+          borderBottom: `1px solid ${headerBorder}`,
           padding: "6px 12px",
         }}
       >
         <span
           style={{
-            color: "#00ff41",
+            color: headerText,
             fontSize: 10,
             fontWeight: "bold",
             letterSpacing: "0.12em",
             textTransform: "uppercase",
           }}
         >
-          ▸ Step Guide
+          {headerLabel}
         </span>
       </div>
 

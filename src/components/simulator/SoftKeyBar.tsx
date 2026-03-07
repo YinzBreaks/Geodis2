@@ -38,14 +38,22 @@ interface Props {
    * Defaults to "terminal" for backward compatibility.
    */
   uiStyle?: "terminal" | "android"
+  /**
+   * When set, the matching soft key gets a green pulse animation to guide
+   * the trainee's eye. Set from getExpectedKey(currentStep) for key-only steps.
+   * Value must match one of SOFT_KEYS[n].keys.
+   */
+  highlightKey?: string
 }
 
-export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal" }: Props) {
+export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", highlightKey }: Props) {
   const isAndroid = uiStyle === "android"
 
   return (
     <div className="grid grid-cols-6 gap-1">
-      {SOFT_KEYS.map((key) => (
+      {SOFT_KEYS.map((key) => {
+        const isHighlighted = highlightKey !== undefined && key.keys === highlightKey
+        return (
         <button
           key={key.keys}
           onClick={() => onKey(key.keys)}
@@ -56,29 +64,43 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal" }: Pr
             flex flex-col items-center gap-0.5
             transition-colors
             ${
+              isHighlighted
+                ? "animate-pulse ring-2 ring-green-400 ring-offset-1 ring-offset-zinc-900"
+                : ""
+            }
+            ${
               isAndroid
-                ? "bg-slate-100 hover:bg-blue-50 active:bg-blue-100 border-slate-300"
-                : "bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 border-zinc-600"
+                ? (isHighlighted
+                    ? "bg-blue-100 border-blue-400"
+                    : "bg-slate-100 hover:bg-blue-50 active:bg-blue-100 border-slate-300")
+                : (isHighlighted
+                    ? "bg-zinc-600 border-green-500"
+                    : "bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 border-zinc-600")
             }
           `}
           title={key.keys}
         >
           <span
             className={`font-bold text-[11px] ${
-              isAndroid ? "text-slate-700" : "text-green-300"
+              isHighlighted
+                ? "text-green-300"
+                : isAndroid ? "text-slate-700" : "text-green-300"
             }`}
           >
             {key.shortLabel}
           </span>
           <span
             className={`text-[8px] leading-none ${
-              isAndroid ? "text-slate-400" : "text-zinc-500"
+              isHighlighted
+                ? "text-green-500"
+                : isAndroid ? "text-slate-400" : "text-zinc-500"
             }`}
           >
             {key.fullLabel}
           </span>
         </button>
-      ))}
+        )
+      })}
     </div>
   )
 }

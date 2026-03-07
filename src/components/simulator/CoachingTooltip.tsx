@@ -60,12 +60,16 @@ export function CoachingTooltip({
 }: CoachingTooltipProps) {
   if (!isVisible || highlightLine === undefined) return null
 
-  // Calculate approximate Y position of the target line.
-  // Each screen.lines entry averages ~20px in visual height.
-  const lineRatio =
-    screenLineCount > 0 ? highlightLine / screenLineCount : 0
-  const arrowTop =
-    SCREEN_TOP_OFFSET_PX + lineRatio * SCREEN_HEIGHT_PX + 10
+  // Calculate Y position centering the arrow on the middle of the target line.
+  // Using (highlightLine + 0.5) rather than highlightLine avoids pointing at
+  // the top edge of the line. lineHeight derives from the actual screen content
+  // so shorter error screens (fewer lines) scale correctly.
+  const lineHeight =
+    screenLineCount > 0 ? SCREEN_HEIGHT_PX / screenLineCount : SCREEN_HEIGHT_PX
+  const rawArrowY = (highlightLine + 0.5) * lineHeight
+  // Clamp so the arrow never exits the visible screen boundary.
+  const clampedArrowY = Math.max(16, Math.min(SCREEN_HEIGHT_PX - 16, rawArrowY))
+  const arrowTop = SCREEN_TOP_OFFSET_PX + clampedArrowY
 
   return (
     <div

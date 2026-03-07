@@ -137,7 +137,7 @@ export function TraineeCard({
         <div className="flex justify-between text-xs font-mono">
           <span className="text-zinc-500">Sessions</span>
           <span className="text-zinc-300">
-            {sessionsCompleted} / {sessionsRequired}
+            {sessionsCompleted} completed &middot; {sessionsRequired} required to pass
           </span>
         </div>
         <div className="flex justify-between text-xs font-mono">

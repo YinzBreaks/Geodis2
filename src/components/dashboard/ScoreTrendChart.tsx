@@ -35,6 +35,8 @@ export interface ScoreDataPoint {
   score: number
   /** Optional: accuracy score (0–100) */
   accuracy?: number
+  /** Optional: cohort pass rate (0–100) */
+  passRate?: number
   /** Optional: speed score (0–100) */
   speed?: number
   /** Whether this session was passed */
@@ -53,6 +55,8 @@ export interface ScoreTrendChartProps {
   threshold?: number
   /** Show accuracy line */
   showAccuracy?: boolean
+  /** Show pass rate % line (amber, dashed) */
+  showPassRate?: boolean
   /** Show speed line */
   showSpeed?: boolean
   /** Chart height in pixels (default: 300) */
@@ -105,6 +109,7 @@ export function ScoreTrendChart({
   data,
   threshold = 75,
   showAccuracy = false,
+  showPassRate = false,
   showSpeed = false,
   height = 300,
   title,
@@ -197,6 +202,19 @@ export function ScoreTrendChart({
               strokeWidth={1.5}
               strokeDasharray="4 2"
               dot={{ r: 3, fill: "#a855f7" }}
+            />
+          )}
+
+          {/* Optional: Pass Rate */}
+          {showPassRate && (
+            <Line
+              type="monotone"
+              dataKey="passRate"
+              name="Pass Rate %"
+              stroke="#f59e0b"
+              strokeWidth={1.5}
+              strokeDasharray="6 3"
+              dot={{ r: 3, fill: "#f59e0b" }}
             />
           )}
         </LineChart>

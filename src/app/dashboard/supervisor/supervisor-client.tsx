@@ -43,7 +43,8 @@ export function SupervisorDashboardClient({
   const chartData: ScoreDataPoint[] = trendData.map((d) => ({
     label: d.date,
     score: d.avgScore,
-    accuracy: d.passRate,
+    accuracy: d.avgAccuracy,
+    passRate: d.passRate,
   }))
 
   return (
@@ -107,7 +108,8 @@ export function SupervisorDashboardClient({
             data={chartData}
             threshold={75}
             showAccuracy={true}
-            title="Avg Final Score + Pass Rate %"
+            showPassRate={true}
+            title="Avg Final Score · Accuracy · Pass Rate %"
             height={280}
           />
         </div>

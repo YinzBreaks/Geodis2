@@ -74,10 +74,11 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Not authenticated → redirect to unauthorized
+  // Not authenticated → redirect to login
   if (!user) {
     const url = request.nextUrl.clone()
-    url.pathname = "/unauthorized"
+    url.pathname = "/login"
+    url.searchParams.set("next", pathname)
     return NextResponse.redirect(url)
   }
 

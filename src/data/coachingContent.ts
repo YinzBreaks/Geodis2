@@ -159,7 +159,7 @@ export const COACHING_CONTENT: Partial<Record<WorkflowStep, CoachingContent>> =
 
     [WorkflowStep.PK_VERIFY_ITEM]: {
       action:
-        "Look at the item on the shelf — confirm it matches the ITEM on screen — then press Continue",
+        "Look at the item on the shelf — confirm it matches the ITEM on screen — then press Continue. ⚡ Note: the simulator may inject a training error scenario at the next step. If it does, this is intentional — follow the exception steps that appear.",
       sopContext:
         "§5.2.8 — Visually verify the item before scanning. Check the SKU number or description on the packaging matches what the RF Device shows. If it looks wrong, do NOT scan — press CTRL+W to back out.",
       fieldDef:
