@@ -4,6 +4,9 @@
  * Manages input state and routes user interactions to the engine via
  * useSimulation.sendAction(). Orchestrates RFDeviceDisplay + SoftKeyBar.
  *
+ * Visual appearance is driven entirely by the active device model from the
+ * Zustand store — no hardcoded colors or fonts.
+ *
  * Per CLAUDE.md §Architecture: components render and delegate — no business logic.
  * Business logic lives in useSimulation (Zustand) and the engine.
  */
@@ -12,6 +15,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { RFDeviceDisplay } from "./RFDeviceDisplay"
 import { SoftKeyBar } from "./SoftKeyBar"
+import { getDeviceModel } from "@/types/devices"
 import {
   useSimulation,
   getInputMode,
@@ -21,9 +25,16 @@ import {
 } from "@/hooks/useSimulation"
 
 export function RFDevice() {
-  const { session, result, sendAction } = useSimulation()
+  const { session, result, sendAction, activeDeviceModelId } = useSimulation()
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
+
+  // Derive visual config from the active device model.
+  // All colors / fonts come from here — nothing hardcoded below.
+  const device = getDeviceModel(activeDeviceModelId)
+  const { screen: sc, layout: ly } = device
+  const emulatorWidth = device.emulatorWidthPx ?? 320
+  const touchTarget = device.minTouchTargetPx ?? 44
 
   // Focus input on step change (scanner flow)
   useEffect(() => {
@@ -38,8 +49,8 @@ export function RFDevice() {
     if (!session) return
     if (selectIsComplete(session)) return
 
-    const screen = selectScreen(session)
-    const mode = getInputMode(session.currentStep, screen.inputType)
+    const rfScreen = selectScreen(session)
+    const mode = getInputMode(session.currentStep, rfScreen.inputType)
 
     if (mode === "SCAN") {
       sendAction({ type: "SCAN", value: inputValue })
@@ -57,8 +68,6 @@ export function RFDevice() {
       if (selectIsComplete(session)) return
 
       if (keys === "ENTER") {
-        // getEnterKeyAction handles ENTER+ENTER for BC_CONFIRM_TASK_GROUP
-        // and CONFIRM for all other steps. Per BBWD-WI-030 §5.1.8.
         sendAction(getEnterKeyAction(session.currentStep))
       } else {
         sendAction({ type: "KEY_PRESS", keys })
@@ -81,33 +90,66 @@ export function RFDevice() {
 
   if (!session) return null
 
-  const screen = selectScreen(session)
-  const inputMode = getInputMode(session.currentStep, screen.inputType)
+  const rfScreen = selectScreen(session)
+  const inputMode = getInputMode(session.currentStep, rfScreen.inputType)
   const isComplete = selectIsComplete(session)
   const showFeedback = result && !result.success && result.feedback
+  const isAndroid = device.uiStyle === "android"
 
   return (
-    <div className="bg-zinc-800 rounded-2xl p-4 w-[320px] shadow-2xl border border-zinc-700 flex flex-col gap-3">
-      {/* Manufacturer label */}
-      <div className="text-zinc-500 text-[9px] font-mono text-center tracking-widest uppercase">
-        GEODIS — RF Terminal
+    <div
+      className="rounded-2xl p-4 shadow-2xl flex flex-col gap-3"
+      style={{
+        backgroundColor: ly.bezelColor,
+        border: `1px solid ${ly.screenBorderColor}`,
+        width: emulatorWidth,
+        maxWidth: "100%",
+      }}
+    >
+      {/* Device label */}
+      <div
+        className="text-[9px] font-mono text-center tracking-widest uppercase"
+        style={{ color: isAndroid ? "#94a3b8" : "#4b5563" }}
+      >
+        {device.displayName} — GEODIS RF
       </div>
 
       {/* Screen bezel */}
-      <div className="bg-zinc-900 rounded-lg p-2 border border-zinc-700">
-        <RFDeviceDisplay screen={screen} inputValue={inputValue} />
+      <div
+        className="rounded-lg p-2"
+        style={{
+          backgroundColor: isAndroid ? "#f1f5f9" : "#000",
+          border: `1px solid ${ly.screenBorderColor}`,
+        }}
+      >
+        <RFDeviceDisplay
+          screen={rfScreen}
+          inputValue={inputValue}
+          screenConfig={sc}
+        />
       </div>
 
       {/* Feedback strip */}
       <div className="min-h-[28px]">
         {showFeedback && (
-          <div className="bg-red-950 border border-red-800 rounded px-2 py-1 text-red-300 text-xs font-mono">
+          <div
+            className="rounded px-2 py-1 text-xs font-mono"
+            style={{
+              backgroundColor: isAndroid ? "#fff1f2" : "#1c0505",
+              border: `1px solid ${isAndroid ? "#fca5a5" : "#7f1d1d"}`,
+              color: isAndroid ? "#dc2626" : "#fca5a5",
+              fontFamily: sc.fontFamily,
+            }}
+          >
             {result.feedback}
           </div>
         )}
         {result?.success && !showFeedback && (
-          <div className="text-green-700 text-[10px] font-mono text-center">
-            OK
+          <div
+            className="text-[10px] font-mono text-center"
+            style={{ color: isAndroid ? "#16a34a" : "#15803d" }}
+          >
+            ✓ OK
           </div>
         )}
       </div>
@@ -122,24 +164,27 @@ export function RFDevice() {
                 value={inputValue}
                 onChange={(e) => setInputValue(e.target.value)}
                 onKeyDown={handleKeyDown}
-                className="
-                  flex-1 bg-zinc-900 text-green-400 font-mono text-sm
-                  px-3 py-2 rounded border border-zinc-600
-                  focus:outline-none focus:border-green-600
-                  placeholder-zinc-700
-                "
-                placeholder={
-                  inputMode === "SCAN" ? "Scan barcode…" : "Enter value…"
-                }
+                className="flex-1 text-sm px-3 rounded border focus:outline-none transition-colors"
+                style={{
+                  backgroundColor: sc.bgColor,
+                  color: sc.textColor,
+                  fontFamily: sc.fontFamily,
+                  borderColor: ly.screenBorderColor,
+                  minHeight: touchTarget,
+                }}
+                placeholder={inputMode === "SCAN" ? "Scan barcode…" : "Enter value…"}
                 autoFocus
               />
               <button
                 onClick={handleSubmit}
-                className="
-                  bg-green-800 hover:bg-green-700 active:bg-green-600
-                  text-green-100 text-xs font-mono px-3 rounded
-                  border border-green-700 transition-colors
-                "
+                className="text-xs font-mono px-3 rounded border transition-colors"
+                style={{
+                  backgroundColor: isAndroid ? "#2563eb" : "#14532d",
+                  color: isAndroid ? "#ffffff" : "#bbf7d0",
+                  borderColor: isAndroid ? "#1d4ed8" : "#166534",
+                  fontFamily: sc.fontFamily,
+                  minHeight: touchTarget,
+                }}
               >
                 {inputMode === "SCAN" ? "SCAN" : "ENTER"}
               </button>
@@ -147,11 +192,14 @@ export function RFDevice() {
           ) : (
             <button
               onClick={handleSubmit}
-              className="
-                w-full bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500
-                text-green-400 font-mono text-sm py-2 rounded
-                border border-zinc-600 transition-colors
-              "
+              className="w-full text-sm font-mono py-2 rounded border transition-colors"
+              style={{
+                backgroundColor: isAndroid ? "#f1f5f9" : "#27272a",
+                color: sc.textColor,
+                borderColor: ly.screenBorderColor,
+                fontFamily: sc.fontFamily,
+                minHeight: touchTarget,
+              }}
             >
               Continue
             </button>
@@ -160,12 +208,20 @@ export function RFDevice() {
       )}
 
       {/* Soft key row */}
-      <SoftKeyBar onKey={handleSoftKey} disabled={isComplete} />
+      <SoftKeyBar
+        onKey={handleSoftKey}
+        disabled={isComplete}
+        uiStyle={device.uiStyle}
+      />
 
-      {/* Step indicator (training aid — shows current workflow step) */}
-      <div className="text-zinc-700 text-[9px] font-mono text-center truncate">
+      {/* Step indicator (training aid) */}
+      <div
+        className="text-[9px] font-mono text-center truncate"
+        style={{ color: isAndroid ? "#94a3b8" : "#3f3f46" }}
+      >
         {session.currentStep}
       </div>
     </div>
   )
 }
+

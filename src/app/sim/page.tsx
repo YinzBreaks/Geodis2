@@ -8,6 +8,7 @@
 "use client"
 
 import { RFDevice } from "@/components/simulator/RFDevice"
+import { DeviceSelector } from "@/components/simulator/DeviceSelector"
 import { useSimulation, selectIsComplete } from "@/hooks/useSimulation"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
 import type { SessionScore } from "@/types/domain"
@@ -37,10 +38,18 @@ export default function SimPage() {
     return <ScoreScreen score={score} onReset={reset} />
   }
 
+  // Device selector — fixed top-right on all non-score views
+  const deviceSelector = (
+    <div className="fixed top-3 right-3 z-50">
+      <DeviceSelector />
+    </div>
+  )
+
   // Active simulation
   if (session) {
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-6 p-4">
+        {deviceSelector}
         {/* Progress indicator */}
         <div className="text-zinc-500 text-xs font-mono flex gap-4">
           <span>
@@ -67,7 +76,12 @@ export default function SimPage() {
   }
 
   // Scenario selection
-  return <ScenarioSelector onStart={startSimulation} />
+  return (
+    <>
+      {deviceSelector}
+      <ScenarioSelector onStart={startSimulation} />
+    </>
+  )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

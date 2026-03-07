@@ -14,15 +14,18 @@ import {
   getCurrentScreen,
   calculateScore,
 } from "@/engine/simulation-engine"
-import { SCENARIO_DATA } from "@/data/seedData"
+import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
+import { ACTIVE_DEVICE_MODEL_ID } from "@/types/devices"
 import {
   WorkflowStep,
+  DifficultyLevel,
   type SimulationSession,
   type SimulationScenario,
   type EngineAction,
   type EngineResult,
   type RFDeviceScreen,
   type SessionScore,
+  type WarehouseItem,
 } from "@/types/domain"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -90,6 +93,129 @@ export function getEnterKeyAction(step: WorkflowStep): EngineAction {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// SOFT KEY ENABLE / DISABLE LOGIC
+// Per CLAUDE.md §RF Device Configuration: 5 soft keys, disabled when not valid
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Keys shown on the TC520K soft key bar. */
+export const SOFT_KEY_IDS = [
+  "CTRL+T",
+  "CTRL+E",
+  "CTRL+A",
+  "CTRL+W",
+  "CTRL+K",
+] as const
+
+export type SoftKeyId = (typeof SOFT_KEY_IDS)[number]
+
+/**
+ * Determine which soft keys are enabled at the current workflow step.
+ *
+ * Rules from CLAUDE.md §Canonical Domain Vocabulary + §Workflow Reference:
+ *   CTRL+T — enabled at BC_PRESS_CTRL_T
+ *   CTRL+E — enabled at BC_SCAN_TOTE_BARCODE when all 9 totes scanned
+ *   CTRL+A — enabled at PK_END_OF_TOTE_DISPLAY (press to confirm tote complete)
+ *   CTRL+W — enabled at EX_PRESS_CTRL_W, EX_INCORRECT_LOCATION, EX_INCORRECT_TOTE
+ *   CTRL+K — enabled at EX_PRESS_CTRL_K, EX_INVALID_ITEM_LAST
+ */
+export function getSoftKeyEnabled(
+  session: SimulationSession
+): Record<SoftKeyId, boolean> {
+  const step = session.currentStep
+  const slot = session.currentToteSlot
+
+  return {
+    "CTRL+T": step === WorkflowStep.BC_PRESS_CTRL_T,
+    "CTRL+E":
+      step === WorkflowStep.BC_SCAN_TOTE_BARCODE &&
+      slot > 9, // all 9 scanned (slot advanced past 9)
+    "CTRL+A": step === WorkflowStep.PK_END_OF_TOTE_DISPLAY,
+    "CTRL+W":
+      step === WorkflowStep.EX_PRESS_CTRL_W ||
+      step === WorkflowStep.EX_INCORRECT_LOCATION ||
+      step === WorkflowStep.EX_INCORRECT_TOTE,
+    "CTRL+K":
+      step === WorkflowStep.EX_PRESS_CTRL_K ||
+      step === WorkflowStep.EX_INVALID_ITEM_LAST,
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SOFT KEY PULSE LOGIC
+// Per task spec: KEYBOARD_SHORTCUT inputType triggers pulse on matching button.
+//   BEGINNER: always, INTERMEDIATE: first 3, ADVANCED: never
+// ─────────────────────────────────────────────────────────────────────────────
+
+const PULSE_LIMIT: Record<DifficultyLevel, number> = {
+  [DifficultyLevel.BEGINNER]: Infinity,
+  [DifficultyLevel.INTERMEDIATE]: 3,
+  [DifficultyLevel.ADVANCED]: 0,
+}
+
+/**
+ * Should the matching soft key button pulse (animate) right now?
+ *
+ * @param screen        current RF Device screen
+ * @param difficulty    session difficulty level
+ * @param pulseCount    how many pulses have already fired this session
+ * @returns The SoftKeyId to pulse, or null
+ */
+export function shouldPulseSoftKey(
+  screen: RFDeviceScreen,
+  difficulty: DifficultyLevel,
+  pulseCount: number
+): SoftKeyId | null {
+  if (screen.inputType !== "KEYBOARD_SHORTCUT") return null
+  const key = screen.activeField as SoftKeyId | undefined
+  if (!key) return null
+  if (pulseCount >= PULSE_LIMIT[difficulty]) return null
+  return key
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DECOY ITEM GENERATION
+// Per task spec: BEGINNER=0, INTERMEDIATE=1, ADVANCED=2 decoys.
+// Selection deterministic via pickIndex for reproducibility.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const DECOY_COUNT: Record<DifficultyLevel, number> = {
+  [DifficultyLevel.BEGINNER]: 0,
+  [DifficultyLevel.INTERMEDIATE]: 1,
+  [DifficultyLevel.ADVANCED]: 2,
+}
+
+/**
+ * Get decoy (distractor) items for the warehouse floor display during pick.
+ * These are items that look similar but are NOT the correct pick item.
+ *
+ * @returns Array of decoy WarehouseItems (empty if BEGINNER or not picking)
+ */
+export function getDecoyItems(
+  session: SimulationSession,
+  difficulty: DifficultyLevel
+): WarehouseItem[] {
+  const count = DECOY_COUNT[difficulty]
+  if (count === 0) return []
+
+  const currentPick = session.pickQueue[session.currentPickIndex]
+  if (!currentPick) return []
+
+  const allItems = Object.values(SEED_ITEMS)
+  const otherItems = allItems.filter(
+    (item) => item.itemId !== currentPick.item.itemId
+  )
+
+  const decoys: WarehouseItem[] = []
+  for (let i = 0; i < count && i < otherItems.length; i++) {
+    // Deterministic selection seeded by pickIndex
+    const index = (session.currentPickIndex + i + 1) % otherItems.length
+    decoys.push(otherItems[index])
+  }
+
+  return decoys
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // ZUSTAND STORE
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -100,9 +226,20 @@ interface SimulationState {
   result: EngineResult | null
   /** Final score — populated atomically when PS_ROUND_COMPLETE is reached */
   score: SessionScore | null
+  /** How many soft-key pulse hints have been shown this session */
+  softKeyPulseCount: number
+  /**
+   * Currently active device model ID — drives emulator visual style.
+   * Updated by DeviceSelector at runtime without altering ACTIVE_DEVICE_MODEL_ID.
+   */
+  activeDeviceModelId: string
 
   startSimulation: (bundleKey: string) => void
   sendAction: (action: EngineAction) => void
+  /** Increment the pulse counter (called by soft key bar on animation start) */
+  recordPulse: () => void
+  /** Switch the emulator to a different device model at runtime. */
+  setActiveDevice: (modelId: string) => void
   reset: () => void
 }
 
@@ -111,6 +248,8 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   scenario: null,
   result: null,
   score: null,
+  softKeyPulseCount: 0,
+  activeDeviceModelId: ACTIVE_DEVICE_MODEL_ID,
 
   startSimulation(bundleKey: string) {
     const bundle = SCENARIO_DATA[bundleKey]
@@ -123,7 +262,13 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       bundle.cart
     )
 
-    set({ session, scenario: bundle.scenario, result: null, score: null })
+    set({
+      session,
+      scenario: bundle.scenario,
+      result: null,
+      score: null,
+      softKeyPulseCount: 0,
+    })
   },
 
   sendAction(action: EngineAction) {
@@ -148,8 +293,22 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     set({ session: newSession, result, score })
   },
 
+  recordPulse() {
+    set((state) => ({ softKeyPulseCount: state.softKeyPulseCount + 1 }))
+  },
+
+  setActiveDevice(modelId: string) {
+    set({ activeDeviceModelId: modelId })
+  },
+
   reset() {
-    set({ session: null, scenario: null, result: null, score: null })
+    set({
+      session: null,
+      scenario: null,
+      result: null,
+      score: null,
+      softKeyPulseCount: 0,
+    })
   },
 }))
 

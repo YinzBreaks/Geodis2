@@ -12,6 +12,45 @@
  * Per CLAUDE.md §RF Device Configuration
  */
 
+// ─────────────────────────────────────────────────────────────────────────────
+// SCREEN / LAYOUT CONFIG TYPES
+// ─────────────────────────────────────────────────────────────────────────────
+
+/**
+ * All CSS color / font values for the emulator screen display area.
+ * Components must read these values — never hardcode colors or fonts.
+ */
+export interface RFDeviceScreenConfig {
+  /** CSS color for the screen background. */
+  bgColor: string
+  /** CSS color for normal body text. */
+  textColor: string
+  /** CSS font-family string for all screen text. */
+  fontFamily: string
+  /** CSS color for lines where isHighlighted=true (e.g. item name, warnings). */
+  highlightColor: string
+  /** CSS color for the cursor / active input field. */
+  cursorColor: string
+  /** CSS color for label text (left-side field labels). */
+  labelColor: string
+}
+
+/**
+ * Chrome / bezel layout config for the outer device shell.
+ */
+export interface RFDeviceLayoutConfig {
+  /** Whether to render the outer device bezel chrome. */
+  showBezel: boolean
+  /** CSS background color for the device bezel body. */
+  bezelColor: string
+  /** CSS border color for the inner screen frame. */
+  screenBorderColor: string
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// DEVICE MODEL
+// ─────────────────────────────────────────────────────────────────────────────
+
 /** Display and input characteristics for one RF Device model. */
 export interface RFDeviceModel {
   modelId: string
@@ -33,7 +72,7 @@ export interface RFDeviceModel {
   uiStyle: "terminal" | "android"
   /**
    * CSS class for the terminal colour theme.
-   * Only used when uiStyle is "terminal".
+   * @deprecated Use screen.bgColor / screen.textColor instead.
    */
   terminalTheme?: "theme-green" | "theme-white" | "theme-amber"
   /** Whether to render the soft key bar (CTRL action buttons). */
@@ -57,11 +96,19 @@ export interface RFDeviceModel {
    */
   minTouchTargetPx?: number
   /**
-   * CSS font-family string for the emulator UI.
-   * Terminal devices default to monospace; Android devices use sans-serif.
+   * CSS font-family string.
+   * @deprecated Access via screen.fontFamily instead.
    */
   fontFamily?: string
+  /** Screen color / typography configuration. Read these in all components. */
+  screen: RFDeviceScreenConfig
+  /** Outer bezel / chrome layout configuration. */
+  layout: RFDeviceLayoutConfig
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODEL REGISTRY
+// ─────────────────────────────────────────────────────────────────────────────
 
 /**
  * Registry of all supported RF Device models.
@@ -84,12 +131,24 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     emulatorWidthPx: 480,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
+    screen: {
+      bgColor: "#050a05",
+      textColor: "#22c55e",
+      fontFamily: "'Courier New', Courier, monospace",
+      highlightColor: "#fde047",
+      cursorColor: "#4ade80",
+      labelColor: "#16a34a",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#1c1c1c",
+      screenBorderColor: "#14532d",
+    },
   },
 
   /**
-   * Zebra TC52 — 24×10 white display, touchscreen, no physical CTRL keys.
+   * Zebra TC52 — 24×10 amber-on-dark display, touchscreen, no physical CTRL.
    * Legacy model; superseded by ZEBRA_TC520K as the confirmed primary device.
-   * Retained for legacy support and fallback use.
    */
   ZEBRA_TC52: {
     modelId: "ZEBRA_TC52",
@@ -106,6 +165,19 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     emulatorWidthPx: 360,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
+    screen: {
+      bgColor: "#111827",
+      textColor: "#f9fafb",
+      fontFamily: "'Courier New', Courier, monospace",
+      highlightColor: "#fde047",
+      cursorColor: "#d1d5db",
+      labelColor: "#9ca3af",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#374151",
+      screenBorderColor: "#4b5563",
+    },
   },
 
   /**
@@ -115,17 +187,12 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
    *   - 5-inch FHD display (1080×1920), Android OS
    *   - Portrait orientation; ~390 px wide in the emulator
    *   - No physical keyboard; no hardware CTRL keys
-   *   - Integrated SE4710 area-imager barcode scanner
-   *   - Scanner fires via physical side trigger (emulated as SCAN button or
-   *     auto-focus on input field + Enter to submit)
+   *   - SE4710 area-imager barcode scanner (side trigger)
    *
-   * Emulator behaviour:
-   *   - Android WMS aesthetic: white/light-gray background, dark text,
-   *     system sans-serif font (Roboto/Inter) — NOT a monospace terminal
-   *   - All-touch input; CTRL shortcuts rendered as soft key bar (fixed bottom)
-   *   - Soft key bar: 5 buttons — CTRL+T, CTRL+E, CTRL+A, CTRL+W, CTRL+K
-   *   - Buttons disabled/grayed when not valid for the current WorkflowStep
-   *   - Minimum touch target ≥ 56 px height for gloved-finger operation
+   * Emulator:
+   *   - Android WMS: white bg (#F8FAFC), dark text (#0F172A), Inter/Roboto
+   *   - Soft key bar (bottom): CTRL+T, CTRL+E, CTRL+A, CTRL+W, CTRL+K
+   *   - Min touch target ≥ 56 px for gloved operation
    *
    * Per CLAUDE.md §RF Device Configuration
    */
@@ -143,11 +210,23 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     emulatorWidthPx: 390,
     minTouchTargetPx: 56,
     fontFamily: "'Inter', 'Roboto', system-ui, sans-serif",
+    screen: {
+      bgColor: "#f8fafc",
+      textColor: "#0f172a",
+      fontFamily: "'Inter', 'Roboto', system-ui, sans-serif",
+      highlightColor: "#ea580c",
+      cursorColor: "#2563eb",
+      labelColor: "#64748b",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#1e293b",
+      screenBorderColor: "#e2e8f0",
+    },
   },
 
   /**
    * Generic Terminal — fallback / unconfirmed device.
-   * Used until GEODIS IT confirms the deployed hardware model.
    * Per CLAUDE.md: Change ACTIVE_DEVICE_MODEL_ID once hardware is confirmed.
    */
   GENERIC_TERMINAL: {
@@ -164,8 +243,32 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     emulatorWidthPx: 480,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
+    screen: {
+      bgColor: "#050a05",
+      textColor: "#22c55e",
+      fontFamily: "'Courier New', Courier, monospace",
+      highlightColor: "#fde047",
+      cursorColor: "#4ade80",
+      labelColor: "#16a34a",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#1c1c1c",
+      screenBorderColor: "#14532d",
+    },
   },
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ACTIVE DEVICE + MODEL ID TYPE
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** String-literal union of all registered model IDs. */
+export type RFDeviceModelId =
+  | "HONEYWELL_CK65"
+  | "ZEBRA_TC52"
+  | "ZEBRA_TC520K"
+  | "GENERIC_TERMINAL"
 
 /**
  * The device model currently in use across the entire application.
@@ -175,8 +278,22 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
  *
  * @see RF_DEVICE_MODELS
  */
-export const ACTIVE_DEVICE_MODEL_ID = "ZEBRA_TC520K"
+export const ACTIVE_DEVICE_MODEL_ID: RFDeviceModelId = "ZEBRA_TC520K"
 
 /** Convenience: the active RFDeviceModel object derived from the ID above. */
 export const ACTIVE_DEVICE: RFDeviceModel =
   RF_DEVICE_MODELS[ACTIVE_DEVICE_MODEL_ID]
+
+/**
+ * Look up a device model by ID.
+ * Falls back to ACTIVE_DEVICE if the modelId is unknown or omitted.
+ *
+ * Use this everywhere a component needs device config at runtime so that
+ * the DeviceSelector (store-driven) drives the rendered aesthetic.
+ */
+export function getDeviceModel(modelId?: string): RFDeviceModel {
+  if (modelId && modelId in RF_DEVICE_MODELS) {
+    return RF_DEVICE_MODELS[modelId]
+  }
+  return RF_DEVICE_MODELS[ACTIVE_DEVICE_MODEL_ID]
+}
