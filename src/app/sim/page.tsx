@@ -9,7 +9,9 @@
 
 import { RFDevice } from "@/components/simulator/RFDevice"
 import { DeviceSelector } from "@/components/simulator/DeviceSelector"
+import { CoachingPanel } from "@/components/simulator/CoachingPanel"
 import { useSimulation, selectIsComplete } from "@/hooks/useSimulation"
+import { DifficultyLevel } from "@/types/domain"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
 import type { SessionScore } from "@/types/domain"
 
@@ -30,7 +32,7 @@ const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimPage() {
-  const { session, score, startSimulation, reset } = useSimulation()
+  const { session, score, coaching, startSimulation, reset } = useSimulation()
   const isComplete = session ? selectIsComplete(session) : false
 
   // Score screen
@@ -47,6 +49,8 @@ export default function SimPage() {
 
   // Active simulation
   if (session) {
+    const isBeginner = session.difficulty === DifficultyLevel.BEGINNER
+
     return (
       <div className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-6 p-4">
         {deviceSelector}
@@ -61,9 +65,37 @@ export default function SimPage() {
           <span>
             Zone: {session.cart.zone}
           </span>
+          {isBeginner && (
+            <span className="text-green-700">BEGINNER MODE</span>
+          )}
         </div>
 
-        <RFDevice />
+        {/*
+          Layout:
+            BEGINNER      → [CoachingPanel] [RF Device]
+            INTERMEDIATE+ → [RF Device] (coaching panel hidden)
+
+          Both panels are the same height so the RF device stays centered.
+          On narrow screens the panels stack vertically.
+        */}
+        <div
+          style={{
+            display: "flex",
+            flexDirection: "row",
+            alignItems: "flex-start",
+            gap: 20,
+            flexWrap: "wrap",
+            justifyContent: "center",
+          }}
+        >
+          {isBeginner && (
+            <CoachingPanel
+              coaching={coaching}
+              difficulty={session.difficulty}
+            />
+          )}
+          <RFDevice />
+        </div>
 
         <button
           onClick={reset}

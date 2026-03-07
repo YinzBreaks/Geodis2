@@ -15,6 +15,7 @@
 import { useState, useRef, useEffect, useCallback } from "react"
 import { RFDeviceDisplay } from "./RFDeviceDisplay"
 import { SoftKeyBar } from "./SoftKeyBar"
+import { CoachingTooltip } from "./CoachingTooltip"
 import { getDeviceModel } from "@/types/devices"
 import {
   useSimulation,
@@ -25,7 +26,7 @@ import {
 } from "@/hooks/useSimulation"
 
 export function RFDevice() {
-  const { session, result, sendAction, activeDeviceModelId } = useSimulation()
+  const { session, result, sendAction, activeDeviceModelId, coaching } = useSimulation()
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -114,11 +115,10 @@ export function RFDevice() {
         {device.displayName} — GEODIS RF
       </div>
 
-      {/* Screen bezel */}
+      {/* Screen — relative container holds RFDeviceDisplay + CoachingTooltip arrow */}
       <div
-        className="rounded-lg p-2"
         style={{
-          backgroundColor: isAndroid ? "#f1f5f9" : "#000",
+          position: "relative",
           border: `1px solid ${ly.screenBorderColor}`,
         }}
       >
@@ -126,6 +126,12 @@ export function RFDevice() {
           screen={rfScreen}
           inputValue={inputValue}
           screenConfig={sc}
+          highlightLine={coaching.content?.highlightLine}
+        />
+        <CoachingTooltip
+          highlightLine={coaching.content?.highlightLine}
+          screenLineCount={rfScreen.lines.length}
+          isVisible={coaching.isVisible}
         />
       </div>
 

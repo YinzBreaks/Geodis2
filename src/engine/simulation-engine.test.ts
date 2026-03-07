@@ -996,16 +996,16 @@ describe("Error injection: re-injection guard", () => {
 })
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 9. OUT-OF-ORDER STEP REJECTION
-// Validates that exception resolution steps must be taken in sequence.
-// Per BBWD-WI-030 §6 and SIMULATION.md §Sequence Enforcement
+// 9. CTRL+K ACCEPTANCE ON EX_INVALID_ITEM_LAST + OUT-OF-ORDER REJECTION
+// The EX_INVALID_ITEM_LAST screen displays "Press CTRL+K to skip" so ^K must
+// be accepted there. CTRL+K is still rejected from EX_NOTIFY_LEAD (no transition).
+// Per BBWD-WI-030 §6.5.1 and §6 Sequence Enforcement
 // ─────────────────────────────────────────────────────────────────────────────
 
 describe("Exception resolution: out-of-order step rejection", () => {
-  it("CTRL+K before NOTIFY_LEAD is rejected at EX_INVALID_ITEM_LAST", () => {
-    // Resolution sequence for §6.5.1: EX_NOTIFY_LEAD → EX_PRESS_CTRL_K → ...
-    // Attempting CTRL+K directly from EX_INVALID_ITEM_LAST must fail because
-    // the only valid action there is CONFIRM (→ EX_NOTIFY_LEAD).
+  it("^K accepted on EX_INVALID_ITEM_LAST step", () => {
+    // The screen says "Press CTRL+K to skip" — ^K must succeed here.
+    // Per BBWD-WI-030 §6.5.1 and the fix for the P1 ^K bug.
     const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
     const base = startSessionWithTasks("user-test", scenario, pickQueue, {
       ...cart,
@@ -1022,11 +1022,31 @@ describe("Exception resolution: out-of-order step rejection", () => {
     s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
     expect(s.currentStep).toBe(WorkflowStep.EX_INVALID_ITEM_LAST)
 
-    // Out-of-order: attempt CTRL+K without first confirming EX_NOTIFY_LEAD
+    // ^K must succeed — the screen says "Press CTRL+K"
     const { result } = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" })
-    expect(result.success).toBe(false)
-    // Session step must not have changed
+    expect(result.success).toBe(true)
+  })
+
+  it("EX_INVALID_ITEM_LAST → PK_PLACE_TOTE_ON_CONVEYOR after ^K (WRONG_ITEM active error)", () => {
+    // WRONG_ITEM active error → dynamic CTRL+K routing sends to PK_PLACE_TOTE_ON_CONVEYOR.
+    // Per BBWD-WI-030 §6.5.1: invalid item (last) requires tote to Putwall.
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 7,
+    }
+
+    s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
     expect(s.currentStep).toBe(WorkflowStep.EX_INVALID_ITEM_LAST)
+
+    s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" }).session
+    expect(s.currentStep).toBe(WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR)
   })
 
   it("CTRL+K from EX_NOTIFY_LEAD is rejected (must CONFIRM lead notification first)", () => {
@@ -1145,7 +1165,7 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
   it("Aloc line has isHighlighted: true", () => {
     const task = makePickTask()
     const screen = getCurrentScreen(sessionAtItemScanStep(task))
-    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
+    const alocLine = screen.lines.find((l) => l.label === "ALOC:")
     expect(alocLine?.isHighlighted).toBe(true)
   })
 
@@ -1154,7 +1174,7 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
     const screen = getCurrentScreen(sessionAtItemScanStep(task))
     const cursorLine = screen.lines.find((l) => l.isCursorField)
     expect(cursorLine).toBeDefined()
-    expect(cursorLine?.label).toBe("Item Barcode:")
+    expect(cursorLine?.label).toBe("ITEM BARCODE:")
   })
 
   it("screen reflects live session data — location, SKU, and tote ID from current pick", () => {
@@ -1169,10 +1189,10 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
     expect(screen.workflowStep).toBe(WorkflowStep.PK_SCAN_ITEM_UPC)
     expect(screen.inputType).toBe("BARCODE")
 
-    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
+    const alocLine = screen.lines.find((l) => l.label === "ALOC:")
     expect(alocLine?.value).toBe("512-007-B2")
 
-    const itemLine = screen.lines.find((l) => l.label === "Item:")
+    const itemLine = screen.lines.find((l) => l.label === "ITEM:")
     expect(itemLine?.value).toBe("LIVE-SKU-TEST")
   })
 })

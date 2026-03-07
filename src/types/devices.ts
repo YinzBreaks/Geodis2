@@ -33,6 +33,16 @@ export interface RFDeviceScreenConfig {
   cursorColor: string
   /** CSS color for label text (left-side field labels). */
   labelColor: string
+  /**
+   * CSS font-size for screen text.
+   * Defaults to "13px" when omitted — matches ~20-char terminal grid.
+   */
+  fontSize?: string
+  /**
+   * CSS line-height for screen text rows.
+   * Defaults to "1.4" when omitted.
+   */
+  lineHeight?: string
 }
 
 /**
@@ -119,7 +129,7 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
   /** Honeywell CK65 — 20×8 green terminal, physical keypad, no touchscreen. */
   HONEYWELL_CK65: {
     modelId: "HONEYWELL_CK65",
-    displayName: "Honeywell CK65",
+    displayName: "Honeywell CK65 (Terminal)",
     displayColumns: 20,
     displayRows: 8,
     hasPhysicalCtrlKey: true,
@@ -128,21 +138,23 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     terminalTheme: "theme-green",
     showSoftKeys: false,
     orientation: "landscape",
-    emulatorWidthPx: 480,
+    emulatorWidthPx: 300,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
     screen: {
-      bgColor: "#050a05",
-      textColor: "#22c55e",
-      fontFamily: "'Courier New', Courier, monospace",
-      highlightColor: "#fde047",
-      cursorColor: "#4ade80",
-      labelColor: "#16a34a",
+      bgColor: "#0a0e0a",
+      textColor: "#33ff33",
+      fontFamily: "'Courier New', 'Lucida Console', monospace",
+      highlightColor: "#ffff00",
+      cursorColor: "#33ff33",
+      labelColor: "#33ff33",
+      fontSize: "13px",
+      lineHeight: "1.4",
     },
     layout: {
       showBezel: true,
       bezelColor: "#1c1c1c",
-      screenBorderColor: "#14532d",
+      screenBorderColor: "#1a3d1a",
     },
   },
 
@@ -153,7 +165,7 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
   ZEBRA_TC52: {
     modelId: "ZEBRA_TC52",
     displayName: "Zebra TC52 (Legacy)",
-    displayColumns: 24,
+    displayColumns: 20,
     displayRows: 10,
     hasPhysicalCtrlKey: false,
     hasTouchscreen: true,
@@ -162,16 +174,18 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     showSoftKeys: true,
     softKeyPosition: "bottom",
     orientation: "portrait",
-    emulatorWidthPx: 360,
+    emulatorWidthPx: 300,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
     screen: {
       bgColor: "#111827",
       textColor: "#f9fafb",
-      fontFamily: "'Courier New', Courier, monospace",
+      fontFamily: "'Courier New', 'Lucida Console', monospace",
       highlightColor: "#fde047",
       cursorColor: "#d1d5db",
-      labelColor: "#9ca3af",
+      labelColor: "#f9fafb",
+      fontSize: "13px",
+      lineHeight: "1.4",
     },
     layout: {
       showBezel: true,
@@ -185,43 +199,49 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
    *
    * Physical specs:
    *   - 5-inch FHD display (1080×1920), Android OS
-   *   - Portrait orientation; ~390 px wide in the emulator
+   *   - Portrait orientation; ~300 px wide in the emulator
    *   - No physical keyboard; no hardware CTRL keys
    *   - SE4710 area-imager barcode scanner (side trigger)
    *
    * Emulator:
-   *   - Android WMS: white bg (#F8FAFC), dark text (#0F172A), Inter/Roboto
+   *   - GEODIS runs Manhattan WMS on this device. Manhattan's RF client is a
+   *     telnet-style terminal emulator — black bg, white/green monospace text,
+   *     fixed 20-char grid — regardless of the Android hardware underneath.
    *   - Soft key bar (bottom): CTRL+T, CTRL+E, CTRL+A, CTRL+W, CTRL+K
+   *     (training-only addition — not on the real device)
    *   - Min touch target ≥ 56 px for gloved operation
    *
    * Per CLAUDE.md §RF Device Configuration
+   * Per BBWD-VJA-030 SOP screenshots
    */
   ZEBRA_TC520K: {
     modelId: "ZEBRA_TC520K",
-    displayName: "Zebra TC520K",
-    displayColumns: 24,
+    displayName: "Zebra TC520K (Manhattan WMS)",
+    displayColumns: 20,
     displayRows: 12,
     hasPhysicalCtrlKey: false,
     hasTouchscreen: true,
-    uiStyle: "android",
+    uiStyle: "terminal",
     showSoftKeys: true,
     softKeyPosition: "bottom",
     orientation: "portrait",
-    emulatorWidthPx: 390,
+    emulatorWidthPx: 300,
     minTouchTargetPx: 56,
-    fontFamily: "'Inter', 'Roboto', system-ui, sans-serif",
+    fontFamily: "'Courier New', 'Lucida Console', monospace",
     screen: {
-      bgColor: "#f8fafc",
-      textColor: "#0f172a",
-      fontFamily: "'Inter', 'Roboto', system-ui, sans-serif",
-      highlightColor: "#ea580c",
-      cursorColor: "#2563eb",
-      labelColor: "#64748b",
+      bgColor: "#0a0a0a",
+      textColor: "#e8e8e8",
+      fontFamily: "'Courier New', 'Lucida Console', monospace",
+      highlightColor: "#00ff41",
+      cursorColor: "#00ff41",
+      labelColor: "#e8e8e8",
+      fontSize: "13px",
+      lineHeight: "1.4",
     },
     layout: {
       showBezel: true,
-      bezelColor: "#1e293b",
-      screenBorderColor: "#e2e8f0",
+      bezelColor: "#1a1a2e",
+      screenBorderColor: "#2d5a2d",
     },
   },
 
@@ -240,16 +260,18 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
     terminalTheme: "theme-green",
     showSoftKeys: false,
     orientation: "landscape",
-    emulatorWidthPx: 480,
+    emulatorWidthPx: 300,
     minTouchTargetPx: 44,
     fontFamily: "'Courier New', Courier, monospace",
     screen: {
       bgColor: "#050a05",
       textColor: "#22c55e",
-      fontFamily: "'Courier New', Courier, monospace",
+      fontFamily: "'Courier New', 'Lucida Console', monospace",
       highlightColor: "#fde047",
       cursorColor: "#4ade80",
-      labelColor: "#16a34a",
+      labelColor: "#22c55e",
+      fontSize: "13px",
+      lineHeight: "1.4",
     },
     layout: {
       showBezel: true,

@@ -15,6 +15,7 @@ import {
   calculateScore,
 } from "@/engine/simulation-engine"
 import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
+import { COACHING_CONTENT } from "@/data/coachingContent"
 import { ACTIVE_DEVICE_MODEL_ID } from "@/types/devices"
 import {
   WorkflowStep,
@@ -27,6 +28,7 @@ import {
   type SessionScore,
   type WarehouseItem,
 } from "@/types/domain"
+import type { CoachingState } from "@/types/coaching"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // INPUT MODE UTILITY
@@ -80,15 +82,25 @@ export function getInputMode(
 }
 
 /**
- * Determine the correct EngineAction to fire when the ENTER soft key is pressed.
+ * Determine the correct EngineAction to fire when the ENTER soft key is pressed
+ * (or when the Continue button is clicked on KEYBOARD_SHORTCUT steps).
  *
- * BC_CONFIRM_TASK_GROUP requires two Enter presses (ENTER+ENTER per SOP §5.1.8).
- * All other steps treat ENTER as a physical CONFIRM.
+ * Some steps expect a specific KEY_PRESS rather than a generic CONFIRM.
+ * Mapping these here prevents the "Confirmation not expected at step" error.
+ *
+ * Per BBWD-WI-030:
+ *   BC_PRESS_CTRL_T    — §5.1.8: CTRL+T changes Task Group
+ *   BC_CONFIRM_TASK_GROUP — §5.1.8: ENTER+ENTER confirms Task Group
+ *   PK_END_OF_TOTE_DISPLAY — §5.2.14: CTRL+A confirms End Of Tote
  */
 export function getEnterKeyAction(step: WorkflowStep): EngineAction {
-  if (step === WorkflowStep.BC_CONFIRM_TASK_GROUP) {
-    return { type: "KEY_PRESS", keys: "ENTER+ENTER" }
+  const KEY_PRESS_MAP: Partial<Record<WorkflowStep, string>> = {
+    [WorkflowStep.BC_PRESS_CTRL_T]: "CTRL+T",
+    [WorkflowStep.BC_CONFIRM_TASK_GROUP]: "ENTER+ENTER",
+    [WorkflowStep.PK_END_OF_TOTE_DISPLAY]: "CTRL+A",
   }
+  const keys = KEY_PRESS_MAP[step]
+  if (keys) return { type: "KEY_PRESS", keys }
   return { type: "CONFIRM", step }
 }
 
@@ -233,6 +245,11 @@ interface SimulationState {
    * Updated by DeviceSelector at runtime without altering ACTIVE_DEVICE_MODEL_ID.
    */
   activeDeviceModelId: string
+  /**
+   * Per-step coaching state — only populated in BEGINNER mode.
+   * CoachingPanel reads this to decide what to show.
+   */
+  coaching: CoachingState
 
   startSimulation: (bundleKey: string) => void
   sendAction: (action: EngineAction) => void
@@ -243,6 +260,27 @@ interface SimulationState {
   reset: () => void
 }
 
+/** Empty coaching state — used for INTERMEDIATE/ADVANCED or before session starts. */
+const COACHING_HIDDEN: CoachingState = {
+  isVisible: false,
+  content: null,
+  step: null,
+}
+
+/**
+ * Derive coaching state for the given step and difficulty.
+ * Returns visible coaching if BEGINNER and content exists; hidden otherwise.
+ */
+function resolveCoaching(
+  step: WorkflowStep,
+  difficulty: DifficultyLevel
+): CoachingState {
+  if (difficulty !== DifficultyLevel.BEGINNER) return COACHING_HIDDEN
+  const content = COACHING_CONTENT[step] ?? null
+  if (!content) return { isVisible: false, content: null, step }
+  return { isVisible: true, content, step }
+}
+
 export const useSimulation = create<SimulationState>((set, get) => ({
   session: null,
   scenario: null,
@@ -250,6 +288,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   score: null,
   softKeyPulseCount: 0,
   activeDeviceModelId: ACTIVE_DEVICE_MODEL_ID,
+  coaching: COACHING_HIDDEN,
 
   startSimulation(bundleKey: string) {
     const bundle = SCENARIO_DATA[bundleKey]
@@ -268,6 +307,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       result: null,
       score: null,
       softKeyPulseCount: 0,
+      coaching: resolveCoaching(session.currentStep, session.difficulty),
     })
   },
 
@@ -290,7 +330,17 @@ export const useSimulation = create<SimulationState>((set, get) => ({
         ? calculateScore(newSession, scenario)
         : get().score
 
-    set({ session: newSession, result, score })
+    // Update coaching:
+    //   success + step changed → resolve coaching for the new step
+    //   success + same step   → dismiss (shouldn’t happen, but guard anyway)
+    //   failure               → keep coaching visible (trainee needs it most when wrong)
+    let coaching: CoachingState = get().coaching
+    if (result.success) {
+      coaching = resolveCoaching(newSession.currentStep, newSession.difficulty)
+    }
+    // On failure: coaching stays as-is
+
+    set({ session: newSession, result, score, coaching })
   },
 
   recordPulse() {
@@ -308,6 +358,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       result: null,
       score: null,
       softKeyPulseCount: 0,
+      coaching: COACHING_HIDDEN,
     })
   },
 }))

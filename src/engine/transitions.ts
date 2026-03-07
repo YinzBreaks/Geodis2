@@ -396,11 +396,22 @@ export const TRANSITIONS: Readonly<
   // ── EXCEPTION HANDLING ───────────────────────────────────────────────────
   // Per BBWD-WI-030 §6
 
-  // §6.5.1 — Wrong item, last at location. Confirm to acknowledge → Notify Lead
+  // §6.5.1 — Wrong item, last at location.
+  // CONFIRM acknowledges the error display → Notify Lead.
+  // CTRL+K also accepted here — the screen displays "Press CTRL+K to skip".
+  // Dynamic CTRL+K routing in handleKeyPress sends WRONG_ITEM errors to
+  // PK_PLACE_TOTE_ON_CONVEYOR. Per BBWD-WI-030 §6.5.1.
   [WorkflowStep.EX_INVALID_ITEM_LAST]: [
     {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.EX_NOTIFY_LEAD,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+K",
+      // nextStep is overridden dynamically in engine: WRONG_ITEM → PK_PLACE_TOTE_ON_CONVEYOR
+      nextStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR,
       guard: alwaysAllow,
     },
   ],

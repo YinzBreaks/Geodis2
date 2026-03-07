@@ -1,3 +1,26 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* ─── Terminal cursor blink ───────────────────────────────────────────────── */
+/* Used by RFDeviceDisplay to animate the active input field underscore cursor */
+@keyframes terminal-blink {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.terminal-cursor {
+  animation: terminal-blink 1s step-end infinite;
+}
+
+/* ─── Coaching panel animations ──────────────────────────────────────────── */
+/* CoachingPanel fade-in when coaching becomes visible; arrow pulse for tooltip */
+@keyframes coaching-fade-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes coaching-arrow-pulse {
+  0%, 100% { opacity: 1;    transform: translateX(0);  }
+  50%       { opacity: 0.5; transform: translateX(3px); }
+}
