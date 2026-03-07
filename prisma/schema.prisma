@@ -1,0 +1,143 @@
+// prisma/schema.prisma — WarehousePro database schema
+// Per CLAUDE.md §Tech Stack: PostgreSQL via Supabase, Prisma ORM
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// USER
+// ─────────────────────────────────────────────────────────────────────────────
+
+model User {
+  id              String   @id @default(cuid())
+  employeeId      String   @unique
+  name            String
+  email           String   @unique
+  role            String   // "SUPERVISOR" | "PICK_LEAD" | "WAREHOUSE_MGR" | "TRAINEE"
+  facilityId      String
+  assignedTrainees String[] // pickLead only — array of trainee userIds
+  startDate       DateTime @default(now())
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  sessions         SimSession[]
+  moduleProgress   ModuleProgress[]
+  signoffs         FloorReadySignoff[] @relation("SupervisorSignoffs")
+  receivedSignoff  FloorReadySignoff[] @relation("TraineeSignoffs")
+  sentNotifications     Notification[] @relation("NotificationSender")
+  receivedNotifications Notification[] @relation("NotificationReceiver")
+  traineeNotifications  Notification[] @relation("NotificationTrainee")
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SIMULATION SESSION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model SimSession {
+  id            String   @id @default(cuid())
+  userId        String
+  moduleId      String
+  moduleType    String   // ContentType enum
+  difficulty    String   // DifficultyLevel enum
+  status        String   // "IN_PROGRESS" | "COMPLETED" | "ABANDONED"
+
+  // Scoring
+  finalScore    Float?
+  accuracyScore Float?
+  speedScore    Float?
+  passed        Boolean?
+  totalPicks    Int?
+  errorCount    Int?
+
+  // Events stored as JSON for replay
+  scanEvents    Json?    // ScanEvent[] — full scan history
+  errors        Json?    // SimulationError[] — error history
+  replayEvents  Json?    // ScanEvent[] stored for replay — populated on session complete
+
+  // Timing
+  startedAt     DateTime @default(now())
+  completedAt   DateTime?
+  totalTimeMs   Int?
+
+  // Relations
+  user          User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([userId, status])
+  @@index([completedAt])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULE PROGRESS
+// ─────────────────────────────────────────────────────────────────────────────
+
+model ModuleProgress {
+  id          String    @id @default(cuid())
+  userId      String
+  moduleId    String
+  attempts    Int       @default(0)
+  bestScore   Float     @default(0)
+  lastAttemptAt DateTime @default(now())
+  completed   Boolean   @default(false)
+  completedAt DateTime?
+  timeSpentMs Int       @default(0)
+
+  // Relations
+  user        User      @relation(fields: [userId], references: [id])
+
+  @@unique([userId, moduleId])
+  @@index([userId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOOR-READY SIGNOFF
+// ─────────────────────────────────────────────────────────────────────────────
+
+model FloorReadySignoff {
+  id                String   @id @default(cuid())
+  traineeId         String
+  supervisorId      String
+  facilityId        String
+  status            String   // "CONFIRMED" only
+  confirmedAt       DateTime @default(now())
+  notes             String?
+  thresholdSnapshot Json     // copy of FLOOR_READY_THRESHOLDS at time of sign-off
+
+  // Relations
+  trainee           User     @relation("TraineeSignoffs", fields: [traineeId], references: [id])
+  supervisor        User     @relation("SupervisorSignoffs", fields: [supervisorId], references: [id])
+
+  @@index([traineeId])
+  @@index([supervisorId])
+  @@index([facilityId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// NOTIFICATION
+// ─────────────────────────────────────────────────────────────────────────────
+
+model Notification {
+  id          String   @id @default(cuid())
+  fromUserId  String
+  toUserId    String
+  traineeId   String
+  message     String
+  type        String   // "FLAG_FOR_REVIEW"
+  read        Boolean  @default(false)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  from        User     @relation("NotificationSender", fields: [fromUserId], references: [id])
+  to          User     @relation("NotificationReceiver", fields: [toUserId], references: [id])
+  trainee     User     @relation("NotificationTrainee", fields: [traineeId], references: [id])
+
+  @@index([toUserId, read])
+  @@index([traineeId])
+}
