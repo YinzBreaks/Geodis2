@@ -19,6 +19,7 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
   "/dashboard/supervisor": ["SUPERVISOR"],
   "/dashboard/lead": ["PICK_LEAD"],
   "/dashboard/manager": ["WAREHOUSE_MGR"],
+  "/dashboard/trainee": ["TRAINEE", "SUPERVISOR", "PICK_LEAD", "WAREHOUSE_MGR"],
 }
 
 export async function middleware(request: NextRequest) {

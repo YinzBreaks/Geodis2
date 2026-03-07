@@ -15,14 +15,14 @@ const ROLE_HOME: Record<UserRole, string> = {
   SUPERVISOR: "/dashboard/supervisor",
   PICK_LEAD: "/dashboard/lead",
   WAREHOUSE_MGR: "/dashboard/manager",
-  TRAINEE: "/",
+  TRAINEE: "/dashboard/trainee",
 }
 
 const ROLE_LABEL: Record<UserRole, string> = {
   SUPERVISOR: "Supervisor Dashboard",
   PICK_LEAD: "Lead Dashboard",
   WAREHOUSE_MGR: "Manager Dashboard",
-  TRAINEE: "Training Home",
+  TRAINEE: "My Progress",
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
