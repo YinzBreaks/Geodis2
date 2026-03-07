@@ -14,6 +14,7 @@ import {
   getCurrentScreen,
   calculateScore,
 } from "@/engine/simulation-engine"
+import { computeSessionResult } from "@/engine/scorer"
 import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
 import { COACHING_CONTENT } from "@/data/coachingContent"
 import { ACTIVE_DEVICE_MODEL_ID } from "@/types/devices"
@@ -26,6 +27,7 @@ import {
   type EngineResult,
   type RFDeviceScreen,
   type SessionScore,
+  type SessionResult,
   type WarehouseItem,
 } from "@/types/domain"
 import type { CoachingState } from "@/types/coaching"
@@ -238,6 +240,19 @@ interface SimulationState {
   result: EngineResult | null
   /** Final score — populated atomically when PS_ROUND_COMPLETE is reached */
   score: SessionScore | null
+  /**
+   * Rich result computed at simulation completion — drives the results screen.
+   * Includes band, feedback, duration, and exception stats.
+   */
+  sessionResult: SessionResult | null
+  /** The SCENARIO_DATA bundle key (e.g. "Z1_9_PICKS") for the active session. */
+  scenarioKey: string | null
+  /** Tracks async DB persistence lifecycle. */
+  saveStatus: "idle" | "saving" | "saved" | "failed"
+  /** Non-null when saveStatus === "failed". */
+  saveError: string | null
+  /** DB id of the persisted SimSession record once saved. */
+  savedSessionId: string | null
   /** How many soft-key pulse hints have been shown this session */
   softKeyPulseCount: number
   /**
@@ -253,6 +268,8 @@ interface SimulationState {
 
   startSimulation: (bundleKey: string) => void
   sendAction: (action: EngineAction) => void
+  /** Persist the completed session to the database. Safe to call multiple times — no-ops if already saving/saved. */
+  persistSession: () => Promise<void>
   /** Increment the pulse counter (called by soft key bar on animation start) */
   recordPulse: () => void
   /** Switch the emulator to a different device model at runtime. */
@@ -286,6 +303,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   scenario: null,
   result: null,
   score: null,
+  sessionResult: null,
+  scenarioKey: null,
+  saveStatus: "idle",
+  saveError: null,
+  savedSessionId: null,
   softKeyPulseCount: 0,
   activeDeviceModelId: ACTIVE_DEVICE_MODEL_ID,
   coaching: COACHING_HIDDEN,
@@ -306,6 +328,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       scenario: bundle.scenario,
       result: null,
       score: null,
+      sessionResult: null,
+      scenarioKey: bundleKey,
+      saveStatus: "idle",
+      saveError: null,
+      savedSessionId: null,
       softKeyPulseCount: 0,
       coaching: resolveCoaching(session.currentStep, session.difficulty),
     })
@@ -330,6 +357,12 @@ export const useSimulation = create<SimulationState>((set, get) => ({
         ? calculateScore(newSession, scenario)
         : get().score
 
+    // Compute rich SessionResult on completion (drives results screen)
+    const sessionResult =
+      isComplete && scenario
+        ? computeSessionResult(newSession, scenario)
+        : get().sessionResult
+
     // Update coaching:
     //   success + step changed → resolve coaching for the new step
     //   success + same step   → dismiss (shouldn’t happen, but guard anyway)
@@ -340,7 +373,51 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     }
     // On failure: coaching stays as-is
 
-    set({ session: newSession, result, score, coaching })
+    set({ session: newSession, result, score, sessionResult, coaching })
+  },
+
+  async persistSession() {
+    const { sessionResult, scenarioKey, saveStatus, session } = get()
+    // Only fire once per simulation, and only when we have the data
+    if (saveStatus !== "idle" || !sessionResult || !scenarioKey || !session) return
+
+    set({ saveStatus: "saving" })
+
+    try {
+      const res = await fetch("/api/sessions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarioId: session.moduleId,
+          difficulty: sessionResult.difficulty,
+          finalScore: sessionResult.finalScore,
+          accuracyScore: sessionResult.accuracyScore,
+          speedScore: sessionResult.speedScore,
+          passed: sessionResult.passed,
+          totalPicks: sessionResult.totalPicks,
+          correctFirstScans: sessionResult.correctFirstScans,
+          errorCount: sessionResult.errorCount,
+          durationSeconds: sessionResult.durationSeconds,
+          errorsEncountered: sessionResult.errorsEncountered,
+          exceptionsResolved: sessionResult.exceptionsResolved,
+          replayEvents: session.scanEvents,
+        }),
+      })
+
+      if (!res.ok) {
+        const err = (await res.json().catch(() => ({}))) as { error?: string }
+        throw new Error(err.error ?? `HTTP ${res.status}`)
+      }
+
+      const data = (await res.json()) as { sessionId: string }
+      set({ saveStatus: "saved", savedSessionId: data.sessionId })
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Unknown error"
+      set({
+        saveStatus: "failed",
+        saveError: `Session not saved — ${message}. You may not be logged in.`,
+      })
+    }
   },
 
   recordPulse() {
@@ -357,6 +434,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       scenario: null,
       result: null,
       score: null,
+      sessionResult: null,
+      scenarioKey: null,
+      saveStatus: "idle",
+      saveError: null,
+      savedSessionId: null,
       softKeyPulseCount: 0,
       coaching: COACHING_HIDDEN,
     })
