@@ -152,10 +152,12 @@ export function SupervisorDashboardClient({
                     <p style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600 }}>
                       {t.name}
                     </p>
-                    <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
-                      {topGap
-                        ? `Top gap: ${topGap.criterion} (${topGap.current})`
-                        : "Multiple gaps identified"}
+                    <p style={{ color: "var(--color-danger)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
+                      {t.report.needsAttentionReason
+                        ? t.report.needsAttentionReason
+                        : topGap
+                          ? `Top gap: ${topGap.criterion} (${topGap.current})`
+                          : "Multiple gaps identified"}
                     </p>
                   </div>
                   <span style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>

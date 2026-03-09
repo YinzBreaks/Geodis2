@@ -107,30 +107,32 @@ function LoginForm() {
           </button>
         </form>
 
-        {/* Dev shortcut */}
-        <div className="mt-4 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          <p className="text-zinc-500 font-mono text-xs mb-2 font-semibold">
-            DEV ACCOUNTS (password: dev123)
-          </p>
-          {[
-            { email: "supervisor@geodis.local", role: "SUPERVISOR" },
-            { email: "lead@geodis.local", role: "PICK_LEAD" },
-            { email: "manager@geodis.local", role: "WAREHOUSE_MGR" },
-            { email: "trainee@geodis.local", role: "TRAINEE" },
-          ].map(({ email: e, role }) => (
-            <button
-              key={e}
-              type="button"
-              onClick={() => {
-                setEmail(e)
-                setPassword("dev123")
-              }}
-              className="block w-full text-left text-zinc-400 hover:text-green-400 font-mono text-xs py-0.5 transition-colors"
-            >
-              {e} <span className="text-zinc-600">({role})</span>
-            </button>
-          ))}
-        </div>
+        {/* DEV ONLY — removed at build time in production */}
+        {process.env.NODE_ENV === 'development' && (
+          <div className="mt-4 bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+            <p className="text-zinc-500 font-mono text-xs mb-2 font-semibold">
+              DEV ACCOUNTS (password: dev123)
+            </p>
+            {[
+              { email: "supervisor@geodis.local", role: "SUPERVISOR" },
+              { email: "lead@geodis.local", role: "PICK_LEAD" },
+              { email: "manager@geodis.local", role: "WAREHOUSE_MGR" },
+              { email: "trainee@geodis.local", role: "TRAINEE" },
+            ].map(({ email: e, role }) => (
+              <button
+                key={e}
+                type="button"
+                onClick={() => {
+                  setEmail(e)
+                  setPassword("dev123")
+                }}
+                className="block w-full text-left text-zinc-400 hover:text-green-400 font-mono text-xs py-0.5 transition-colors"
+              >
+                {e} <span className="text-zinc-600">({role})</span>
+              </button>
+            ))}
+          </div>
+        )}
       </div>
     </main>
   )

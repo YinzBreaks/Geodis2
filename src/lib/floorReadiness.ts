@@ -58,6 +58,12 @@ export interface FloorReadinessReport {
   exceptionCoverage: Record<string, ExceptionStats>
   scoreHistory: number[]
   trend: ScoreTrend
+  /**
+   * Human-readable reason this trainee was flagged for coaching attention.
+   * Undefined when the trainee is FLOOR_READY or IN_PROGRESS without flags.
+   * Populated by needsAttentionFlag().
+   */
+  needsAttentionReason?: string
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -269,6 +275,83 @@ export function getExceptionCoverage(
 }
 
 /**
+ * Determine whether a trainee should be flagged for coaching attention.
+ *
+ * A trainee is flagged (NEEDS_COACHING) when ANY of the following is true:
+ *
+ *   a) Latest score < 60 AND trainee has 3+ completed sessions
+ *      (not still learning — actually struggling)
+ *
+ *   b) Score DECLINED across the last 3 sessions
+ *      (getting worse, not better)
+ *
+ *   c) Exception resolution rate < 60% across all sessions
+ *      (cannot handle errors reliably)
+ *
+ *   d) No session completed in last 7 days AND not yet FLOOR_READY
+ *      (went inactive before certifying — checked only when sessions exist)
+ *
+ * @param sessions - All simulation sessions for the trainee (any status).
+ * @returns { flagged, reason } — reason is human-readable for supervisor display.
+ */
+export function needsAttentionFlag(
+  sessions: SimSessionInput[]
+): { flagged: boolean; reason: string } {
+  const completedSessions = sessions.filter((s) => s.status === "COMPLETED")
+
+  // Build chronological score history
+  const scoreHistory = completedSessions
+    .filter((s) => s.finalScore !== null)
+    .sort(
+      (a, b) =>
+        (a.completedAt?.getTime() ?? 0) - (b.completedAt?.getTime() ?? 0)
+    )
+    .map((s) => s.finalScore as number)
+
+  // a) Latest score < 60 after 3+ sessions
+  if (
+    scoreHistory.length >= 3 &&
+    scoreHistory[scoreHistory.length - 1] < 60
+  ) {
+    return { flagged: true, reason: "Scores below 60 after 3+ attempts" }
+  }
+
+  // b) Declining trend across last 3 sessions
+  if (getScoreTrend(scoreHistory) === "declining") {
+    return { flagged: true, reason: "Score declining across last 3 sessions" }
+  }
+
+  // c) Exception resolution rate < 60% across all sessions
+  const coverage = getExceptionCoverage(sessions)
+  let totalEncountered = 0
+  let totalResolved = 0
+  for (const stats of Object.values(coverage)) {
+    totalEncountered += stats.encountered
+    totalResolved += stats.resolvedCorrectly
+  }
+  const overallRate =
+    totalEncountered > 0 ? totalResolved / totalEncountered : 1
+  if (totalEncountered > 0 && overallRate < 0.6) {
+    return { flagged: true, reason: "Exception resolution below 60%" }
+  }
+
+  // d) No activity in last 7 days (and has at least one session)
+  if (completedSessions.length > 0) {
+    const latestSession = [...completedSessions].sort(
+      (a, b) =>
+        (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0)
+    )[0]
+    const sevenDaysAgo = new Date()
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+    if (latestSession.completedAt && latestSession.completedAt < sevenDaysAgo) {
+      return { flagged: true, reason: "No activity in 7+ days" }
+    }
+  }
+
+  return { flagged: false, reason: "" }
+}
+
+/**
  * Compute score trend from a series of finalScores.
  *
  * - improving:  last 3 scores each higher than previous
@@ -458,28 +541,21 @@ export function assessFloorReadiness(
 
   // Determine status
   let status: FloorReadyStatus
+  let needsAttentionReason: string | undefined
 
   if (gaps.length === 0) {
     status = "FLOOR_READY"
   } else {
-    // NEEDS_COACHING if:
-    //   - trend is declining, OR
-    //   - exception resolution rate is below threshold, OR
-    //   - latest score is below 50 (far from passing)
-    const hasLowExceptionRate = Object.values(exceptionCoverage).some(
-      (stats) =>
-        stats.encountered > 0 &&
-        stats.resolutionRate < FLOOR_READY_THRESHOLDS.minExceptionResolutionRate
-    )
-
-    const latestScore =
-      scoreHistory.length > 0 ? scoreHistory[scoreHistory.length - 1] : 0
-
-    if (
-      completedSessions.length > 0 &&
-      (trend === "declining" || hasLowExceptionRate || latestScore < 50)
-    ) {
+    // Use needsAttentionFlag to determine NEEDS_COACHING vs IN_PROGRESS.
+    // Criteria (any one is sufficient):
+    //   - Latest score < 60 after 3+ sessions
+    //   - Score declining across last 3 sessions
+    //   - Exception resolution rate < 60%
+    //   - No activity in 7+ days (and not yet floor-ready)
+    const flag = needsAttentionFlag(sessions)
+    if (flag.flagged) {
       status = "NEEDS_COACHING"
+      needsAttentionReason = flag.reason
     } else {
       status = "IN_PROGRESS"
     }
@@ -487,6 +563,7 @@ export function assessFloorReadiness(
 
   return {
     status,
+    needsAttentionReason,
     gaps,
     suggestedAt: status === "FLOOR_READY" ? new Date() : undefined,
     exceptionCoverage,
