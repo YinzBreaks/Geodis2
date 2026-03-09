@@ -437,7 +437,7 @@ Add these to your .env.local file:
         totalPicks: s.totalPicks,
         errorCount: s.errors.length,
         scanEvents,
-        errors: s.errors,
+        errors: JSON.parse(JSON.stringify(s.errors)),
         replayEvents,
         startedAt,
         completedAt,

@@ -27,16 +27,16 @@ import {
 import { getExpectedKey } from "@/lib/stepKeyMap"
 
 export function RFDevice() {
-  const { session, result, sendAction, activeDeviceModelId, coaching } = useSimulation()
+  const { session, result, sendAction, activeDeviceModelId, coaching, lastActionResult } = useSimulation()
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Derive visual config from the active device model.
-  // All colors / fonts come from here — nothing hardcoded below.
   const device = getDeviceModel(activeDeviceModelId)
   const { screen: sc, layout: ly } = device
   const emulatorWidth = device.emulatorWidthPx ?? 320
   const touchTarget = device.minTouchTargetPx ?? 44
+  const isModern = device.uiStyle === "modern"
 
   // Focus input on step change (scanner flow)
   useEffect(() => {
@@ -98,20 +98,34 @@ export function RFDevice() {
   const showFeedback = result && !result.success && result.feedback
   const isAndroid = device.uiStyle === "android"
 
+  // Animation classes driven by lastActionResult
+  const animClass =
+    lastActionResult === "correct"
+      ? "scanning success-pulse"
+      : lastActionResult === "error"
+        ? "error-shake"
+        : ""
+
   return (
     <div
-      className="rounded-2xl p-4 shadow-2xl flex flex-col gap-3"
+      className={`rounded-2xl p-4 shadow-2xl flex flex-col gap-3 ${animClass}`}
       style={{
         backgroundColor: ly.bezelColor,
         border: `1px solid ${ly.screenBorderColor}`,
         width: emulatorWidth,
         maxWidth: "100%",
+        position: "relative",
       }}
     >
+      {/* Scan beam overlay */}
+      {lastActionResult === "correct" && (
+        <div className="scan-beam" />
+      )}
+
       {/* Device label */}
       <div
         className="text-[9px] font-mono text-center tracking-widest uppercase"
-        style={{ color: isAndroid ? "#94a3b8" : "#4b5563" }}
+        style={{ color: isModern ? "var(--color-text-muted)" : isAndroid ? "#94a3b8" : "#4b5563" }}
       >
         {device.displayName} — GEODIS RF
       </div>
@@ -121,6 +135,8 @@ export function RFDevice() {
         style={{
           position: "relative",
           border: `1px solid ${ly.screenBorderColor}`,
+          borderRadius: isModern ? "var(--radius-md)" : undefined,
+          overflow: "hidden",
         }}
       >
         <RFDeviceDisplay
@@ -128,6 +144,8 @@ export function RFDevice() {
           inputValue={inputValue}
           screenConfig={sc}
           highlightLine={coaching.content?.highlightLine}
+          renderMode={device.uiStyle}
+          stepName={session.currentStep.replace(/_/g, " ")}
         />
         <CoachingTooltip
           highlightLine={coaching.content?.highlightLine}
@@ -142,9 +160,11 @@ export function RFDevice() {
           <div
             className="rounded px-2 py-1 text-xs font-mono"
             style={{
-              backgroundColor: isAndroid ? "#fff1f2" : "#1c0505",
-              border: `1px solid ${isAndroid ? "#fca5a5" : "#7f1d1d"}`,
-              color: isAndroid ? "#dc2626" : "#fca5a5",
+              backgroundColor: isModern ? "rgba(248, 81, 73, 0.1)" : isAndroid ? "#fff1f2" : "#1c0505",
+              border: isModern
+                ? "1px solid var(--color-danger)"
+                : `1px solid ${isAndroid ? "#fca5a5" : "#7f1d1d"}`,
+              color: isModern ? "var(--color-danger)" : isAndroid ? "#dc2626" : "#fca5a5",
               fontFamily: sc.fontFamily,
             }}
           >
@@ -154,7 +174,7 @@ export function RFDevice() {
         {result?.success && !showFeedback && (
           <div
             className="text-[10px] font-mono text-center"
-            style={{ color: isAndroid ? "#16a34a" : "#15803d" }}
+            style={{ color: isModern ? "var(--color-success)" : isAndroid ? "#16a34a" : "#15803d" }}
           >
             ✓ OK
           </div>
@@ -173,10 +193,10 @@ export function RFDevice() {
                 onKeyDown={handleKeyDown}
                 className="flex-1 text-sm px-3 rounded border focus:outline-none transition-colors"
                 style={{
-                  backgroundColor: sc.bgColor,
-                  color: sc.textColor,
+                  backgroundColor: isModern ? "var(--color-surface)" : sc.bgColor,
+                  color: isModern ? "var(--color-text-primary)" : sc.textColor,
                   fontFamily: sc.fontFamily,
-                  borderColor: ly.screenBorderColor,
+                  borderColor: isModern ? "var(--color-border)" : ly.screenBorderColor,
                   minHeight: touchTarget,
                 }}
                 placeholder={inputMode === "SCAN" ? "Scan barcode…" : "Enter value…"}
@@ -186,10 +206,11 @@ export function RFDevice() {
                 onClick={handleSubmit}
                 className="text-xs font-mono px-3 rounded border transition-colors"
                 style={{
-                  backgroundColor: isAndroid ? "#2563eb" : "#14532d",
-                  color: isAndroid ? "#ffffff" : "#bbf7d0",
-                  borderColor: isAndroid ? "#1d4ed8" : "#166534",
+                  backgroundColor: isModern ? "var(--color-amber)" : isAndroid ? "#2563eb" : "#14532d",
+                  color: isModern ? "var(--color-base)" : isAndroid ? "#ffffff" : "#bbf7d0",
+                  borderColor: isModern ? "var(--color-amber-dim)" : isAndroid ? "#1d4ed8" : "#166534",
                   fontFamily: sc.fontFamily,
+                  fontWeight: isModern ? 700 : undefined,
                   minHeight: touchTarget,
                 }}
               >
@@ -204,9 +225,9 @@ export function RFDevice() {
                 onClick={handleSubmit}
                 className="w-full text-sm font-mono py-2 rounded border transition-colors"
                 style={{
-                  backgroundColor: isAndroid ? "#f1f5f9" : "#27272a",
-                  color: sc.textColor,
-                  borderColor: ly.screenBorderColor,
+                  backgroundColor: isModern ? "var(--color-surface-2)" : isAndroid ? "#f1f5f9" : "#27272a",
+                  color: isModern ? "var(--color-text-primary)" : sc.textColor,
+                  borderColor: isModern ? "var(--color-border)" : ly.screenBorderColor,
                   fontFamily: sc.fontFamily,
                   minHeight: touchTarget,
                 }}
@@ -229,7 +250,7 @@ export function RFDevice() {
       {/* Step indicator (training aid) */}
       <div
         className="text-[9px] font-mono text-center truncate"
-        style={{ color: isAndroid ? "#94a3b8" : "#3f3f46" }}
+        style={{ color: isModern ? "var(--color-text-muted)" : isAndroid ? "#94a3b8" : "#3f3f46" }}
       >
         {session.currentStep}
       </div>

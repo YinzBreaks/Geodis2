@@ -89,6 +89,7 @@ export function createSupabaseServerClient() {
 export async function getRoleFromSession(): Promise<{
   role: UserRole | null
   userId: string | null
+  email: string | null
   facilityId: string | null
   assignedTrainees: string[]
 }> {
@@ -98,7 +99,7 @@ export async function getRoleFromSession(): Promise<{
   } = await supabase.auth.getUser()
 
   if (!user?.email) {
-    return { role: null, userId: null, facilityId: null, assignedTrainees: [] }
+    return { role: null, userId: null, email: null, facilityId: null, assignedTrainees: [] }
   }
 
   const dbUser = await prisma.user.findUnique({
@@ -112,12 +113,13 @@ export async function getRoleFromSession(): Promise<{
   })
 
   if (!dbUser) {
-    return { role: null, userId: null, facilityId: null, assignedTrainees: [] }
+    return { role: null, userId: null, email: user.email, facilityId: null, assignedTrainees: [] }
   }
 
   return {
     role: dbUser.role as UserRole,
     userId: dbUser.id,
+    email: user.email,
     facilityId: dbUser.facilityId,
     assignedTrainees: dbUser.assignedTrainees,
   }

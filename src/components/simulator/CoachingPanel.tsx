@@ -10,6 +10,8 @@
  *
  * Per CLAUDE.md §Content Rules §Labs: explain the "why" behind each step.
  * Per requirement spec §STEP 4 — CoachingPanel component.
+ *
+ * Redesigned to use Industrial Dashboard tokens (amber accent, surface cards).
  */
 "use client"
 
@@ -49,77 +51,112 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
   const { badge, rest } = extractSopRef(content.sopContext)
   const isException = coaching.step != null && String(coaching.step).startsWith("EX_")
 
-  // Amber for exception steps, green for normal flow
-  const headerBg    = isException ? "#2d1a00" : "#0d2d0d"
-  const headerBorder = isException ? "#7a3a00" : "#1a4d1a"
-  const panelBorder  = isException ? "#7a3a00" : "#1a4d1a"
-  const panelBg      = isException ? "#1a0f00" : "#0f1a0f"
-  const headerText   = isException ? "#ffb347" : "#00ff41"
-  const headerLabel  = isException ? "⚡ EXCEPTION SCENARIO" : "▸ Step Guide"
-
   return (
     <div
-      className="coaching-panel"
+      className="coaching-panel fade-in-up"
       style={{
-        width: 280,
-        minWidth: 280,
-        fontFamily: "'Courier New', 'Lucida Console', monospace",
-        backgroundColor: panelBg,
-        border: `1px solid ${panelBorder}`,
+        width: 300,
+        minWidth: 300,
+        fontFamily: "var(--font-ui)",
+        backgroundColor: "var(--color-surface-1)",
+        border: "1px solid var(--color-border)",
+        borderRadius: "var(--radius-md)",
         display: "flex",
         flexDirection: "column",
         gap: 0,
         overflow: "hidden",
-        // Fade in when visible
-        animation: "coaching-fade-in 0.25s ease-out",
       }}
     >
       {/* Header */}
       <div
         style={{
-          backgroundColor: headerBg,
-          borderBottom: `1px solid ${headerBorder}`,
-          padding: "6px 12px",
+          backgroundColor: isException
+            ? "rgba(240, 165, 0, 0.15)"
+            : "var(--color-surface-2)",
+          borderBottom: "1px solid var(--color-border)",
+          padding: "8px 14px",
+          display: "flex",
+          alignItems: "center",
+          gap: 8,
         }}
       >
+        {isException && (
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              width: 20,
+              height: 20,
+              borderRadius: "var(--radius-sm)",
+              backgroundColor: "var(--color-amber)",
+              color: "var(--color-base)",
+              fontSize: 11,
+              fontWeight: 700,
+            }}
+          >
+            !
+          </span>
+        )}
         <span
           style={{
-            color: headerText,
+            color: isException
+              ? "var(--color-amber)"
+              : "var(--color-text-secondary)",
             fontSize: 10,
-            fontWeight: "bold",
-            letterSpacing: "0.12em",
+            fontWeight: 700,
+            letterSpacing: "0.1em",
             textTransform: "uppercase",
+            fontFamily: "var(--font-display)",
           }}
         >
-          {headerLabel}
+          {isException ? "EXCEPTION SCENARIO" : "Step Guide"}
         </span>
       </div>
 
       {/* DO THIS NOW section */}
       <div
         style={{
-          padding: "12px 12px 10px",
-          borderBottom: "1px solid #132013",
+          padding: "14px 14px 12px",
+          borderBottom: "1px solid var(--color-border)",
         }}
       >
         <div
           style={{
-            color: "#6aff6a",
-            fontSize: 9,
-            fontWeight: "bold",
-            letterSpacing: "0.1em",
-            marginBottom: 6,
-            textTransform: "uppercase",
+            display: "flex",
+            alignItems: "center",
+            gap: 6,
+            marginBottom: 8,
           }}
         >
-          ▶ DO THIS NOW
+          <span
+            style={{
+              color: "var(--color-amber)",
+              fontSize: 14,
+              lineHeight: 1,
+            }}
+          >
+            ▸
+          </span>
+          <span
+            style={{
+              color: "var(--color-amber)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              fontFamily: "var(--font-display)",
+            }}
+          >
+            DO THIS NOW
+          </span>
         </div>
         <div
           style={{
-            color: "#e8ffe8",
-            fontSize: 13,
-            lineHeight: 1.45,
-            fontWeight: "bold",
+            color: "var(--color-text-primary)",
+            fontSize: 14,
+            lineHeight: 1.5,
+            fontWeight: 600,
           }}
         >
           {content.action}
@@ -129,38 +166,42 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
       {/* WHY THIS STEP section */}
       <div
         style={{
-          padding: "10px 12px",
-          borderBottom: content.fieldDef ? "1px solid #132013" : undefined,
+          padding: "12px 14px",
+          borderBottom: content.fieldDef ? "1px solid var(--color-border)" : undefined,
         }}
       >
         <div
           style={{
             display: "flex",
             alignItems: "center",
-            gap: 6,
-            marginBottom: 6,
+            gap: 8,
+            marginBottom: 8,
           }}
         >
           <span
             style={{
-              color: "#4a8a4a",
-              fontSize: 9,
-              fontWeight: "bold",
-              letterSpacing: "0.1em",
+              color: "var(--color-text-secondary)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
               textTransform: "uppercase",
+              fontFamily: "var(--font-display)",
             }}
           >
-            📖 WHY THIS STEP
+            Why This Step
           </span>
           {badge && (
             <span
               style={{
-                backgroundColor: "#0d2d0d",
-                border: "1px solid #1a4d1a",
-                color: "#00ff41",
+                backgroundColor: "rgba(240, 165, 0, 0.12)",
+                border: "1px solid rgba(240, 165, 0, 0.3)",
+                color: "var(--color-amber)",
                 fontSize: 9,
-                padding: "1px 5px",
-                letterSpacing: "0.05em",
+                fontWeight: 600,
+                padding: "2px 6px",
+                borderRadius: "var(--radius-sm)",
+                letterSpacing: "0.04em",
+                fontFamily: "var(--font-mono)",
               }}
             >
               {badge}
@@ -169,9 +210,9 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
         </div>
         <div
           style={{
-            color: "#a0c8a0",
-            fontSize: 11,
-            lineHeight: 1.5,
+            color: "var(--color-text-secondary)",
+            fontSize: 12,
+            lineHeight: 1.6,
           }}
         >
           {rest}
@@ -182,26 +223,29 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
       {content.fieldDef && (
         <div
           style={{
-            padding: "10px 12px",
+            padding: "12px 14px",
+            backgroundColor: "var(--color-surface-2)",
           }}
         >
           <div
             style={{
-              color: "#4a8a4a",
-              fontSize: 9,
-              fontWeight: "bold",
-              letterSpacing: "0.1em",
+              color: "var(--color-text-secondary)",
+              fontSize: 10,
+              fontWeight: 700,
+              letterSpacing: "0.08em",
               marginBottom: 6,
               textTransform: "uppercase",
+              fontFamily: "var(--font-display)",
             }}
           >
-            💡 FIELD MEANING
+            Field Meaning
           </div>
           <div
             style={{
-              color: "#7ab87a",
-              fontSize: 11,
-              lineHeight: 1.5,
+              color: "var(--color-text-secondary)",
+              fontSize: 12,
+              lineHeight: 1.6,
+              fontFamily: "var(--font-mono)",
             }}
           >
             {content.fieldDef}

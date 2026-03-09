@@ -50,9 +50,9 @@ const EXCEPTION_META: ExceptionMeta[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 function getRateColor(rate: number): { bar: string; text: string } {
-  if (rate >= 0.9) return { bar: "bg-green-500", text: "text-green-400" }
-  if (rate >= 0.7) return { bar: "bg-yellow-500", text: "text-yellow-400" }
-  return { bar: "bg-red-500", text: "text-red-400" }
+  if (rate >= 0.9) return { bar: "#2ea043", text: "var(--color-success, #2ea043)" }
+  if (rate >= 0.7) return { bar: "#f0a500", text: "var(--color-amber, #f0a500)" }
+  return { bar: "#f85149", text: "var(--color-danger, #f85149)" }
 }
 
 function getStatusLabel(rate: number, encountered: number): string {
@@ -73,16 +73,16 @@ export function ExceptionHeatmap({
 }: ExceptionHeatmapProps) {
   return (
     <div className="overflow-x-auto">
-      <table className="w-full text-xs font-mono">
+      <table style={{ width: "100%", fontSize: 12, fontFamily: "var(--font-mono)", borderCollapse: "collapse" }}>
         <thead>
-          <tr className="text-zinc-500 border-b border-zinc-800">
-            <th className="text-left py-2 px-2">Exception</th>
-            {showSopRef && <th className="text-left py-2 px-2">SOP</th>}
-            <th className="text-right py-2 px-2">Seen</th>
-            <th className="text-right py-2 px-2">Resolved</th>
-            <th className="text-right py-2 px-2">Rate</th>
-            <th className="py-2 px-2 w-32">Progress</th>
-            <th className="text-left py-2 px-2">Status</th>
+          <tr style={{ color: "var(--color-text-secondary)", borderBottom: "1px solid var(--color-border)" }}>
+            <th style={{ textAlign: "left", padding: "8px" }}>Exception</th>
+            {showSopRef && <th style={{ textAlign: "left", padding: "8px" }}>SOP</th>}
+            <th style={{ textAlign: "right", padding: "8px" }}>Seen</th>
+            <th style={{ textAlign: "right", padding: "8px" }}>Resolved</th>
+            <th style={{ textAlign: "right", padding: "8px" }}>Rate</th>
+            <th style={{ padding: "8px", width: 128 }}>Progress</th>
+            <th style={{ textAlign: "left", padding: "8px" }}>Status</th>
           </tr>
         </thead>
         <tbody>
@@ -101,37 +101,41 @@ export function ExceptionHeatmap({
             return (
               <tr
                 key={meta.scanResult}
-                className="border-b border-zinc-800/50 hover:bg-zinc-800/30"
+                style={{ borderBottom: "1px solid rgba(48, 54, 61, 0.5)" }}
               >
-                <td className="py-2 px-2 text-zinc-300">{meta.label}</td>
+                <td style={{ padding: "8px", color: "var(--color-text-primary)" }}>{meta.label}</td>
                 {showSopRef && (
-                  <td className="py-2 px-2 text-zinc-500">{meta.sopRef}</td>
+                  <td style={{ padding: "8px", color: "var(--color-text-secondary)" }}>{meta.sopRef}</td>
                 )}
-                <td className="py-2 px-2 text-right text-zinc-300">
+                <td style={{ padding: "8px", textAlign: "right", color: "var(--color-text-primary)" }}>
                   {stats.encountered}
                 </td>
-                <td className="py-2 px-2 text-right text-zinc-300">
+                <td style={{ padding: "8px", textAlign: "right", color: "var(--color-text-primary)" }}>
                   {stats.resolvedCorrectly}
                 </td>
-                <td className={`py-2 px-2 text-right ${colors.text}`}>
+                <td style={{ padding: "8px", textAlign: "right", color: colors.text }}>
                   {stats.encountered > 0
                     ? `${Math.round(stats.resolutionRate * 100)}%`
                     : "—"}
                 </td>
-                <td className="py-2 px-2">
-                  <div className="w-full bg-zinc-800 rounded-full h-2">
+                <td style={{ padding: "8px" }}>
+                  <div style={{ width: "100%", backgroundColor: "var(--color-surface-2)", borderRadius: 99, height: 8 }}>
                     <div
-                      className={`h-2 rounded-full ${colors.bar} transition-all`}
                       style={{
+                        height: 8,
+                        borderRadius: 99,
+                        backgroundColor: colors.bar,
                         width: `${Math.round(stats.resolutionRate * 100)}%`,
+                        transition: "width 0.3s",
                       }}
                     />
                   </div>
                 </td>
                 <td
-                  className={`py-2 px-2 ${
-                    stats.encountered === 0 ? "text-zinc-600" : colors.text
-                  }`}
+                  style={{
+                    padding: "8px",
+                    color: stats.encountered === 0 ? "var(--color-text-secondary)" : colors.text,
+                  }}
                 >
                   {statusLabel}
                 </td>

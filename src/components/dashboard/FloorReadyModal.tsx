@@ -121,30 +121,40 @@ export function FloorReadyModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60">
-      <div className="bg-zinc-900 border border-zinc-700 rounded-xl w-full max-w-lg mx-4 shadow-2xl">
+    <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: "rgba(0,0,0,0.6)" }}>
+      <div
+        style={{
+          backgroundColor: "var(--color-surface-1)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-lg)",
+          width: "100%",
+          maxWidth: 512,
+          margin: "0 16px",
+          boxShadow: "var(--shadow-xl)",
+        }}
+      >
         {/* Header */}
-        <div className="border-b border-zinc-800 px-6 py-4">
-          <h2 className="text-zinc-100 font-mono text-lg font-bold">
+        <div style={{ borderBottom: "1px solid var(--color-border)", padding: "16px 24px" }}>
+          <h2 style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 700 }}>
             Confirm Floor Ready
           </h2>
-          <p className="text-zinc-400 font-mono text-sm mt-1">
-            Sign off <span className="text-green-400">{traineeName}</span> as
+          <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 13, marginTop: 4 }}>
+            Sign off <span style={{ color: "var(--color-amber)", fontWeight: 600 }}>{traineeName}</span> as
             floor-ready for independent picking.
           </p>
         </div>
 
         {/* Checklist */}
-        <div className="px-6 py-4 space-y-3">
-          <p className="text-zinc-500 font-mono text-xs uppercase tracking-wider">
+        <div style={{ padding: "16px 24px", display: "flex", flexDirection: "column", gap: 12 }}>
+          <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 10, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase" }}>
             Threshold Checklist
           </p>
           {CHECKLIST_ITEMS.map((item) => (
-            <div key={item.key} className="flex items-start gap-2">
-              <span className="text-green-400 mt-0.5">✓</span>
+            <div key={item.key} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+              <span style={{ color: "var(--color-success)", marginTop: 2 }}>✓</span>
               <div>
-                <p className="text-zinc-300 font-mono text-sm">{item.label}</p>
-                <p className="text-zinc-600 font-mono text-xs">
+                <p style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-mono)", fontSize: 13 }}>{item.label}</p>
+                <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 11 }}>
                   {item.description}
                 </p>
               </div>
@@ -153,17 +163,23 @@ export function FloorReadyModal({
         </div>
 
         {/* Notes */}
-        <div className="px-6 pb-4">
-          <label className="block text-zinc-500 font-mono text-xs mb-1">
+        <div style={{ padding: "0 24px 16px" }}>
+          <label style={{ display: "block", color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 11, marginBottom: 4 }}>
             Notes (optional)
           </label>
           <textarea
-            className="
-              w-full bg-zinc-800 border border-zinc-700 rounded-lg
-              text-zinc-300 font-mono text-sm p-3
-              focus:outline-none focus:border-green-600
-              resize-none
-            "
+            style={{
+              width: "100%",
+              backgroundColor: "var(--color-surface-2)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-md)",
+              color: "var(--color-text-primary)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 13,
+              padding: 12,
+              resize: "none",
+              outline: "none",
+            }}
             rows={3}
             placeholder="Additional observations or comments..."
             value={notes}
@@ -173,32 +189,43 @@ export function FloorReadyModal({
 
         {/* Error */}
         {error && (
-          <div className="px-6 pb-3">
-            <p className="text-red-400 font-mono text-xs">{error}</p>
+          <div style={{ padding: "0 24px 12px" }}>
+            <p style={{ color: "var(--color-danger)", fontFamily: "var(--font-mono)", fontSize: 11 }}>{error}</p>
           </div>
         )}
 
         {/* Actions */}
-        <div className="border-t border-zinc-800 px-6 py-4 flex justify-end gap-3">
+        <div style={{ borderTop: "1px solid var(--color-border)", padding: "16px 24px", display: "flex", justifyContent: "flex-end", gap: 12 }}>
           <button
             onClick={onClose}
-            className="
-              px-4 py-2 text-zinc-400 font-mono text-sm
-              hover:text-zinc-200 transition-colors
-            "
             disabled={isSubmitting}
+            style={{
+              padding: "8px 16px",
+              color: "var(--color-text-secondary)",
+              fontFamily: "var(--font-ui)",
+              fontSize: 13,
+              background: "none",
+              border: "none",
+              cursor: "pointer",
+            }}
           >
             Cancel
           </button>
           <button
             onClick={handleConfirm}
             disabled={isSubmitting}
-            className="
-              px-6 py-2 bg-green-700 hover:bg-green-600
-              text-green-100 font-mono text-sm font-bold
-              rounded-lg transition-colors
-              disabled:opacity-50 disabled:cursor-not-allowed
-            "
+            style={{
+              padding: "8px 24px",
+              backgroundColor: isSubmitting ? "var(--color-surface-2)" : "var(--color-amber)",
+              color: isSubmitting ? "var(--color-text-secondary)" : "var(--color-base)",
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: 13,
+              borderRadius: "var(--radius-md)",
+              border: "none",
+              cursor: isSubmitting ? "not-allowed" : "pointer",
+              opacity: isSubmitting ? 0.6 : 1,
+            }}
           >
             {isSubmitting ? "Confirming..." : "✓ Confirm Floor Ready"}
           </button>

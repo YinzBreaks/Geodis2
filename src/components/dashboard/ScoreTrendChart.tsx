@@ -85,13 +85,12 @@ function CustomScoreTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null
 
   return (
-    <div className="bg-zinc-900 border border-zinc-700 rounded-lg p-3 shadow-lg">
-      <p className="text-zinc-400 text-xs font-mono mb-1">{label}</p>
+    <div style={{ backgroundColor: 'var(--color-surface-1)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 12, boxShadow: 'var(--shadow-md)' }}>
+      <p style={{ color: 'var(--color-text-secondary)', fontSize: 11, fontFamily: 'var(--font-mono)', marginBottom: 4 }}>{label}</p>
       {payload.map((entry) => (
         <p
           key={entry.name}
-          className="text-xs font-mono"
-          style={{ color: entry.color }}
+          style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: entry.color }}
         >
           {entry.name}: {Math.round(entry.value)}
         </p>
@@ -117,8 +116,7 @@ export function ScoreTrendChart({
   if (data.length === 0) {
     return (
       <div
-        className="flex items-center justify-center text-zinc-600 font-mono text-sm"
-        style={{ height }}
+        style={{ height, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 13 }}
       >
         No score data available
       </div>
@@ -128,23 +126,23 @@ export function ScoreTrendChart({
   return (
     <div>
       {title && (
-        <h3 className="text-zinc-400 font-mono text-sm mb-3">{title}</h3>
+        <h3 style={{ color: 'var(--color-text-secondary)', fontFamily: 'var(--font-mono)', fontSize: 13, marginBottom: 12 }}>{title}</h3>
       )}
       <ResponsiveContainer width="100%" height={height}>
         <LineChart
           data={data}
           margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
         >
-          <CartesianGrid strokeDasharray="3 3" stroke="#27272a" />
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border, #30363d)" />
           <XAxis
             dataKey="label"
-            tick={{ fill: "#71717a", fontSize: 11, fontFamily: "monospace" }}
-            stroke="#3f3f46"
+            tick={{ fill: "#8b949e", fontSize: 11, fontFamily: "var(--font-mono, monospace)" }}
+            stroke="var(--color-border, #30363d)"
           />
           <YAxis
             domain={[0, 100]}
-            tick={{ fill: "#71717a", fontSize: 11, fontFamily: "monospace" }}
-            stroke="#3f3f46"
+            tick={{ fill: "#8b949e", fontSize: 11, fontFamily: "var(--font-mono, monospace)" }}
+            stroke="var(--color-border, #30363d)"
           />
           <Tooltip content={<CustomScoreTooltip />} />
           <Legend
@@ -158,13 +156,13 @@ export function ScoreTrendChart({
           {/* Passing threshold line */}
           <ReferenceLine
             y={threshold}
-            stroke="#eab308"
+            stroke="#f0a500"
             strokeDasharray="6 4"
             label={{
               value: `Pass: ${threshold}`,
-              fill: "#eab308",
+              fill: "#f0a500",
               fontSize: 10,
-              fontFamily: "monospace",
+              fontFamily: "var(--font-mono, monospace)",
             }}
           />
 
@@ -173,9 +171,9 @@ export function ScoreTrendChart({
             type="monotone"
             dataKey="score"
             name="Final Score"
-            stroke="#22c55e"
+            stroke="#f0a500"
             strokeWidth={2}
-            dot={{ r: 4, fill: "#22c55e" }}
+            dot={{ r: 4, fill: "#f0a500" }}
             activeDot={{ r: 6 }}
           />
 
@@ -211,10 +209,10 @@ export function ScoreTrendChart({
               type="monotone"
               dataKey="passRate"
               name="Pass Rate %"
-              stroke="#f59e0b"
+              stroke="#2ea043"
               strokeWidth={1.5}
               strokeDasharray="6 3"
-              dot={{ r: 3, fill: "#f59e0b" }}
+              dot={{ r: 3, fill: "#2ea043" }}
             />
           )}
         </LineChart>

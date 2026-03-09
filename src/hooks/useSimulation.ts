@@ -256,6 +256,18 @@ interface SimulationState {
   /** How many soft-key pulse hints have been shown this session */
   softKeyPulseCount: number
   /**
+   * Count of successful actions taken in the current session.
+   * Increments on every correct scan, keypress, or confirmation.
+   * Drives the StepProgressBar current-step indicator.
+   */
+  actionCount: number
+  /**
+   * Estimated total number of action steps in the current scenario.
+   * Computed at scenario start — approximate because error injection can add steps.
+   * Formula: 26 (build cart) + pickCount × 7 (pick actions) + ceil(pickCount/9) × 2 (end-of-tote).
+   */
+  estimatedTotalSteps: number
+  /**
    * Currently active device model ID — drives emulator visual style.
    * Updated by DeviceSelector at runtime without altering ACTIVE_DEVICE_MODEL_ID.
    */
@@ -265,6 +277,12 @@ interface SimulationState {
    * CoachingPanel reads this to decide what to show.
    */
   coaching: CoachingState
+  /**
+   * Last action result for driving scan/error animations.
+   * 'correct' triggers scanBeam + successPulse, 'error' triggers errorShake.
+   * Reset to null after 600ms.
+   */
+  lastActionResult: "correct" | "error" | null
 
   startSimulation: (bundleKey: string) => void
   sendAction: (action: EngineAction) => void
@@ -309,8 +327,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
   saveError: null,
   savedSessionId: null,
   softKeyPulseCount: 0,
+  actionCount: 0,
+  estimatedTotalSteps: 0,
   activeDeviceModelId: ACTIVE_DEVICE_MODEL_ID,
   coaching: COACHING_HIDDEN,
+  lastActionResult: null,
 
   startSimulation(bundleKey: string) {
     const bundle = SCENARIO_DATA[bundleKey]
@@ -323,6 +344,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       bundle.cart
     )
 
+    // Estimate total steps for the progress bar.
+    // Build cart ≈ 26 steps + 7 actions per pick + 2 end-of-tote steps per 9 picks.
+    const pickCount = bundle.pickQueue.length
+    const estimatedTotalSteps = 26 + pickCount * 7 + Math.ceil(pickCount / 9) * 2
+
     set({
       session,
       scenario: bundle.scenario,
@@ -334,6 +360,8 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       saveError: null,
       savedSessionId: null,
       softKeyPulseCount: 0,
+      actionCount: 0,
+      estimatedTotalSteps,
       coaching: resolveCoaching(session.currentStep, session.difficulty),
     })
   },
@@ -374,6 +402,21 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     // On failure: coaching stays as-is
 
     set({ session: newSession, result, score, sessionResult, coaching })
+
+    // Increment action counter on every successful step (drives StepProgressBar).
+    if (result.success) {
+      set((state) => ({ actionCount: state.actionCount + 1 }))
+    }
+
+    // Drive scan/error animations: set lastActionResult, auto-clear after 600ms
+    const actionResult = result.success ? "correct" as const : "error" as const
+    set({ lastActionResult: actionResult })
+    setTimeout(() => {
+      // Only clear if it hasn't been overwritten by a newer action
+      if (get().lastActionResult === actionResult) {
+        set({ lastActionResult: null })
+      }
+    }, 600)
   },
 
   async persistSession() {
@@ -440,6 +483,8 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       saveError: null,
       savedSessionId: null,
       softKeyPulseCount: 0,
+      actionCount: 0,
+      estimatedTotalSteps: 0,
       coaching: COACHING_HIDDEN,
     })
   },

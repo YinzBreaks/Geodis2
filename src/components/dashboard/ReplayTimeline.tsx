@@ -15,6 +15,7 @@
 "use client"
 
 import { useState, useEffect, useRef, useCallback } from "react"
+import { formatStepLabel } from "@/lib/stepLabels"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -56,13 +57,9 @@ export interface ReplayTimelineProps {
 // HELPERS
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Human-readable step label. Strips prefix and formats. */
+/** Human-readable step label — delegates to the shared stepLabels map. */
 function formatStep(step: string): string {
-  return step
-    .replace(/^BC_|^PK_|^PS_|^EX_/, "")
-    .replace(/_/g, " ")
-    .toLowerCase()
-    .replace(/\b\w/g, (c) => c.toUpperCase())
+  return formatStepLabel(step)
 }
 
 function isErrorResult(result: string): boolean {

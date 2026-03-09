@@ -1,46 +1,264 @@
+"use client"
+
 import Link from "next/link"
+
+/** Feature card data for the landing page. */
+const FEATURES: { title: string; description: string; href: string; active: boolean }[] = [
+  {
+    title: "Simulator",
+    description: "Practice RF picking with real error scenarios",
+    href: "/sim",
+    active: true,
+  },
+  {
+    title: "Labs",
+    description: "Step-by-step guided lessons",
+    href: "#",
+    active: false,
+  },
+  {
+    title: "Quiz Bank",
+    description: "Test your SOP knowledge",
+    href: "#",
+    active: false,
+  },
+]
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center gap-8 p-4">
-      <div className="text-center">
-        <h1 className="text-green-400 font-mono text-3xl font-bold tracking-wider">
-          WarehousePro
-        </h1>
-        <p className="text-zinc-500 font-mono text-sm mt-2">
-          GEODIS Picker Training Platform
-        </p>
-      </div>
+    <main
+      style={{
+        minHeight: "100vh",
+        backgroundColor: "var(--color-base)",
+        display: "flex",
+        flexDirection: "column",
+        alignItems: "center",
+      }}
+    >
+      {/* ══ HERO ══════════════════════════════════════════════════════════ */}
+      <section
+        className="fade-in-up"
+        style={{
+          width: "100%",
+          padding: "6rem 1.5rem 4rem",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          textAlign: "center",
+          position: "relative",
+          overflow: "hidden",
+        }}
+      >
+        {/* Signature grid texture */}
+        <div
+          aria-hidden="true"
+          style={{
+            position: "absolute",
+            inset: 0,
+            backgroundImage:
+              "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
+            backgroundSize: "24px 24px",
+            opacity: 0.3,
+            pointerEvents: "none",
+          }}
+        />
 
-      <div className="flex flex-col gap-4 w-full max-w-xs">
-        <Link
-          href="/sim"
-          className="
-            bg-green-800 hover:bg-green-700 active:bg-green-600
-            text-green-100 font-mono text-center font-bold
-            px-6 py-4 rounded-xl border border-green-700
-            transition-colors text-sm tracking-wide
-          "
+        <h1
+          style={{
+            fontFamily: "var(--font-display)",
+            fontWeight: 700,
+            fontSize: "clamp(3rem, 8vw, 7rem)",
+            color: "var(--color-text-primary)",
+            letterSpacing: "0.05em",
+            lineHeight: 1,
+            position: "relative",
+          }}
         >
-          RF Device Simulator &rarr;
-        </Link>
+          WAREHOUSEPRO
+        </h1>
+        <p
+          style={{
+            fontFamily: "var(--font-ui)",
+            color: "var(--color-text-secondary)",
+            fontSize: "1.125rem",
+            marginTop: "0.75rem",
+            position: "relative",
+          }}
+        >
+          RF Picking Training Platform
+        </p>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-50 cursor-not-allowed">
-          <p className="text-zinc-500 font-mono text-sm text-center">
-            Labs &mdash; Coming Soon
-          </p>
+        {/* SOP badge */}
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "0.6875rem",
+            color: "var(--color-text-muted)",
+            marginTop: "1.25rem",
+            padding: "0.25rem 0.75rem",
+            border: "1px solid var(--color-border)",
+            borderRadius: "var(--radius-sm)",
+            position: "relative",
+          }}
+        >
+          GEODIS · BBWD-WI-030 · v0.1.0
+        </span>
+
+        {/* CTA buttons */}
+        <div
+          style={{
+            display: "flex",
+            gap: "0.75rem",
+            marginTop: "2.5rem",
+            flexWrap: "wrap",
+            justifyContent: "center",
+            position: "relative",
+          }}
+        >
+          <Link
+            href="/sim"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 700,
+              fontSize: "0.875rem",
+              letterSpacing: "0.05em",
+              backgroundColor: "var(--color-amber)",
+              color: "var(--color-base)",
+              padding: "0.75rem 2rem",
+              borderRadius: "var(--radius-md)",
+              textDecoration: "none",
+              transition: "background-color 0.15s",
+            }}
+          >
+            Start Training →
+          </Link>
+          <Link
+            href="/dashboard/supervisor"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontWeight: 600,
+              fontSize: "0.875rem",
+              letterSpacing: "0.05em",
+              color: "var(--color-amber)",
+              border: "1px solid var(--color-amber-dim)",
+              padding: "0.75rem 2rem",
+              borderRadius: "var(--radius-md)",
+              textDecoration: "none",
+              transition: "background-color 0.15s, color 0.15s",
+            }}
+          >
+            Supervisor Dashboard
+          </Link>
         </div>
+      </section>
 
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 opacity-50 cursor-not-allowed">
-          <p className="text-zinc-500 font-mono text-sm text-center">
-            Quiz Bank &mdash; Coming Soon
-          </p>
-        </div>
-      </div>
+      {/* ══ FEATURE CARDS ═════════════════════════════════════════════════ */}
+      <section
+        className="fade-in-up fade-in-up-2"
+        style={{
+          width: "100%",
+          maxWidth: "56rem",
+          padding: "0 1.5rem 3rem",
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
+          gap: "1rem",
+        }}
+      >
+        {FEATURES.map((f) => (
+          <div
+            key={f.title}
+            style={{
+              backgroundColor: "var(--color-surface)",
+              border: "1px solid var(--color-border)",
+              borderRadius: "var(--radius-md)",
+              padding: "1.5rem",
+              boxShadow: "var(--shadow-card)",
+              opacity: f.active ? 1 : 0.45,
+              cursor: f.active ? "pointer" : "not-allowed",
+              transition: "border-color 0.2s, background-color 0.2s",
+              borderLeft: "3px solid transparent",
+            }}
+            onMouseEnter={(e) => {
+              if (f.active) {
+                e.currentTarget.style.borderLeftColor = "var(--color-amber)"
+                e.currentTarget.style.backgroundColor = "var(--color-surface-2)"
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderLeftColor = "transparent"
+              e.currentTarget.style.backgroundColor = "var(--color-surface)"
+            }}
+          >
+            {f.active ? (
+              <Link href={f.href} style={{ textDecoration: "none" }}>
+                <p
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    fontSize: "0.875rem",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-primary)",
+                    marginBottom: "0.375rem",
+                  }}
+                >
+                  {f.title}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "0.8125rem",
+                    color: "var(--color-text-secondary)",
+                  }}
+                >
+                  {f.description}
+                </p>
+              </Link>
+            ) : (
+              <>
+                <p
+                  style={{
+                    fontFamily: "var(--font-display)",
+                    fontWeight: 700,
+                    fontSize: "0.875rem",
+                    letterSpacing: "0.05em",
+                    textTransform: "uppercase",
+                    color: "var(--color-text-primary)",
+                    marginBottom: "0.375rem",
+                  }}
+                >
+                  {f.title}
+                </p>
+                <p
+                  style={{
+                    fontFamily: "var(--font-ui)",
+                    fontSize: "0.8125rem",
+                    color: "var(--color-text-muted)",
+                  }}
+                >
+                  {f.description} — Coming Soon
+                </p>
+              </>
+            )}
+          </div>
+        ))}
+      </section>
 
-      <p className="text-zinc-700 text-xs font-mono">
-        v0.1.0 &middot; BBWD-WI-030
-      </p>
+      {/* ══ FOOTER ════════════════════════════════════════════════════════ */}
+      <footer
+        className="fade-in-up fade-in-up-3"
+        style={{
+          marginTop: "auto",
+          padding: "2rem 1rem",
+          textAlign: "center",
+          fontFamily: "var(--font-ui)",
+          fontSize: "0.6875rem",
+          color: "var(--color-text-muted)",
+        }}
+      >
+        GEODIS Logistics · WarehousePro Training Platform · BBWD-WI-030
+      </footer>
     </main>
   )
 }

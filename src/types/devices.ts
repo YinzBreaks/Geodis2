@@ -78,8 +78,9 @@ export interface RFDeviceModel {
    * Visual rendering style for the emulator:
    *   "terminal" — monospace CRT aesthetic (green/amber/white terminal)
    *   "android"  — clean sans-serif WMS aesthetic matching real Android WMS apps
+   *   "modern"   — WarehousePro modern view with structured label/value rows
    */
-  uiStyle: "terminal" | "android"
+  uiStyle: "terminal" | "android" | "modern"
   /**
    * CSS class for the terminal colour theme.
    * @deprecated Use screen.bgColor / screen.textColor instead.
@@ -246,6 +247,45 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
   },
 
   /**
+   * WarehousePro Modern — default training view with structured label/value
+   * rows, amber accent colors, and JetBrains Mono typography.
+   *
+   * This is NOT a physical device — it is a training-optimized rendering of
+   * the same RF Device screen data. Trainees can switch to a "Classic"
+   * terminal view to see what the real device looks like.
+   */
+  WAREHOUSEPRO_MODERN: {
+    modelId: "WAREHOUSEPRO_MODERN",
+    displayName: "Modern View",
+    displayColumns: 20,
+    displayRows: 12,
+    hasPhysicalCtrlKey: false,
+    hasTouchscreen: true,
+    uiStyle: "modern",
+    showSoftKeys: true,
+    softKeyPosition: "bottom",
+    orientation: "portrait",
+    emulatorWidthPx: 360,
+    minTouchTargetPx: 56,
+    fontFamily: "'JetBrains Mono', monospace",
+    screen: {
+      bgColor: "#161b22",
+      textColor: "#e6edf3",
+      fontFamily: "'JetBrains Mono', monospace",
+      highlightColor: "#f0a500",
+      cursorColor: "#f0a500",
+      labelColor: "#8b949e",
+      fontSize: "14px",
+      lineHeight: "1.6",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#0d1117",
+      screenBorderColor: "#30363d",
+    },
+  },
+
+  /**
    * Generic Terminal — fallback / unconfirmed device.
    * Per CLAUDE.md: Change ACTIVE_DEVICE_MODEL_ID once hardware is confirmed.
    */
@@ -290,6 +330,7 @@ export type RFDeviceModelId =
   | "HONEYWELL_CK65"
   | "ZEBRA_TC52"
   | "ZEBRA_TC520K"
+  | "WAREHOUSEPRO_MODERN"
   | "GENERIC_TERMINAL"
 
 /**
@@ -300,7 +341,7 @@ export type RFDeviceModelId =
  *
  * @see RF_DEVICE_MODELS
  */
-export const ACTIVE_DEVICE_MODEL_ID: RFDeviceModelId = "ZEBRA_TC520K"
+export const ACTIVE_DEVICE_MODEL_ID: RFDeviceModelId = "WAREHOUSEPRO_MODERN"
 
 /** Convenience: the active RFDeviceModel object derived from the ID above. */
 export const ACTIVE_DEVICE: RFDeviceModel =

@@ -156,7 +156,7 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "TOTE:", value: tote?.toteId },
+          { label: "TOTE:", value: tote?.barcode ?? tote?.toteId },
           {
             label: "ALOC:",
             value: pick?.location.displayLabel,
@@ -189,7 +189,7 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "TOTE:", value: tote?.toteId },
+          { label: "TOTE:", value: tote?.barcode ?? tote?.toteId },
           {
             label: "ALOC:",
             value: pick?.location.displayLabel,
@@ -214,7 +214,7 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "TOTE:", value: tote?.toteId },
+          { label: "TOTE:", value: tote?.barcode ?? tote?.toteId },
           { label: "QTY REQUIRED:", value: String(pick?.quantityRequired ?? "") },
           { label: "QTY PICKED:", isCursorField: true },
         ],
@@ -228,7 +228,7 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         workflowStep: step,
         lines: [
           { label: "SCAN TOTE:", isCursorField: true },
-          { value: tote?.toteId },
+          { value: tote?.barcode ?? tote?.toteId },
         ],
         activeField: "Scan Tote",
         inputType: "BARCODE",

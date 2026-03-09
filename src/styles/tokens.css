@@ -1,0 +1,40 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   DESIGN TOKENS — WarehousePro Industrial Dashboard
+   All components use these CSS custom properties — no hardcoded hex values.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Base surfaces ───────────────────────────────────────────────────── */
+  --color-base:          #0d1117;
+  --color-surface:       #161b22;
+  --color-surface-2:     #21262d;
+  --color-border:        #30363d;
+  --color-border-accent: #f0a500;
+
+  /* ── Primary accent — amber ──────────────────────────────────────────── */
+  --color-amber:         #f0a500;
+  --color-amber-dim:     #b87d00;
+  --color-amber-glow:    rgba(240, 165, 0, 0.15);
+
+  /* ── Semantic colors ─────────────────────────────────────────────────── */
+  --color-success:       #3fb950;
+  --color-danger:        #f85149;
+  --color-warning:       #d29922;
+
+  /* ── Text hierarchy ──────────────────────────────────────────────────── */
+  --color-text-primary:   #e6edf3;
+  --color-text-secondary: #8b949e;
+  --color-text-muted:     #484f58;
+
+  /* ── Typography ──────────────────────────────────────────────────────── */
+  --font-display: 'Barlow Condensed', sans-serif;
+  --font-ui:      'DM Sans', sans-serif;
+  --font-mono:    'JetBrains Mono', monospace;
+
+  /* ── Spacing + radius ────────────────────────────────────────────────── */
+  --radius-sm:       4px;
+  --radius-md:       8px;
+  --radius-lg:       12px;
+  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
+}

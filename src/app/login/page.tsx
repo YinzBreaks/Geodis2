@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation"
 import { createBrowserClient } from "@supabase/ssr"
 
 function LoginForm() {
-  const router = useRouter()
   const searchParams = useSearchParams()
   const nextPath = searchParams.get("next")
   const [email, setEmail] = useState("")

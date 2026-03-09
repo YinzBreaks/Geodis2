@@ -37,9 +37,9 @@ interface Props {
    * "terminal" → zinc/green terminal look (CK65, TC52)
    * Defaults to "terminal" for backward compatibility.
    */
-  uiStyle?: "terminal" | "android"
+  uiStyle?: "terminal" | "android" | "modern"
   /**
-   * When set, the matching soft key gets a green pulse animation to guide
+   * When set, the matching soft key gets a pulse animation to guide
    * the trainee's eye. Set from getExpectedKey(currentStep) for key-only steps.
    * Value must match one of SOFT_KEYS[n].keys.
    */
@@ -48,6 +48,7 @@ interface Props {
 
 export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", highlightKey }: Props) {
   const isAndroid = uiStyle === "android"
+  const isModern = uiStyle === "modern"
 
   return (
     <div className="grid grid-cols-6 gap-1">
@@ -65,26 +66,41 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", high
             transition-colors
             ${
               isHighlighted
-                ? "animate-pulse ring-2 ring-green-400 ring-offset-1 ring-offset-zinc-900"
+                ? isModern
+                  ? "animate-pulse ring-2 ring-amber-400 ring-offset-1 ring-offset-zinc-900"
+                  : "animate-pulse ring-2 ring-green-400 ring-offset-1 ring-offset-zinc-900"
                 : ""
             }
             ${
-              isAndroid
+              isModern
                 ? (isHighlighted
-                    ? "bg-blue-100 border-blue-400"
-                    : "bg-slate-100 hover:bg-blue-50 active:bg-blue-100 border-slate-300")
-                : (isHighlighted
-                    ? "bg-zinc-600 border-green-500"
-                    : "bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 border-zinc-600")
+                    ? "border-amber-500"
+                    : "hover:bg-zinc-700 active:bg-zinc-600 border-zinc-600")
+                : isAndroid
+                  ? (isHighlighted
+                      ? "bg-blue-100 border-blue-400"
+                      : "bg-slate-100 hover:bg-blue-50 active:bg-blue-100 border-slate-300")
+                  : (isHighlighted
+                      ? "bg-zinc-600 border-green-500"
+                      : "bg-zinc-700 hover:bg-zinc-600 active:bg-zinc-500 border-zinc-600")
             }
           `}
+          style={
+            isModern
+              ? {
+                  backgroundColor: isHighlighted
+                    ? "var(--color-amber-glow)"
+                    : "var(--color-surface-2)",
+                }
+              : undefined
+          }
           title={key.keys}
         >
           <span
             className={`font-bold text-[11px] ${
               isHighlighted
-                ? "text-green-300"
-                : isAndroid ? "text-slate-700" : "text-green-300"
+                ? isModern ? "text-amber-400" : "text-green-300"
+                : isModern ? "text-amber-400" : isAndroid ? "text-slate-700" : "text-green-300"
             }`}
           >
             {key.shortLabel}
@@ -92,8 +108,8 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", high
           <span
             className={`text-[8px] leading-none ${
               isHighlighted
-                ? "text-green-500"
-                : isAndroid ? "text-slate-400" : "text-zinc-500"
+                ? isModern ? "text-amber-500" : "text-green-500"
+                : isModern ? "text-zinc-400" : isAndroid ? "text-slate-400" : "text-zinc-500"
             }`}
           >
             {key.fullLabel}

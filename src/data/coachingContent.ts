@@ -92,7 +92,8 @@ export const COACHING_CONTENT: Partial<Record<WorkflowStep, CoachingContent>> =
     },
 
     [WorkflowStep.BC_SCAN_CART_BARCODE]: {
-      action: "Scan the barcode label on the side of your Pick Cart",
+      action:
+        "Scan the Pick Cart barcode on the physical cart label. Use the scanner trigger or type the barcode manually.\n⚡ Note: the simulator may inject a training error at this step — if it does, this is intentional. Follow the exception steps that appear.",
       sopContext:
         "§5.1.11 — Scanning the cart barcode links this specific physical cart to your picking session in the WMS. Without this step, the system cannot track which totes and orders belong to your cart.",
       fieldDef:

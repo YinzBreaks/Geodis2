@@ -46,25 +46,25 @@ export interface TraineeCardProps {
 
 const STATUS_CONFIG: Record<
   FloorReadyStatus,
-  { emoji: string; label: string; bgClass: string; textClass: string }
+  { emoji: string; label: string; bg: string; text: string }
 > = {
   FLOOR_READY: {
     emoji: "🟢",
     label: "Floor Ready",
-    bgClass: "bg-green-900/40",
-    textClass: "text-green-400",
+    bg: "rgba(46, 160, 67, 0.15)",
+    text: "var(--color-success, #2ea043)",
   },
   IN_PROGRESS: {
     emoji: "🟡",
     label: "In Progress",
-    bgClass: "bg-yellow-900/40",
-    textClass: "text-yellow-400",
+    bg: "rgba(240, 165, 0, 0.15)",
+    text: "var(--color-amber, #f0a500)",
   },
   NEEDS_COACHING: {
     emoji: "🔴",
     label: "Needs Coaching",
-    bgClass: "bg-red-900/40",
-    textClass: "text-red-400",
+    bg: "rgba(248, 81, 73, 0.15)",
+    text: "var(--color-danger, #f85149)",
   },
 }
 
@@ -97,27 +97,47 @@ export function TraineeCard({
   return (
     <Link
       href={`${linkBase}/${userId}`}
-      className="
-        group block min-w-[220px] max-w-[280px]
-        bg-zinc-900 border border-zinc-800 rounded-xl p-4
-        hover:border-zinc-600 hover:bg-zinc-800/50
-        transition-colors cursor-pointer
-        flex-shrink-0
-      "
+      style={{
+        display: "block",
+        minWidth: 220,
+        maxWidth: 280,
+        flexShrink: 0,
+        backgroundColor: "var(--color-surface-1)",
+        border: "1px solid var(--color-border)",
+        borderLeft: "3px solid transparent",
+        borderRadius: "var(--radius-lg)",
+        padding: 16,
+        textDecoration: "none",
+        transition: "border-color 0.15s",
+        cursor: "pointer",
+      }}
+      onMouseEnter={(e) => { e.currentTarget.style.borderLeftColor = "var(--color-amber)" }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderLeftColor = "transparent" }}
     >
       {/* Header: Name + Employee ID */}
-      <div className="flex items-start justify-between mb-3">
+      <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", marginBottom: 12 }}>
         <div>
-          <p className="text-zinc-100 font-mono text-sm font-semibold truncate max-w-[160px]">
+          <p style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: 160 }}>
             {name}
           </p>
-          <p className="text-zinc-500 font-mono text-xs">ID: {employeeId}</p>
+          <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>ID: {employeeId}</p>
         </div>
       </div>
 
       {/* Status Badge */}
       <div
-        className={`inline-flex items-center gap-1.5 px-2 py-1 rounded-full text-xs font-mono ${statusCfg.bgClass} ${statusCfg.textClass} mb-3`}
+        style={{
+          display: "inline-flex",
+          alignItems: "center",
+          gap: 6,
+          padding: "3px 8px",
+          borderRadius: 99,
+          fontSize: 11,
+          fontFamily: "var(--font-mono)",
+          backgroundColor: statusCfg.bg,
+          color: statusCfg.text,
+          marginBottom: 12,
+        }}
         title={
           gaps.length > 0
             ? `Gaps:\n${gaps.map((g) => `• ${g.criterion}: ${g.current} (need ${g.required})`).join("\n")}`
@@ -129,20 +149,20 @@ export function TraineeCard({
       </div>
 
       {/* Metrics */}
-      <div className="space-y-1.5">
-        <div className="flex justify-between text-xs font-mono">
-          <span className="text-zinc-500">Best Score</span>
-          <span className="text-zinc-300">{Math.round(bestScore)}</span>
+      <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--color-text-secondary)" }}>Best Score</span>
+          <span style={{ color: "var(--color-text-primary)" }}>{Math.round(bestScore)}</span>
         </div>
-        <div className="flex justify-between text-xs font-mono">
-          <span className="text-zinc-500">Sessions</span>
-          <span className="text-zinc-300">
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--color-text-secondary)" }}>Sessions</span>
+          <span style={{ color: "var(--color-text-primary)" }}>
             {sessionsCompleted} completed &middot; {sessionsRequired} required to pass
           </span>
         </div>
-        <div className="flex justify-between text-xs font-mono">
-          <span className="text-zinc-500">Last Active</span>
-          <span className="text-zinc-300">{lastActiveStr}</span>
+        <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, fontFamily: "var(--font-mono)" }}>
+          <span style={{ color: "var(--color-text-secondary)" }}>Last Active</span>
+          <span style={{ color: "var(--color-text-primary)" }}>{lastActiveStr}</span>
         </div>
       </div>
     </Link>

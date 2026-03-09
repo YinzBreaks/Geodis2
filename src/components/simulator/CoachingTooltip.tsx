@@ -29,6 +29,13 @@ const SCREEN_TOP_OFFSET_PX = 58
  */
 const SCREEN_HEIGHT_PX = 240
 
+/**
+ * Maximum per-line height in pixels.
+ * Prevents the arrow from over-shooting on short screens with 1–2 lines
+ * where SCREEN_HEIGHT_PX / lineCount would otherwise be huge.
+ */
+const MAX_LINE_HEIGHT_PX = 24
+
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
@@ -61,14 +68,17 @@ export function CoachingTooltip({
   if (!isVisible || highlightLine === undefined) return null
 
   // Calculate Y position centering the arrow on the middle of the target line.
-  // Using (highlightLine + 0.5) rather than highlightLine avoids pointing at
-  // the top edge of the line. lineHeight derives from the actual screen content
-  // so shorter error screens (fewer lines) scale correctly.
-  const lineHeight =
-    screenLineCount > 0 ? SCREEN_HEIGHT_PX / screenLineCount : SCREEN_HEIGHT_PX
+  // Cap lineHeight so short screens (1–2 lines) don't push the arrow below the
+  // actual rendered content area. With MAX_LINE_HEIGHT_PX = 24, estimatedHeight
+  // = screenLineCount × 24 which closely matches the actual rendered height.
+  const lineHeight = screenLineCount > 0
+    ? Math.min(SCREEN_HEIGHT_PX / screenLineCount, MAX_LINE_HEIGHT_PX)
+    : MAX_LINE_HEIGHT_PX
+  const estimatedContentHeight = screenLineCount * lineHeight
   const rawArrowY = (highlightLine + 0.5) * lineHeight
-  // Clamp so the arrow never exits the visible screen boundary.
-  const clampedArrowY = Math.max(16, Math.min(SCREEN_HEIGHT_PX - 16, rawArrowY))
+  // Hard cap: arrow never exits the visible screen boundary.
+  // Cap is (estimatedContentHeight - 8) so it always points inside the content.
+  const clampedArrowY = Math.max(8, Math.min(estimatedContentHeight - 8, rawArrowY))
   const arrowTop = SCREEN_TOP_OFFSET_PX + clampedArrowY
 
   return (

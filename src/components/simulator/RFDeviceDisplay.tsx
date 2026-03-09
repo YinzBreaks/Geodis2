@@ -1,20 +1,17 @@
 /**
- * RFDeviceDisplay — RF Device terminal screen renderer
+ * RFDeviceDisplay — RF Device screen renderer
  *
- * Renders RFScreenLine[] as a fixed-width 20-character terminal grid,
- * replicating the Manhattan WMS telnet-style screen on the real device.
+ * Supports two rendering modes:
+ *   "terminal" / "android" — Fixed-width 20-char terminal grid
+ *   "modern" — Structured label/value rows with amber accents
  *
  * Key behaviours:
- *   - Fixed-width monospace text — each line = one terminal row
- *   - white-space: pre so spaces are preserved and lines never wrap
- *   - Lines wider than 20 chars are clipped (no scroll)
- *   - Active cursor field shows a blinking underscore after the typed value
- *   - No rounded corners (terminal bezel look)
+ *   - Terminal mode: Fixed-width monospace text, each line = one terminal row
+ *   - Modern mode: Each field is a structured row with small label + large value
  *   - All colors / fonts come from the device's RFDeviceScreenConfig
  *
  * Per CLAUDE.md §Architecture: components render only.
  * Per SIMULATION.md §RF Device Screen Generator
- * Per BBWD-VJA-030 SOP screenshots
  */
 "use client"
 
@@ -47,15 +44,44 @@ interface Props {
   screenConfig?: RFDeviceScreenConfig
   /**
    * 0-based index into screen.lines[] to highlight with a coaching tint.
-   * When set, that line gets a subtle green background to direct the trainee's
+   * When set, that line gets a subtle background to direct the trainee's
    * attention. Only used in BEGINNER mode.
    */
   highlightLine?: number
+  /**
+   * Rendering mode for the screen.
+   * "modern" renders structured label/value rows with amber accents.
+   * "terminal" / "android" render the classic terminal grid.
+   */
+  renderMode?: "terminal" | "android" | "modern"
+  /** Title shown in the modern title bar — step name */
+  stepName?: string
 }
 
-export function RFDeviceDisplay({ screen, inputValue, screenConfig, highlightLine }: Props) {
+export function RFDeviceDisplay({
+  screen,
+  inputValue,
+  screenConfig,
+  highlightLine,
+  renderMode = "terminal",
+  stepName,
+}: Props) {
   const cfg = screenConfig ?? TERMINAL_DEFAULTS
 
+  // Modern rendering path
+  if (renderMode === "modern") {
+    return (
+      <ModernScreen
+        screen={screen}
+        inputValue={inputValue}
+        cfg={cfg}
+        highlightLine={highlightLine}
+        stepName={stepName}
+      />
+    )
+  }
+
+  // Terminal rendering path (original)
   return (
     <div
       style={{
@@ -64,8 +90,6 @@ export function RFDeviceDisplay({ screen, inputValue, screenConfig, highlightLin
         fontSize: cfg.fontSize ?? "13px",
         lineHeight: cfg.lineHeight ?? "1.4",
         padding: "8px 10px",
-        // Force the screen area to exactly TERMINAL_COLS characters wide.
-        // This clips lines longer than 20 chars, exactly like the real device.
         width: `${TERMINAL_COLS}ch`,
         maxWidth: "100%",
         overflowX: "hidden",
@@ -86,7 +110,220 @@ export function RFDeviceDisplay({ screen, inputValue, screenConfig, highlightLin
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// TERMINAL LINE
+// MODERN SCREEN — structured label/value rows
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ModernScreen({
+  screen,
+  inputValue,
+  cfg,
+  highlightLine,
+  stepName,
+}: {
+  screen: RFDeviceScreen
+  inputValue: string
+  cfg: RFDeviceScreenConfig
+  highlightLine?: number
+  stepName?: string
+}) {
+  return (
+    <div
+      style={{
+        backgroundColor: cfg.bgColor,
+        fontFamily: cfg.fontFamily,
+        fontSize: cfg.fontSize ?? "14px",
+        lineHeight: cfg.lineHeight ?? "1.6",
+        minHeight: "260px",
+        userSelect: "none",
+      }}
+    >
+      {/* Title bar */}
+      <div
+        style={{
+          backgroundColor: "var(--color-surface-2)",
+          padding: "6px 12px",
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          borderBottom: "1px solid var(--color-border)",
+        }}
+      >
+        <span
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: "10px",
+            fontWeight: 600,
+            color: "var(--color-text-secondary)",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+          }}
+        >
+          WarehousePro
+        </span>
+        <span
+          style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: "10px",
+            color: "var(--color-text-muted)",
+          }}
+        >
+          {stepName ?? screen.screenId ?? ""}
+        </span>
+      </div>
+
+      {/* Screen content — structured rows */}
+      <div style={{ padding: "10px 12px" }}>
+        {screen.lines.map((line, i) => (
+          <ModernRow
+            key={i}
+            line={line}
+            inputValue={line.isCursorField ? inputValue : ""}
+            cfg={cfg}
+            isCoachingHighlight={i === highlightLine}
+          />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+/** Modern rendering of a single screen field/line. */
+function ModernRow({
+  line,
+  inputValue,
+  cfg,
+  isCoachingHighlight,
+}: {
+  line: RFScreenLine
+  inputValue: string
+  cfg: RFDeviceScreenConfig
+  isCoachingHighlight: boolean
+}) {
+  const highlightBg = isCoachingHighlight ? "var(--color-amber-glow)" : undefined
+
+  // Cursor (active input) field — amber styling
+  if (line.isCursorField) {
+    return (
+      <div
+        style={{
+          backgroundColor: "var(--color-amber-glow)",
+          borderRadius: "var(--radius-sm)",
+          padding: "6px 8px",
+          marginBottom: "6px",
+        }}
+      >
+        {line.label && (
+          <div
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: "10px",
+              fontWeight: 600,
+              textTransform: "uppercase",
+              letterSpacing: "0.05em",
+              color: "var(--color-amber)",
+              marginBottom: "2px",
+            }}
+          >
+            {line.label}
+          </div>
+        )}
+        <div
+          style={{
+            fontFamily: cfg.fontFamily,
+            fontSize: "16px",
+            color: cfg.textColor,
+            borderBottom: "2px solid var(--color-amber)",
+            paddingBottom: "2px",
+            minHeight: "24px",
+          }}
+        >
+          {inputValue}
+          <span className="terminal-cursor" style={{ color: "var(--color-amber)" }}>
+            _
+          </span>
+        </div>
+      </div>
+    )
+  }
+
+  // Label + value pairs
+  if (line.label && line.value) {
+    return (
+      <div
+        style={{
+          padding: "4px 0",
+          borderBottom: "1px solid var(--color-border)",
+          marginBottom: "4px",
+          backgroundColor: highlightBg,
+        }}
+      >
+        <div
+          style={{
+            fontFamily: "var(--font-ui)",
+            fontSize: "10px",
+            textTransform: "uppercase",
+            letterSpacing: "0.05em",
+            color: "var(--color-text-secondary)",
+            marginBottom: "1px",
+          }}
+        >
+          {line.label}
+        </div>
+        <div
+          style={{
+            fontFamily: cfg.fontFamily,
+            fontSize: "16px",
+            color: line.isHighlighted ? cfg.highlightColor : cfg.textColor,
+          }}
+        >
+          {line.value}
+        </div>
+      </div>
+    )
+  }
+
+  // Label-only — section header
+  if (line.label) {
+    return (
+      <div
+        style={{
+          fontFamily: "var(--font-ui)",
+          fontSize: "10px",
+          textTransform: "uppercase",
+          letterSpacing: "0.05em",
+          color: "var(--color-text-secondary)",
+          padding: "4px 0",
+          backgroundColor: highlightBg,
+        }}
+      >
+        {line.label}
+      </div>
+    )
+  }
+
+  // Value-only
+  if (line.value) {
+    return (
+      <div
+        style={{
+          fontFamily: cfg.fontFamily,
+          fontSize: "14px",
+          color: line.isHighlighted ? cfg.highlightColor : cfg.textColor,
+          padding: "2px 0",
+          backgroundColor: highlightBg,
+        }}
+      >
+        {line.value}
+      </div>
+    )
+  }
+
+  // Empty line — spacing
+  return <div style={{ height: "8px" }} />
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TERMINAL LINE (original rendering)
 // Each line occupies one fixed-width text row on the character grid.
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -103,14 +340,10 @@ function TerminalLine({
   isCoachingHighlight: boolean
 }) {
   const textColor = line.isHighlighted ? cfg.highlightColor : cfg.textColor
-  // Coaching tint applied as a wrapper background — does not obscure text
   const coachingBg = isCoachingHighlight ? "rgba(0, 255, 65, 0.12)" : undefined
 
   // ── Cursor (active input) line ─────────────────────────────────────────
   if (line.isCursorField) {
-    // Per SOP screenshots: label on its own line, cursor value on the next.
-    //   SCAN TOTE:
-    //   T00000000011692_
     return (
       <div style={{ backgroundColor: coachingBg }}>
         {line.label && (
@@ -132,7 +365,6 @@ function TerminalLine({
           }}
         >
           {inputValue}
-          {/* Blinking cursor — CSS class injected via globals.css @keyframes terminal-blink */}
           <span className="terminal-cursor">_</span>
         </div>
       </div>
@@ -140,9 +372,6 @@ function TerminalLine({
   }
 
   // ── Label + value lines ────────────────────────────────────────────────
-  // Per SOP screenshots: label on one line, value on the next.
-  //   PICK CART #:
-  //   C000000083
   if (line.label && line.value) {
     return (
       <div style={{ backgroundColor: coachingBg }}>

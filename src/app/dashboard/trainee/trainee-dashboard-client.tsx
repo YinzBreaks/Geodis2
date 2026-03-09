@@ -142,7 +142,7 @@ function Sparkline({ scores, width = 64, height = 22 }: SparklineProps) {
     .join(" ")
 
   const trending = last[last.length - 1] >= last[0]
-  const stroke = trending ? "#16a34a" : "#d97706"
+  const stroke = trending ? "#f0a500" : "#f85149"
 
   return (
     <svg
@@ -662,24 +662,20 @@ function WhatNextSection({ sessions, floorReport, signoff }: WhatNextSectionProp
   const action = getNextAction(sessions, floorReport)
 
   return (
-    <section aria-labelledby="next-action-heading" className="rounded-xl border border-blue-100 bg-blue-50 p-6">
-      <p className="text-xs font-mono uppercase tracking-widest text-blue-500 mb-2">
+    <section aria-labelledby="next-action-heading" className="rounded-xl border p-6" style={{ borderColor: 'rgba(240,165,0,0.25)', backgroundColor: 'rgba(240,165,0,0.06)' }}>
+      <p className="text-xs font-mono uppercase tracking-widest mb-2" style={{ color: '#b37800' }}>
         WHAT TO DO NEXT
       </p>
-      <h2 id="next-action-heading" className="text-lg font-bold text-blue-900 mb-1">
+      <h2 id="next-action-heading" className="text-lg font-bold mb-1" style={{ color: '#3d2800', fontFamily: 'var(--font-display)' }}>
         {action.headline}
       </h2>
-      <p className="text-blue-700 text-sm mb-4">{action.body}</p>
+      <p className="text-sm mb-4" style={{ color: '#7a5000' }}>{action.body}</p>
 
       {action.buttonLabel && action.href && (
         <Link
           href={action.href}
-          className="
-            inline-flex items-center gap-2 px-5 py-2.5
-            bg-blue-600 hover:bg-blue-700 text-white
-            rounded-lg text-sm font-semibold
-            transition-colors
-          "
+          className="inline-flex items-center gap-2 px-5 py-2.5 rounded-lg text-sm font-semibold transition-colors"
+          style={{ backgroundColor: '#f0a500', color: '#0d1117', fontFamily: 'var(--font-display)', letterSpacing: '0.03em' }}
         >
           {action.buttonLabel}
         </Link>
@@ -1078,18 +1074,18 @@ export function TraineeDashboardClient({
   return (
     <div
       className="min-h-screen"
-      style={{ backgroundColor: "#f8fafc" }}
+      style={{ backgroundColor: "#f0f4f8" }}
     >
       {/* Page header */}
-      <div className="border-b border-slate-200 bg-white">
+      <div className="border-b bg-white" style={{ borderColor: '#e2e8f0' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
-          <p className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-0.5">
+          <p className="text-xs uppercase tracking-widest mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: '#f0a500', letterSpacing: '0.08em' }}>
             WarehousePro Training
           </p>
-          <h1 className="text-2xl font-bold text-slate-900">
+          <h1 className="text-2xl font-bold" style={{ color: '#0d1117', fontFamily: 'var(--font-display)' }}>
             Welcome back, {user.name.split(" ")[0]}
           </h1>
-          <p className="text-slate-500 text-sm mt-0.5">
+          <p className="text-sm mt-0.5" style={{ color: '#64748b', fontFamily: 'var(--font-ui)' }}>
             Here&apos;s where you stand today.
           </p>
         </div>
@@ -1123,7 +1119,7 @@ export function TraineeDashboardClient({
         <SessionHistorySection sessions={sessions} />
 
         {/* Footer */}
-        <p className="text-center text-xs text-slate-300 pb-4">
+        <p className="text-center text-xs pb-4" style={{ color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
           WarehousePro — GEODIS Training Platform &middot; {user.facilityId}
         </p>
       </div>

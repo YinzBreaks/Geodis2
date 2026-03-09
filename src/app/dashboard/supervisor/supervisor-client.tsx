@@ -48,13 +48,13 @@ export function SupervisorDashboardClient({
   }))
 
   return (
-    <main className="min-h-screen bg-zinc-950 p-6">
+    <main className="min-h-screen p-6" style={{ backgroundColor: "var(--color-base)" }}>
       {/* Page Header */}
       <div className="mb-8">
-        <h1 className="text-zinc-100 font-mono text-2xl font-bold">
+        <h1 style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 700 }}>
           Supervisor Dashboard
         </h1>
-        <p className="text-zinc-500 font-mono text-sm mt-1">
+        <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 13, marginTop: 4 }}>
           {trainees.length} trainee{trainees.length !== 1 ? "s" : ""} at
           facility
         </p>
@@ -62,10 +62,10 @@ export function SupervisorDashboardClient({
 
       {/* A. COHORT OVERVIEW ROW */}
       <section className="mb-8">
-        <h2 className="text-zinc-400 font-mono text-sm uppercase tracking-wider mb-3">
+        <h2 style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
           Trainee Overview
         </h2>
-        <div className="flex gap-4 overflow-x-auto pb-3 scrollbar-thin scrollbar-track-zinc-900 scrollbar-thumb-zinc-700">
+        <div className="flex gap-4 overflow-x-auto pb-3">
           {trainees.map((t) => (
             <TraineeCard
               key={t.userId}
@@ -81,7 +81,7 @@ export function SupervisorDashboardClient({
             />
           ))}
           {trainees.length === 0 && (
-            <p className="text-zinc-600 font-mono text-sm py-8">
+            <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 13, padding: "32px 0" }}>
               No trainees at this facility yet.
             </p>
           )}
@@ -90,20 +90,20 @@ export function SupervisorDashboardClient({
 
       {/* B. EXCEPTION HEATMAP */}
       <section className="mb-8">
-        <h2 className="text-zinc-400 font-mono text-sm uppercase tracking-wider mb-3">
+        <h2 style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
           Exception Heatmap (All Trainees)
         </h2>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div style={{ backgroundColor: "var(--color-surface-1)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
           <ExceptionHeatmap coverage={cohortExceptionCoverage} />
         </div>
       </section>
 
       {/* C. COHORT TREND CHART */}
       <section className="mb-8">
-        <h2 className="text-zinc-400 font-mono text-sm uppercase tracking-wider mb-3">
+        <h2 style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
           Cohort Trend (28 Days)
         </h2>
-        <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
+        <div style={{ backgroundColor: "var(--color-surface-1)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 16 }}>
           <ScoreTrendChart
             data={chartData}
             threshold={75}
@@ -117,12 +117,12 @@ export function SupervisorDashboardClient({
 
       {/* D. NEEDS ATTENTION LIST */}
       <section className="mb-8">
-        <h2 className="text-zinc-400 font-mono text-sm uppercase tracking-wider mb-3">
+        <h2 style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
           Needs Attention
         </h2>
         {needsAttention.length === 0 ? (
-          <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-6">
-            <p className="text-zinc-600 font-mono text-sm text-center">
+          <div style={{ backgroundColor: "var(--color-surface-1)", border: "1px solid var(--color-border)", borderRadius: "var(--radius-lg)", padding: 24 }}>
+            <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 13, textAlign: "center" }}>
               No trainees currently flagged for coaching.
             </p>
           </div>
@@ -138,25 +138,45 @@ export function SupervisorDashboardClient({
               return (
                 <div
                   key={t.userId}
-                  className="bg-zinc-900 border border-zinc-800 rounded-xl px-4 py-3 flex items-center gap-4"
+                  style={{
+                    backgroundColor: "var(--color-surface-1)",
+                    border: "1px solid var(--color-border)",
+                    borderRadius: "var(--radius-lg)",
+                    padding: "12px 16px",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 16,
+                  }}
                 >
-                  <div className="flex-1">
-                    <p className="text-zinc-200 font-mono text-sm font-semibold">
+                  <div style={{ flex: 1 }}>
+                    <p style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-ui)", fontSize: 14, fontWeight: 600 }}>
                       {t.name}
                     </p>
-                    <p className="text-zinc-500 font-mono text-xs">
+                    <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
                       {topGap
                         ? `Top gap: ${topGap.criterion} (${topGap.current})`
                         : "Multiple gaps identified"}
                     </p>
                   </div>
-                  <span className="text-zinc-500 font-mono text-xs">
+                  <span style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
                     {daysInTraining}d in training
                   </span>
-                  <span className="text-zinc-500 font-mono text-xs">
+                  <span style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-mono)", fontSize: 11 }}>
                     {t.sessionsCompleted} sessions
                   </span>
-                  <button className="px-3 py-1.5 bg-yellow-800/50 hover:bg-yellow-700/50 text-yellow-300 font-mono text-xs rounded-lg transition-colors">
+                  <button
+                    style={{
+                      padding: "6px 12px",
+                      backgroundColor: "rgba(240, 165, 0, 0.15)",
+                      color: "var(--color-amber)",
+                      fontFamily: "var(--font-display)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      border: "1px solid rgba(240, 165, 0, 0.3)",
+                      borderRadius: "var(--radius-md)",
+                      cursor: "pointer",
+                    }}
+                  >
                     Schedule Coaching
                   </button>
                 </div>

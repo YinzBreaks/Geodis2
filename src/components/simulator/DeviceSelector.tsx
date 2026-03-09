@@ -20,27 +20,44 @@ export function DeviceSelector() {
   const { activeDeviceModelId, setActiveDevice } = useSimulation()
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-zinc-600 text-[10px] font-mono whitespace-nowrap">
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <span
+        style={{
+          color: "var(--color-text-secondary)",
+          fontSize: 10,
+          fontFamily: "var(--font-mono)",
+          whiteSpace: "nowrap",
+        }}
+      >
         Device:
       </span>
       <select
         value={activeDeviceModelId}
         onChange={(e) => setActiveDevice(e.target.value)}
-        className="
-          bg-zinc-900 text-zinc-300 border border-zinc-700 rounded
-          px-2 py-1 text-[11px] font-mono
-          focus:outline-none focus:border-zinc-500
-          cursor-pointer hover:border-zinc-600
-          transition-colors
-        "
+        style={{
+          backgroundColor: "var(--color-surface-1)",
+          color: "var(--color-text-primary)",
+          border: "1px solid var(--color-border)",
+          borderRadius: "var(--radius-sm)",
+          padding: "4px 8px",
+          fontSize: 11,
+          fontFamily: "var(--font-mono)",
+          cursor: "pointer",
+          outline: "none",
+        }}
         aria-label="Select RF Device model"
       >
-        {Object.values(RF_DEVICE_MODELS).map((model) => (
-          <option key={model.modelId} value={model.modelId}>
-            {model.displayName}
-          </option>
-        ))}
+        {Object.values(RF_DEVICE_MODELS).map((model) => {
+          const isModern = model.uiStyle === "modern"
+          const label = isModern
+            ? `${model.displayName}  ✦ Default`
+            : `${model.displayName} — Classic`
+          return (
+            <option key={model.modelId} value={model.modelId}>
+              {label}
+            </option>
+          )
+        })}
       </select>
     </div>
   )
