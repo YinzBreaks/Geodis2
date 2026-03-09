@@ -13,7 +13,10 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en">
+    // style={{ background }} is a literal color (not a CSS var) so the very
+    // first paint matches the app background — prevents white/black flash
+    // before the stylesheet resolves --color-base. #0d1117 = --color-base.
+    <html lang="en" style={{ background: "#0d1117" }}>
       <head>
         {/* Google Fonts — Barlow Condensed, DM Sans, JetBrains Mono */}
         <link rel="preconnect" href="https://fonts.googleapis.com" />

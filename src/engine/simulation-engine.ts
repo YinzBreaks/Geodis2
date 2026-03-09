@@ -137,6 +137,20 @@ export function startSessionWithTasks(
  *
  * Session state is immutable — this always returns a new SimulationSession object.
  * Per SIMULATION.md §Engine API, §Critical Engine Rules
+ *
+ * ─── Error counter policy ────────────────────────────────────────────────────
+ * session.errors ONLY increments during SCAN actions on pick-phase steps
+ * (PK_SCAN_ITEM_UPC, PK_SCAN_TOTE_BARCODE, etc.) via handleScan().
+ *
+ * Incorrect input on BUILD_CART menu steps (e.g. typing wrong menu number,
+ * pressing an invalid key) returns success: false with a feedback message via
+ * noTransitionResult() — but does NOT push to session.errors and does NOT
+ * affect the score. Wrong menu input is treated as navigation feedback only.
+ *
+ * This is intentional: BUILD_CART is an orientation phase, not a scored pick
+ * operation. The session.errors array and the accuracy score reflect ONLY
+ * pick-phase scanning mistakes, consistent with SIMULATION.md §Scoring Engine.
+ * ─────────────────────────────────────────────────────────────────────────────
  */
 export function dispatch(
   session: SimulationSession,

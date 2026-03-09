@@ -70,13 +70,6 @@ export default function SimPage() {
     )
   }
 
-  // Device selector — fixed top-right on all non-score views
-  const deviceSelector = (
-    <div className="fixed top-3 right-3 z-50">
-      <DeviceSelector />
-    </div>
-  )
-
   // Active simulation
   if (session) {
     const isBeginner = session.difficulty === DifficultyLevel.BEGINNER
@@ -89,10 +82,12 @@ export default function SimPage() {
         className="min-h-screen flex flex-col items-center justify-center gap-6 p-4"
         style={{ backgroundColor: "var(--color-base)" }}
       >
-        {deviceSelector}
-
-        {/* Step progress bar + stats row */}
+        {/* Device selector + step progress bar + stats row */}
         <div className="flex flex-col items-center gap-3" style={{ width: "100%", maxWidth: 600 }}>
+          {/* Device selector — inline above the progress bar, right-aligned */}
+          <div style={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
+            <DeviceSelector />
+          </div>
           <StepProgressBar
             totalSteps={displayTotal}
             currentStep={displayStep}
@@ -168,12 +163,7 @@ export default function SimPage() {
   }
 
   // Scenario selection
-  return (
-    <>
-      {deviceSelector}
-      <ScenarioSelector onStart={startSimulation} />
-    </>
-  )
+  return <ScenarioSelector onStart={startSimulation} />
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -209,28 +199,41 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
       className="min-h-screen flex flex-col items-center justify-center gap-8 p-4"
       style={{ backgroundColor: "var(--color-base)" }}
     >
-      <div className="text-center">
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
-            fontWeight: 700,
-            color: "var(--color-text-primary)",
-            letterSpacing: "0.04em",
-          }}
-        >
-          RF SIMULATOR
-        </h1>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            fontSize: 14,
-            color: "var(--color-text-secondary)",
-            marginTop: 4,
-          }}
-        >
-          Select a scenario to begin
-        </p>
+      {/* Page header row: title left, device selector right — normal document flow */}
+      <div
+        style={{
+          width: "100%",
+          maxWidth: 440,
+          display: "flex",
+          alignItems: "flex-end",
+          justifyContent: "space-between",
+          gap: 12,
+        }}
+      >
+        <div>
+          <h1
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
+              fontWeight: 700,
+              color: "var(--color-text-primary)",
+              letterSpacing: "0.04em",
+            }}
+          >
+            RF SIMULATOR
+          </h1>
+          <p
+            style={{
+              fontFamily: "var(--font-ui)",
+              fontSize: 14,
+              color: "var(--color-text-secondary)",
+              marginTop: 4,
+            }}
+          >
+            Select a scenario to begin
+          </p>
+        </div>
+        <DeviceSelector />
       </div>
 
       <div className="flex flex-col gap-3 w-full" style={{ maxWidth: 440 }}>
