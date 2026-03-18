@@ -40,7 +40,9 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
           { label: "PASSWORD:", isCursorField: false },
         ],
         activeField: "USER ID",
-        inputType: "TEXT",
+        // NUMERIC → getInputMode returns TYPE → text input renders so the
+        // trainee can type their User ID. Per BBWD-WI-030 §5.1.5.
+        inputType: "NUMERIC",
       }
 
     case WorkflowStep.BC_SELECT_BBWD:

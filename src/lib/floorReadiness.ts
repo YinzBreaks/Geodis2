@@ -336,15 +336,26 @@ export function needsAttentionFlag(
   }
 
   // d) No activity in last 7 days (and has at least one session)
+  // Compare at UTC-day granularity so a session on day -7 is NOT flagged;
+  // only sessions strictly older than 7 full days are flagged.
+  // Using UTC avoids timezone mismatch with ISO-string dates like "2026-03-04".
   if (completedSessions.length > 0) {
     const latestSession = [...completedSessions].sort(
       (a, b) =>
         (b.completedAt?.getTime() ?? 0) - (a.completedAt?.getTime() ?? 0)
     )[0]
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    if (latestSession.completedAt && latestSession.completedAt < sevenDaysAgo) {
-      return { flagged: true, reason: "No activity in 7+ days" }
+    if (latestSession.completedAt) {
+      const today = new Date()
+      const todayUTCDay = Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate())
+      const sessionUTCDay = Date.UTC(
+        latestSession.completedAt.getUTCFullYear(),
+        latestSession.completedAt.getUTCMonth(),
+        latestSession.completedAt.getUTCDate()
+      )
+      const diffDays = Math.floor((todayUTCDay - sessionUTCDay) / (1000 * 60 * 60 * 24))
+      if (diffDays > 7) {
+        return { flagged: true, reason: "No activity in 7+ days" }
+      }
     }
   }
 

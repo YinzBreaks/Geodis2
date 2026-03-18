@@ -1,25 +1,28 @@
 /**
- * WarehouseFloor — Visual warehouse scene for the simulation three-panel layout
+ * WarehouseFloor — Visual warehouse scene with scannable assets
  *
- * Shows contextual warehouse visuals based on current workflow step:
- *   Build Cart (BC_*)  → 3×3 tote grid on cart
- *   Pick (PK_*)        → Shelf location with items (correct + decoys)
- *   Exception (EX_*)   → Exception resolution areas
- *   Post-Round (PS_*)  → Completion / next-tote
+ * Renders contextual warehouse visuals based on current workflow step.
+ * Assets (cart, totes, shelf, items) are displayed with scannable barcode
+ * labels. Clicking a barcode triggers a 250ms scan beam animation, then
+ * submits the barcode value to the simulation engine.
  *
- * Clicking scannable objects dispatches a SCAN action to the engine.
- * This component never contains business logic — only rendering and event delegation.
+ * The panel replaces the old text-input scanning mechanic with a
+ * point-and-click system that mimics a real scan gun.
  *
- * Per CLAUDE.md §Architecture: components render only.
+ * Per CLAUDE.md §Architecture: components render only — no business logic.
  * Per CLAUDE.md §Code Standards: no hardcoded warehouse data.
  */
 "use client"
 
-import { useCallback, useMemo } from "react"
-import { WorkflowStep, type SimulationSession, type WarehouseItem, type ToteSlot } from "@/types/domain"
-import { generateBarcodeDataUrl } from "@/data/barcode-utils"
-import { getDecoyItems, getInputMode, selectScreen } from "@/hooks/useSimulation"
-import type { DifficultyLevel } from "@/types/domain"
+import { useMemo } from "react"
+import { WorkflowStep, DifficultyLevel, type SimulationSession, type WarehouseItem, type ToteSlot } from "@/types/domain"
+import { getAssetContext } from "@/lib/assetContext"
+import { getDecoyItems } from "@/hooks/useSimulation"
+import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
+import { PickCart } from "./assets/PickCart"
+import { PickTote } from "./assets/PickTote"
+import { ShelfLocation } from "./assets/ShelfLocation"
+import { ItemLabel } from "./assets/ItemLabel"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -28,30 +31,10 @@ import type { DifficultyLevel } from "@/types/domain"
 interface WarehouseFloorProps {
   session: SimulationSession
   difficulty: DifficultyLevel
-  /** Callback when user clicks a scannable object on the floor */
+  /** Callback when user scans (clicks) a barcode label on the floor */
   onScan: (barcode: string) => void
   /** Callback for physical-confirm steps (travel, verify, place) */
   onConfirm: () => void
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// STEP CATEGORY HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-function isBuildCartStep(step: WorkflowStep): boolean {
-  return step.startsWith("BC_")
-}
-
-function isPickStep(step: WorkflowStep): boolean {
-  return step.startsWith("PK_")
-}
-
-function isExceptionStep(step: WorkflowStep): boolean {
-  return step.startsWith("EX_")
-}
-
-function isPostStep(step: WorkflowStep): boolean {
-  return step.startsWith("PS_")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -60,226 +43,250 @@ function isPostStep(step: WorkflowStep): boolean {
 
 export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: WarehouseFloorProps) {
   const step = session.currentStep
-  const screen = selectScreen(session)
-  const inputMode = getInputMode(step, screen.inputType)
+  const ctx = getAssetContext(step, session)
+
+  // Difficulty-aware highlighting: ADVANCED never highlights
+  const effectiveHighlight = difficulty === DifficultyLevel.ADVANCED
+    ? null
+    : ctx.highlightedBarcode
 
   return (
-    <div className="bg-slate-100 rounded-xl border border-slate-300 p-4 h-full flex flex-col gap-3 overflow-hidden">
+    <div id="warehouse-floor" className="bg-slate-100 rounded-xl border border-slate-300 p-4 h-full flex flex-col gap-3 overflow-hidden">
+      {/* Inject CSS keyframes for scan beam + asset pulse animations */}
+      <BarcodeScanStyles />
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <h2 className="text-slate-700 font-semibold text-sm tracking-wide">
-          Warehouse Floor
+          WAREHOUSE FLOOR
         </h2>
         <span className="text-slate-400 text-[10px] font-mono">
           Zone {session.cart.zone}
         </span>
       </div>
 
-      {/* Scene */}
-      <div className="flex-1 flex items-center justify-center">
-        {isBuildCartStep(step) && (
-          <BuildCartScene
-            session={session}
-            onScan={onScan}
-            onConfirm={onConfirm}
-            inputMode={inputMode}
-          />
-        )}
-        {isPickStep(step) && (
-          <PickScene
-            session={session}
+      {/* Scene — contextual based on current step */}
+      <div className="flex-1 flex items-center justify-center overflow-auto">
+        {ctx.scannableAsset === "zone" && (
+          <ZoneCard
+            zone={session.cart.taskGroup}
+            scannable={true}
+            highlighted={effectiveHighlight === session.cart.taskGroup}
             difficulty={difficulty}
             onScan={onScan}
-            onConfirm={onConfirm}
-            inputMode={inputMode}
           />
         )}
-        {isExceptionStep(step) && (
-          <ExceptionScene session={session} onConfirm={onConfirm} />
+        {ctx.showShelf && (
+          <ShelfScene
+            session={session}
+            difficulty={difficulty}
+            ctx={ctx}
+            effectiveHighlight={effectiveHighlight}
+            onScan={onScan}
+          />
         )}
-        {isPostStep(step) && <PostRoundScene session={session} />}
+        {ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
+          <CartScene
+            session={session}
+            difficulty={difficulty}
+            ctx={ctx}
+            effectiveHighlight={effectiveHighlight}
+            onScan={onScan}
+          />
+        )}
+        {!ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
+          <PostRoundOverlay session={session} />
+        )}
       </div>
 
-      {/* Footer — current step hint */}
-      <div className="text-slate-400 text-[10px] font-mono text-center truncate">
-        {humanizeStep(step)}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// BUILD CART SCENE — 3×3 tote grid + cart barcode
-// Per BBWD-WI-030 §5.1: Build Cart procedure
-// ─────────────────────────────────────────────────────────────────────────────
-
-function BuildCartScene({
-  session,
-  onScan,
-  onConfirm,
-  inputMode,
-}: {
-  session: SimulationSession
-  onScan: (barcode: string) => void
-  onConfirm: () => void
-  inputMode: string
-}) {
-  const step = session.currentStep
-
-  // Before cart is scanned, show the cart barcode to scan
-  if (step === WorkflowStep.BC_SCAN_CART_BARCODE) {
-    return (
-      <div className="flex flex-col items-center gap-4">
-        <div className="text-slate-600 text-sm font-medium">Scan the Pick Cart</div>
-        <ScannableItem
-          label="Pick Cart"
-          barcode={session.cart.cartBarcode}
-          onScan={onScan}
-          highlight
-        />
-      </div>
-    )
-  }
-
-  // Menu / login steps — show instructional placeholder
-  if (
-    step === WorkflowStep.BC_LOGIN_RF ||
-    step === WorkflowStep.BC_SELECT_BBWD ||
-    step === WorkflowStep.BC_SELECT_OUTBOUND ||
-    step === WorkflowStep.BC_PRESS_CTRL_T ||
-    step === WorkflowStep.BC_CONFIRM_TASK_GROUP ||
-    step === WorkflowStep.BC_SCAN_ZONE_TASK_GROUP ||
-    step === WorkflowStep.BC_SELECT_MAKE_TOTE_CART
-  ) {
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-          <span className="text-2xl">📋</span>
-        </div>
-        <div className="text-slate-500 text-sm">
-          Complete the steps on the RF Device
-        </div>
-        <div className="text-slate-400 text-xs">
-          Use the RF terminal to navigate menus
-        </div>
-      </div>
-    )
-  }
-
-  // Tote scanning: show 3×3 grid
-  const currentSlot = session.currentToteSlot
-  const totes = session.cart.totes
-
-  return (
-    <div className="flex flex-col items-center gap-4 w-full">
-      <div className="text-slate-600 text-sm font-medium">
-        Load Totes onto Cart
-      </div>
-
-      {/* 3×3 tote grid */}
-      <div className="grid grid-cols-3 gap-2 w-full max-w-[280px]">
-        {totes.map((tote, i) => {
-          const slotNum = (i + 1) as ToteSlot
-          const isCurrent = slotNum === currentSlot
-          const isScanned = slotNum < currentSlot
-          const canScan =
-            isCurrent &&
-            (step === WorkflowStep.BC_SCAN_TOTE_BARCODE)
-
-          return (
-            <button
-              key={tote.toteId}
-              onClick={canScan ? () => onScan(tote.barcode) : undefined}
-              disabled={!canScan}
-              className={`
-                relative rounded-lg border-2 p-2 text-center transition-all
-                min-h-[64px] flex flex-col items-center justify-center gap-1
-                ${
-                  isCurrent
-                    ? "border-blue-500 bg-blue-50 shadow-md"
-                    : isScanned
-                      ? "border-green-400 bg-green-50"
-                      : "border-slate-200 bg-white"
-                }
-                ${canScan ? "cursor-pointer hover:bg-blue-100 active:scale-95" : "cursor-default"}
-              `}
-            >
-              <span
-                className={`text-[10px] font-mono ${
-                  isCurrent ? "text-blue-700" : isScanned ? "text-green-700" : "text-slate-400"
-                }`}
-              >
-                Slot {slotNum}
-              </span>
-              {isScanned && (
-                <span className="text-green-500 text-lg">✓</span>
-              )}
-              {isCurrent && !isScanned && (
-                <span className="text-blue-500 text-xs font-mono truncate max-w-full">
-                  {tote.barcode.slice(-6)}
-                </span>
-              )}
-            </button>
-          )
-        })}
-      </div>
-
-      {/* Place tote instruction */}
-      {step === WorkflowStep.BC_PLACE_TOTE_IN_SLOT && (
-        <button
-          onClick={onConfirm}
-          className="bg-blue-600 hover:bg-blue-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
-        >
-          Place Tote in Slot {currentSlot} → Continue
-        </button>
+      {/* Exception overlay — shown on top of the scene during EX_* steps */}
+      {step.startsWith("EX_") && (
+        <ExceptionBanner step={step} onConfirm={onConfirm} />
       )}
 
-      {/* Slot progress indicator */}
-      <div className="text-slate-400 text-xs font-mono">
-        {Math.min(currentSlot - 1, 9)} / 9 totes loaded
-      </div>
+      {/* Confirm action steps — physical actions that need a button press */}
+      {isConfirmPhysicalStep(step) && !step.startsWith("EX_") && (
+        <ConfirmActionBar step={step} session={session} onConfirm={onConfirm} />
+      )}
+
+      {/* Footer — instruction hint */}
+      <Footer step={step} difficulty={difficulty} scannableAsset={ctx.scannableAsset} />
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// PICK SCENE — shelf location with items + decoys
+// ZONE CARD — laminated tag shown during BC_SCAN_ZONE_TASK_GROUP
+// Per BBWD-WI-030 §5.1.9: scan zone or FEX barcode
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getZoneCardHighlightStyle(highlighted: boolean, difficulty: DifficultyLevel): React.CSSProperties {
+  if (!highlighted || difficulty === DifficultyLevel.ADVANCED) return {}
+  if (difficulty === DifficultyLevel.BEGINNER) {
+    return {
+      boxShadow: "0 0 20px rgba(240, 165, 0, 0.7)",
+      animation: "assetPulse 1.5s ease-in-out infinite",
+    }
+  }
+  return { boxShadow: "0 0 8px rgba(240, 165, 0, 0.3)" }
+}
+
+/**
+ * ZoneCard — a laminated cage-tag card showing the zone barcode.
+ * Rendered during BC_SCAN_ZONE_TASK_GROUP so trainees can click-to-scan.
+ *
+ * The barcode value is session.cart.taskGroup ("Z1", "Z2", "HAZ", "FEX").
+ * The engine validator at BC_SCAN_ZONE_TASK_GROUP checks:
+ *   scannedValue === session.cart.taskGroup
+ */
+function ZoneCard({
+  zone,
+  scannable,
+  highlighted,
+  difficulty,
+  onScan,
+}: {
+  zone: string
+  scannable: boolean
+  highlighted: boolean
+  difficulty: DifficultyLevel
+  onScan: (barcode: string) => void
+}) {
+  const isFex = zone === "FEX"
+  const highlightStyle = getZoneCardHighlightStyle(highlighted, difficulty)
+
+  return (
+    <div
+      className="relative flex flex-col items-center gap-3"
+      style={{ ...highlightStyle, borderRadius: 8, padding: 8, transition: "box-shadow 0.3s" }}
+    >
+      {/* Laminated card tag */}
+      <div
+        style={{
+          width: 140,
+          backgroundColor: isFex ? "#fef3c7" : "#fef9c3",
+          border: `2px solid ${isFex ? "#f59e0b" : "#ca8a04"}`,
+          borderRadius: 8,
+          padding: "16px 12px 12px",
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          gap: 8,
+          boxShadow: "0 2px 8px rgba(0,0,0,0.12)",
+          position: "relative",
+        }}
+      >
+        {/* Hole punch at top (cage tag appearance) */}
+        <div
+          style={{
+            position: "absolute",
+            top: -10,
+            left: "50%",
+            transform: "translateX(-50%)",
+            width: 18,
+            height: 18,
+            borderRadius: "50%",
+            backgroundColor: "#e5e7eb",
+            border: "2px solid #9ca3af",
+          }}
+        />
+
+        {/* Zone text */}
+        <div
+          style={{
+            fontFamily: "monospace",
+            fontWeight: 800,
+            fontSize: 36,
+            color: isFex ? "#b45309" : "#713f12",
+            letterSpacing: "0.05em",
+            lineHeight: 1,
+          }}
+        >
+          {zone}
+        </div>
+
+        {/* Sub-label */}
+        <div
+          style={{
+            fontFamily: "monospace",
+            fontSize: 9,
+            color: "#92400e",
+            letterSpacing: "0.1em",
+            textTransform: "uppercase",
+          }}
+        >
+          {isFex ? "EXPRESS" : "TASK GROUP"}
+        </div>
+
+        {/* Scannable barcode */}
+        <BarcodeLabel
+          value={zone}
+          scannable={scannable}
+          difficulty={difficulty}
+          onScan={onScan}
+        />
+      </div>
+
+      {/* BEGINNER: “← SCAN THIS” badge */}
+      {highlighted && scannable && difficulty === DifficultyLevel.BEGINNER && (
+        <div
+          style={{
+            position: "absolute",
+            right: -2,
+            top: "50%",
+            transform: "translateY(-50%)",
+            backgroundColor: "rgba(240, 165, 0, 0.9)",
+            color: "#000",
+            fontSize: 10,
+            fontWeight: 700,
+            fontFamily: "monospace",
+            padding: "2px 6px",
+            borderRadius: 3,
+            whiteSpace: "nowrap",
+          }}
+        >
+          ← SCAN THIS
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SHELF SCENE — during pick steps
 // Per BBWD-WI-030 §5.2: Pick procedure
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PickScene({
+function ShelfScene({
   session,
   difficulty,
+  ctx,
+  effectiveHighlight,
   onScan,
-  onConfirm,
-  inputMode,
 }: {
   session: SimulationSession
   difficulty: DifficultyLevel
+  ctx: ReturnType<typeof getAssetContext>
+  effectiveHighlight: string | null
   onScan: (barcode: string) => void
-  onConfirm: () => void
-  inputMode: string
 }) {
-  const step = session.currentStep
   const pick = session.pickQueue[session.currentPickIndex]
-  const tote = pick
-    ? session.cart.totes.find((t) => t.toteId === pick.targetToteId)
-    : undefined
 
-  // Decoy items for the shelf display
+  // Decoy items for difficulty-aware shelf display.
+  // Hooks must be called unconditionally — getDecoyItems returns [] when pick is null.
   const decoys = useMemo(
     () => getDecoyItems(session, difficulty),
     [session.currentPickIndex, difficulty] // eslint-disable-line react-hooks/exhaustive-deps
   )
 
-  // Shuffle correct + decoys deterministically
+  // Shuffle correct item + decoys deterministically.
+  // Guard against no active pick (returns empty array, component returns null below).
   const shelfItems = useMemo(() => {
     if (!pick) return []
     const items: { item: WarehouseItem; isCorrect: boolean }[] = [
       { item: pick.item, isCorrect: true },
       ...decoys.map((d) => ({ item: d, isCorrect: false })),
     ]
-    // Deterministic shuffle based on pickIndex
     const seed = session.currentPickIndex
     return items.sort((a, b) => {
       const ha = hashCode(a.item.itemId + seed)
@@ -290,299 +297,269 @@ function PickScene({
 
   if (!pick) return null
 
-  // Scan item UPC — show shelf with scannable items
-  if (step === WorkflowStep.PK_SCAN_ITEM_UPC) {
-    return (
-      <div className="flex flex-col items-center gap-4 w-full">
-        {/* Location header */}
-        <div className="bg-amber-100 border border-amber-300 rounded-lg px-4 py-2 text-center">
-          <div className="text-amber-800 text-xs font-mono">Location</div>
-          <div className="text-amber-900 text-lg font-bold font-mono">
-            {pick.location.displayLabel}
-          </div>
-        </div>
-
-        {/* Shelf with items */}
-        <div className="bg-white border border-slate-200 rounded-lg p-3 w-full">
-          <div className="text-slate-500 text-[10px] font-mono mb-2">
-            Pick Front — scan the correct item
-          </div>
-          <div className="grid grid-cols-1 gap-2">
-            {shelfItems.map(({ item, isCorrect }) => (
-              <ShelfItem
-                key={item.itemId}
-                item={item}
-                onScan={() => onScan(item.upcBarcode)}
-              />
-            ))}
-          </div>
-        </div>
-
-        {/* Pick info */}
-        <div className="text-slate-500 text-xs font-mono text-center">
-          Qty: {pick.quantityRequired} × {pick.item.unitOfMeasure} → Tote Slot{" "}
-          {pick.targetSlot}
-        </div>
-      </div>
-    )
-  }
-
-  // Scan tote barcode — show tote to scan
-  if (step === WorkflowStep.PK_SCAN_TOTE_BARCODE && tote) {
-    return (
-      <div className="flex flex-col items-center gap-4">
-        <div className="text-slate-600 text-sm font-medium">
-          Scan the Tote
-        </div>
-        <ScannableItem
-          label={`Tote Slot ${pick.targetSlot}`}
-          barcode={tote.barcode}
-          onScan={() => onScan(tote.barcode)}
-          highlight
-        />
-      </div>
-    )
-  }
-
-  // End of tote display — show tote ready for conveyor
-  if (step === WorkflowStep.PK_END_OF_TOTE_DISPLAY || step === WorkflowStep.PK_PRESS_CTRL_A) {
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center">
-          <span className="text-2xl">📦</span>
-        </div>
-        <div className="text-orange-700 text-sm font-semibold">End Of Tote</div>
-        <div className="text-slate-500 text-xs">
-          Press CTRL+A on the RF Device to confirm
-        </div>
-      </div>
-    )
-  }
-
-  // Place tote on conveyor
-  if (step === WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR) {
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center">
-          <span className="text-2xl">🔄</span>
-        </div>
-        <div className="text-indigo-700 text-sm font-semibold">
-          Place Tote on Conveyor (Putwall)
-        </div>
-        <button
-          onClick={onConfirm}
-          className="bg-indigo-600 hover:bg-indigo-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
-        >
-          Done — Continue
-        </button>
-      </div>
-    )
-  }
-
-  // Physical action steps (travel, verify, place, pick quantity)
-  if (inputMode === "CONFIRM") {
-    const labels: Record<string, string> = {
-      [WorkflowStep.PK_READ_PICK_DISPLAY]: "Read pick details on RF Device",
-      [WorkflowStep.PK_TRAVEL_TO_LOCATION]: `Travel to ${pick.location.displayLabel}`,
-      [WorkflowStep.PK_VERIFY_LOCATION]: `Verify location: ${pick.location.displayLabel}`,
-      [WorkflowStep.PK_VERIFY_ITEM]: `Verify item: ${pick.item.description}`,
-      [WorkflowStep.PK_PICK_QUANTITY]: `Pick ${pick.quantityRequired} × ${pick.item.unitOfMeasure}`,
-      [WorkflowStep.PK_PLACE_IN_TOTE]: `Place in tote slot ${pick.targetSlot}`,
-    }
-
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-          <span className="text-2xl">
-            {step === WorkflowStep.PK_TRAVEL_TO_LOCATION ? "🚶" : "👁️"}
-          </span>
-        </div>
-        <div className="text-slate-600 text-sm font-medium">
-          {labels[step] ?? "Complete the physical action"}
-        </div>
-        <button
-          onClick={onConfirm}
-          className="bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
-        >
-          Done — Continue
-        </button>
-      </div>
-    )
-  }
-
-  // Quantity entry steps
-  if (step === WorkflowStep.PK_ENTER_QUANTITY) {
-    return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center">
-          <span className="text-2xl">🔢</span>
-        </div>
-        <div className="text-slate-600 text-sm font-medium">
-          Enter quantity on RF Device: {pick.quantityRequired}
-        </div>
-      </div>
-    )
-  }
-
-  // Default pick scene
   return (
-    <div className="flex flex-col items-center gap-3 text-center">
-      <div className="bg-amber-50 border border-amber-200 rounded-lg px-4 py-2">
-        <div className="text-amber-900 font-mono text-sm font-bold">
-          {pick.location.displayLabel}
+    <div className="flex flex-col items-center gap-3 w-full">
+      {/* Shelf with location */}
+      <ShelfLocation
+        aloc={pick.location.displayLabel}
+        itemBarcode={pick.item.upcBarcode}
+        itemName={pick.item.description}
+        quantity={pick.quantityRequired}
+        scannable={ctx.scannableAsset === "location"}
+        highlighted={effectiveHighlight === pick.location.displayLabel}
+        difficulty={difficulty}
+        onScan={onScan}
+      />
+
+      {/* Item labels — shown during PK_SCAN_ITEM_UPC */}
+      {ctx.showItem && ctx.scannableAsset === "item" && (
+        <div className="flex flex-wrap gap-2 justify-center mt-1">
+          {shelfItems.map(({ item, isCorrect }) => (
+            <ItemLabel
+              key={item.itemId}
+              itemBarcode={item.upcBarcode}
+              itemName={item.description}
+              scannable={true}
+              highlighted={isCorrect && effectiveHighlight === item.upcBarcode}
+              difficulty={difficulty}
+              onScan={onScan}
+            />
+          ))}
         </div>
-      </div>
-      <div className="text-slate-500 text-xs">
-        {pick.item.description} — Qty {pick.quantityRequired}
+      )}
+
+      {/* Pick info */}
+      <div className="text-slate-500 text-[10px] font-mono text-center">
+        Qty: {pick.quantityRequired} × {pick.item.unitOfMeasure} → Tote S{pick.targetSlot}
       </div>
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EXCEPTION SCENE — error resolution areas
-// Per BBWD-WI-030 §6: Exception Handling
+// CART SCENE — during build cart + tote scan steps
+// Per BBWD-WI-030 §5.1: Build Cart procedure
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ExceptionScene({
+function CartScene({
+  session,
+  difficulty,
+  ctx,
+  effectiveHighlight,
+  onScan,
+}: {
+  session: SimulationSession
+  difficulty: DifficultyLevel
+  ctx: ReturnType<typeof getAssetContext>
+  effectiveHighlight: string | null
+  onScan: (barcode: string) => void
+}) {
+  const cartHighlighted = ctx.scannableAsset === "cart" &&
+    effectiveHighlight === session.cart.cartBarcode
+
+  return (
+    <div className="flex flex-col items-center gap-3">
+      <PickCart
+        cartBarcode={session.cart.cartBarcode}
+        scannable={ctx.scannableAsset === "cart"}
+        highlighted={cartHighlighted}
+        difficulty={difficulty}
+        onScan={onScan}
+      />
+
+      {/* Tote grid — 3×3 when showTotes is true */}
+      {ctx.showTotes && (
+        <ToteGrid
+          session={session}
+          difficulty={difficulty}
+          scannableAsset={ctx.scannableAsset}
+          activeToteSlot={ctx.activeToteSlot ?? null}
+          effectiveHighlight={effectiveHighlight}
+          onScan={onScan}
+        />
+      )}
+
+      {/* Slot progress indicator */}
+      {ctx.showTotes && (
+        <div className="text-slate-400 text-xs font-mono">
+          {(session.currentStep === WorkflowStep.BC_PRESS_CTRL_E ||
+            session.currentStep.startsWith("PK_")
+              ? 9
+              : Math.min(session.currentToteSlot - 1, 9)
+          )} / 9 totes loaded
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// TOTE GRID — 3×3 grid of tote components
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ToteGrid({
+  session,
+  difficulty,
+  scannableAsset,
+  activeToteSlot,
+  effectiveHighlight,
+  onScan,
+}: {
+  session: SimulationSession
+  difficulty: DifficultyLevel
+  scannableAsset: string | null
+  /** Per-pick target slot from assetContext; null during build-cart steps. */
+  activeToteSlot: ToteSlot | null
+  effectiveHighlight: string | null
+  onScan: (barcode: string) => void
+}) {
+  return (
+    <div className="grid grid-cols-3 gap-1.5" style={{ maxWidth: 280 }}>
+      {session.cart.totes.map((tote, i) => {
+        const slotNum = (i + 1) as ToteSlot
+        // During pick phase, use pick.targetSlot (from activeToteSlot) to
+        // determine which tote is scannable. Fall back to currentToteSlot
+        // during build cart (activeToteSlot is null except at PK_SCAN_TOTE_BARCODE).
+        const activeSlot = activeToteSlot ?? session.currentToteSlot
+        const isCurrent = slotNum === activeSlot
+        const isHighlighted = effectiveHighlight === tote.barcode
+        const canScan = scannableAsset === "tote" && isCurrent
+        // All totes are loaded once we reach BC_PRESS_CTRL_E or pick phase.
+        // During build cart, only slots before the current one are fully loaded.
+        const inPickPhase =
+          session.currentStep.startsWith("PK_") ||
+          session.currentStep.startsWith("PS_")
+        const isLoaded =
+          inPickPhase ||
+          tote.barcode.length > 0 ||
+          session.currentStep === WorkflowStep.BC_PRESS_CTRL_E
+
+        return (
+          <PickTote
+            key={tote.toteId}
+            toteBarcode={tote.barcode}
+            slotNumber={slotNum}
+            itemCount={tote.pickedItems.length}
+            scannable={canScan}
+            highlighted={isHighlighted}
+            isLoaded={isLoaded}
+            difficulty={difficulty}
+            onScan={onScan}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONFIRM ACTION BAR — for physical steps (travel, verify, place)
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CONFIRM_STEPS = new Set<WorkflowStep>([
+  WorkflowStep.PK_READ_PICK_DISPLAY,
+  WorkflowStep.PK_TRAVEL_TO_LOCATION,
+  WorkflowStep.PK_VERIFY_LOCATION,
+  WorkflowStep.PK_VERIFY_ITEM,
+  WorkflowStep.PK_PICK_QUANTITY,
+  WorkflowStep.PK_PLACE_IN_TOTE,
+  WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR,
+  WorkflowStep.BC_PLACE_TOTE_IN_SLOT,
+])
+
+function isConfirmPhysicalStep(step: WorkflowStep): boolean {
+  return CONFIRM_STEPS.has(step)
+}
+
+function ConfirmActionBar({
+  step,
   session,
   onConfirm,
 }: {
+  step: WorkflowStep
   session: SimulationSession
   onConfirm: () => void
 }) {
-  const step = session.currentStep
+  const pick = session.pickQueue[session.currentPickIndex]
 
-  const configs: Record<string, { icon: string; title: string; subtitle: string; color: string }> = {
-    [WorkflowStep.EX_TOTE_ALREADY_ALLOCATED]: {
-      icon: "⚠️",
-      title: "Tote Already Allocated",
-      subtitle: "Set aside and contact Lead/Supervisor",
-      color: "red",
-    },
-    [WorkflowStep.EX_CART_ALREADY_CREATED]: {
-      icon: "⚠️",
-      title: "Cart Already Created",
-      subtitle: "Set aside and contact Lead/Supervisor",
-      color: "red",
-    },
-    [WorkflowStep.EX_INCORRECT_LOCATION]: {
-      icon: "📍",
-      title: "Incorrect Location",
-      subtitle: "Press CTRL+W to go back and verify",
-      color: "orange",
-    },
-    [WorkflowStep.EX_PRESS_CTRL_W]: {
-      icon: "↩️",
-      title: "Go Back",
-      subtitle: "Press CTRL+W on the RF Device",
-      color: "orange",
-    },
-    [WorkflowStep.EX_INCORRECT_TOTE]: {
-      icon: "📦",
-      title: "Incorrect Tote",
-      subtitle: "Press CTRL+W to go back and verify",
-      color: "orange",
-    },
-    [WorkflowStep.EX_INVALID_ITEM_LAST]: {
-      icon: "❌",
-      title: "Invalid Item (Last at Location)",
-      subtitle: "Notify Lead → CTRL+K to skip → Item to Amnesty Bin",
-      color: "red",
-    },
-    [WorkflowStep.EX_INVALID_ITEM_NOT_LAST]: {
-      icon: "❌",
-      title: "Invalid Item",
-      subtitle: "Notify Lead → Tote to Putwall → Item to IC",
-      color: "red",
-    },
-    [WorkflowStep.EX_SHORT_INVENTORY]: {
-      icon: "📉",
-      title: "Short Inventory",
-      subtitle: "Verify location → Notify Lead → CTRL+K",
-      color: "yellow",
-    },
-    [WorkflowStep.EX_DAMAGED_ITEM]: {
-      icon: "💔",
-      title: "Damaged Item",
-      subtitle: "Place in Amnesty Bin (ziplock if leaking)",
-      color: "red",
-    },
-    [WorkflowStep.EX_NOTIFY_LEAD]: {
-      icon: "📞",
-      title: "Notify Lead / Supervisor",
-      subtitle: "Press ENTER when acknowledged",
-      color: "blue",
-    },
-    [WorkflowStep.EX_PRESS_CTRL_K]: {
-      icon: "⏭️",
-      title: "Skip Pick",
-      subtitle: "Press CTRL+K on the RF Device",
-      color: "orange",
-    },
-    [WorkflowStep.EX_ITEM_TO_AMNESTY_BIN]: {
-      icon: "🗑️",
-      title: "Item → Amnesty Bin",
-      subtitle: "Place item in Amnesty Bin, press ENTER when done",
-      color: "red",
-    },
-    [WorkflowStep.EX_ITEM_TO_IC]: {
-      icon: "📋",
-      title: "Item → Inventory Control",
-      subtitle: "Place item in IC tote, press ENTER when done",
-      color: "blue",
-    },
+  const labels: Record<string, string> = {
+    [WorkflowStep.PK_READ_PICK_DISPLAY]: "Read pick details → Continue",
+    [WorkflowStep.PK_TRAVEL_TO_LOCATION]: `Travel to ${pick?.location.displayLabel ?? "location"} → Continue`,
+    [WorkflowStep.PK_VERIFY_LOCATION]: `Verify location: ${pick?.location.displayLabel ?? ""} → Continue`,
+    [WorkflowStep.PK_VERIFY_ITEM]: `Verify item: ${pick?.item.description ?? ""} → Continue`,
+    [WorkflowStep.PK_PICK_QUANTITY]: `Pick ${pick?.quantityRequired ?? 1} × ${pick?.item.unitOfMeasure ?? "Unit"} → Continue`,
+    [WorkflowStep.PK_PLACE_IN_TOTE]: `Place in tote S${pick?.targetSlot ?? 1} → Continue`,
+    [WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR]: "Place tote on conveyor → Continue",
+    [WorkflowStep.BC_PLACE_TOTE_IN_SLOT]: `Place tote in slot ${session.currentToteSlot} → Continue`,
   }
 
-  const cfg = configs[step] ?? {
-    icon: "⚠️",
-    title: "Exception",
-    subtitle: "Follow RF Device instructions",
-    color: "gray",
+  return (
+    <button
+      onClick={onConfirm}
+      className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs font-mono font-medium px-4 py-2 rounded-lg transition-colors"
+    >
+      {labels[step] ?? "Continue"}
+    </button>
+  )
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// EXCEPTION BANNER
+// Per BBWD-WI-030 §6: Exception handling overlay
+// ─────────────────────────────────────────────────────────────────────────────
+
+function ExceptionBanner({ step, onConfirm }: { step: WorkflowStep; onConfirm: () => void }) {
+  const configs: Record<string, { title: string; subtitle: string; color: string }> = {
+    [WorkflowStep.EX_TOTE_ALREADY_ALLOCATED]: { title: "Tote Already Allocated", subtitle: "Set aside, contact Lead", color: "#ef4444" },
+    [WorkflowStep.EX_CART_ALREADY_CREATED]: { title: "Cart Already Created", subtitle: "Set aside, contact Lead", color: "#ef4444" },
+    [WorkflowStep.EX_INCORRECT_LOCATION]: { title: "Incorrect Location", subtitle: "Press CTRL+W to go back", color: "#f97316" },
+    [WorkflowStep.EX_PRESS_CTRL_W]: { title: "Go Back", subtitle: "Press CTRL+W on RF Device", color: "#f97316" },
+    [WorkflowStep.EX_INCORRECT_TOTE]: { title: "Incorrect Tote", subtitle: "Press CTRL+W to go back", color: "#f97316" },
+    [WorkflowStep.EX_INVALID_ITEM_LAST]: { title: "Invalid Item (Last)", subtitle: "Notify Lead → CTRL+K → Amnesty Bin", color: "#ef4444" },
+    [WorkflowStep.EX_INVALID_ITEM_NOT_LAST]: { title: "Invalid Item", subtitle: "Notify Lead → Putwall → IC", color: "#ef4444" },
+    [WorkflowStep.EX_SHORT_INVENTORY]: { title: "Short Inventory", subtitle: "Verify → Notify Lead → CTRL+K", color: "#eab308" },
+    [WorkflowStep.EX_DAMAGED_ITEM]: { title: "Damaged Item", subtitle: "Amnesty Bin (ziplock if leaking)", color: "#ef4444" },
+    [WorkflowStep.EX_NOTIFY_LEAD]: { title: "Notify Lead", subtitle: "Confirm when acknowledged", color: "#3b82f6" },
+    [WorkflowStep.EX_PRESS_CTRL_K]: { title: "Skip Pick", subtitle: "Press CTRL+K on RF Device", color: "#f97316" },
+    [WorkflowStep.EX_ITEM_TO_AMNESTY_BIN]: { title: "Item → Amnesty Bin", subtitle: "Confirm when done", color: "#ef4444" },
+    [WorkflowStep.EX_ITEM_TO_IC]: { title: "Item → IC", subtitle: "Confirm when done", color: "#3b82f6" },
   }
 
-  const bgColors: Record<string, string> = {
-    red: "bg-red-50 border-red-300",
-    orange: "bg-orange-50 border-orange-300",
-    yellow: "bg-yellow-50 border-yellow-300",
-    blue: "bg-blue-50 border-blue-300",
-    gray: "bg-slate-50 border-slate-300",
-  }
+  const cfg = configs[step] ?? { title: "Exception", subtitle: "Follow RF Device", color: "#6b7280" }
 
-  const textColors: Record<string, string> = {
-    red: "text-red-800",
-    orange: "text-orange-800",
-    yellow: "text-yellow-800",
-    blue: "text-blue-800",
-    gray: "text-slate-700",
-  }
-
-  // Steps that need a confirm button on the warehouse floor
   const confirmSteps = new Set([
     WorkflowStep.EX_NOTIFY_LEAD,
     WorkflowStep.EX_ITEM_TO_AMNESTY_BIN,
     WorkflowStep.EX_ITEM_TO_IC,
     WorkflowStep.EX_TOTE_ALREADY_ALLOCATED,
     WorkflowStep.EX_CART_ALREADY_CREATED,
+    WorkflowStep.EX_SHORT_INVENTORY,
+    WorkflowStep.EX_DAMAGED_ITEM,
   ])
 
   return (
-    <div className="flex flex-col items-center gap-4 text-center">
-      <div
-        className={`rounded-xl border-2 p-6 w-full max-w-[280px] ${bgColors[cfg.color]}`}
-      >
-        <div className="text-3xl mb-3">{cfg.icon}</div>
-        <div className={`font-semibold text-sm mb-1 ${textColors[cfg.color]}`}>
-          {cfg.title}
-        </div>
-        <div className="text-slate-500 text-xs">{cfg.subtitle}</div>
+    <div
+      className="rounded-lg px-3 py-2 flex items-center justify-between gap-2"
+      style={{
+        backgroundColor: `${cfg.color}15`,
+        border: `1px solid ${cfg.color}40`,
+      }}
+    >
+      <div>
+        <div className="text-xs font-semibold" style={{ color: cfg.color }}>{cfg.title}</div>
+        <div className="text-[10px] text-slate-500">{cfg.subtitle}</div>
       </div>
       {confirmSteps.has(step) && (
         <button
           onClick={onConfirm}
-          className="bg-slate-600 hover:bg-slate-500 text-white text-sm font-medium px-6 py-2 rounded-lg transition-colors"
+          className="text-[10px] font-mono font-medium px-3 py-1 rounded border transition-colors"
+          style={{
+            borderColor: `${cfg.color}60`,
+            color: cfg.color,
+            backgroundColor: `${cfg.color}10`,
+          }}
         >
-          Done — Continue
+          Done
         </button>
       )}
     </div>
@@ -590,113 +567,53 @@ function ExceptionScene({
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST-ROUND SCENE
+// POST-ROUND OVERLAY
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PostRoundScene({ session }: { session: SimulationSession }) {
-  const step = session.currentStep
-
-  if (step === WorkflowStep.PS_ROUND_COMPLETE) {
+function PostRoundOverlay({ session }: { session: SimulationSession }) {
+  if (session.currentStep === WorkflowStep.PS_ROUND_COMPLETE) {
     return (
-      <div className="flex flex-col items-center gap-4 text-center">
-        <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center">
-          <span className="text-3xl">🎉</span>
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
+          <span className="text-2xl">🎉</span>
         </div>
-        <div className="text-green-800 text-lg font-bold">Round Complete!</div>
-        <div className="text-slate-500 text-sm">
+        <div className="text-green-800 text-sm font-bold">Round Complete</div>
+        <div className="text-slate-500 text-[10px] font-mono">
           {session.completedPicks.length} picks completed
         </div>
       </div>
     )
   }
-
   return (
-    <div className="flex flex-col items-center gap-3 text-center">
-      <div className="text-slate-600 text-sm">Continue to next tote</div>
+    <div className="text-slate-400 text-xs font-mono text-center">
+      Completing round…
     </div>
   )
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// REUSABLE SUB-COMPONENTS
+// FOOTER — step instruction hint
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** A scannable item on the warehouse floor — click to scan its barcode. */
-function ScannableItem({
-  label,
-  barcode,
-  onScan,
-  highlight = false,
+function Footer({
+  step,
+  difficulty,
+  scannableAsset,
 }: {
-  label: string
-  barcode: string
-  onScan: (barcode: string) => void
-  highlight?: boolean
+  step: WorkflowStep
+  difficulty: DifficultyLevel
+  scannableAsset: string | null
 }) {
-  const barcodeUrl = useMemo(() => generateBarcodeDataUrl(barcode, 180, 50), [barcode])
+  let hint = humanizeStep(step)
+
+  if (difficulty === DifficultyLevel.BEGINNER && scannableAsset) {
+    hint = `Scan the highlighted ${scannableAsset} to continue`
+  }
 
   return (
-    <button
-      onClick={() => onScan(barcode)}
-      className={`
-        bg-white rounded-lg border-2 p-3 transition-all
-        hover:shadow-lg active:scale-95 cursor-pointer
-        flex flex-col items-center gap-2 min-w-[200px]
-        ${highlight ? "border-blue-400 shadow-md" : "border-slate-200"}
-      `}
-    >
-      <span className="text-slate-500 text-xs font-mono">{label}</span>
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={barcodeUrl} alt={barcode} className="w-[180px] h-[50px]" />
-      <span className="text-slate-400 text-[10px] font-mono">{barcode}</span>
-    </button>
-  )
-}
-
-/** An item displayed on the shelf — clickable to scan its UPC. */
-function ShelfItem({
-  item,
-  onScan,
-}: {
-  item: WarehouseItem
-  onScan: () => void
-}) {
-  const barcodeUrl = useMemo(
-    () => generateBarcodeDataUrl(item.upcBarcode, 140, 40),
-    [item.upcBarcode]
-  )
-
-  return (
-    <button
-      onClick={onScan}
-      className="
-        bg-slate-50 hover:bg-blue-50 active:scale-[0.98]
-        border border-slate-200 hover:border-blue-400
-        rounded-lg p-3 text-left transition-all cursor-pointer
-        flex items-center gap-3
-      "
-    >
-      {/* Item visual */}
-      <div className="w-10 h-10 bg-slate-200 rounded flex items-center justify-center text-lg shrink-0">
-        📦
-      </div>
-      <div className="flex-1 min-w-0">
-        <div className="text-slate-700 text-xs font-medium truncate">
-          {item.description}
-        </div>
-        <div className="text-slate-400 text-[10px] font-mono">
-          SKU: {item.sku} · Last 4: {item.lastFourDigits}
-        </div>
-      </div>
-      <div className="shrink-0">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={barcodeUrl}
-          alt={item.upcBarcode}
-          className="w-[100px] h-[30px]"
-        />
-      </div>
-    </button>
+    <div className="text-slate-400 text-[10px] font-mono text-center truncate">
+      {hint}
+    </div>
   )
 }
 
@@ -704,12 +621,12 @@ function ShelfItem({
 // UTILITY
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Simple deterministic hash for shuffling. */
+/** Simple deterministic hash for shuffling decoy items. */
 function hashCode(str: string): number {
   let hash = 0
   for (let i = 0; i < str.length; i++) {
     hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0 // Convert to 32-bit int
+    hash |= 0
   }
   return hash
 }

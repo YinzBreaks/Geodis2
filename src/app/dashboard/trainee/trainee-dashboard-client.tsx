@@ -1040,7 +1040,7 @@ function SessionHistorySection({ sessions }: SessionHistorySectionProps) {
                     <td className="px-3 py-3 text-center">
                       {s.status === "COMPLETED" ? (
                         <Link
-                          href={`/dashboard/supervisor/replay/${s.id}`}
+                          href={`/dashboard/trainee/replay/${s.id}`}
                           className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
                         >
                           View

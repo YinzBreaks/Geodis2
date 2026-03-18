@@ -310,16 +310,31 @@ function handleKeyPress(
   // Dynamic CTRL+K routing: WRONG_ITEM errors require tote-to-conveyor before
   // amnesty bin; all other errors (ITEM_NOT_FOUND) skip directly to pick display.
   // Per BBWD-WI-030 §6.5.1 vs §6.6
+  //
+  // Bug 6 fix: both skip paths MUST increment currentPickIndex so the pick
+  // counter advances and the next pick is shown after exception recovery.
   if (keys === "CTRL+K") {
     const activeError = getActiveError(session)
     if (activeError && activeError.errorType === ScanResult.WRONG_ITEM) {
-      nextStep = WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR
+      // Skip this pick — increment index then send tote to conveyor
+      // Per BBWD-WI-030 §6.5.1: CTRL+K → tote to Putwall → item to Amnesty/IC
+      const skippedSession: SimulationSession = {
+        ...session,
+        currentStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR,
+        currentPickIndex: session.currentPickIndex + 1,
+      }
+      return {
+        session: skippedSession,
+        result: { success: true, newStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR },
+      }
     } else if (activeError && activeError.errorType === ScanResult.ITEM_NOT_FOUND) {
-      // Mark the SHORT_INVENTORY error as corrected — picker acknowledged with CTRL+K
+      // Skip this pick — mark error corrected and advance to next pick
+      // Per BBWD-WI-030 §6.6: CTRL+K after short inventory → continue picks
       const updatedErrors = markActiveErrorCorrected(session.errors)
       const newSession: SimulationSession = {
         ...session,
         currentStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+        currentPickIndex: session.currentPickIndex + 1,
         errors: updatedErrors,
       }
       return {
@@ -480,11 +495,11 @@ function advanceAfterSuccessfulScan(
       )
       const updatedCart = { ...session.cart, totes: updatedTotes }
 
-      // After all 9 totes scanned, stay at BC_SCAN_TOTE_BARCODE
-      // (waiting for CTRL+E) — otherwise advance to next slot placement
+      // After all 9 totes scanned, advance to the CTRL+E finalize screen.
+      // Per BBWD-WI-030 §5.1.15: slot 9 scan → BC_PRESS_CTRL_E (show finalize prompt)
       const allScanned = session.currentToteSlot === MAX_TOTES_PER_CART
       const nextStep = allScanned
-        ? WorkflowStep.BC_SCAN_TOTE_BARCODE // Waiting for CTRL+E
+        ? WorkflowStep.BC_PRESS_CTRL_E // Show finalize screen; trainees press ^E
         : WorkflowStep.BC_PLACE_TOTE_IN_SLOT
 
       const nextSlot = allScanned

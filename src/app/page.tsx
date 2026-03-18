@@ -1,6 +1,5 @@
-"use client"
-
 import Link from "next/link"
+import { getRoleFromSession } from "@/lib/auth/roles"
 
 /** Feature card data for the landing page. */
 const FEATURES: { title: string; description: string; href: string; active: boolean }[] = [
@@ -24,7 +23,11 @@ const FEATURES: { title: string; description: string; href: string; active: bool
   },
 ]
 
-export default function Home() {
+export default async function Home() {
+  const { role } = await getRoleFromSession()
+  const showSupervisorButton =
+    role === "SUPERVISOR" || role === "PICK_LEAD" || role === "WAREHOUSE_MGR"
+
   return (
     <main
       style={{
@@ -35,7 +38,9 @@ export default function Home() {
         alignItems: "center",
       }}
     >
-      {/* ══ HERO ══════════════════════════════════════════════════════════ */}
+      {/* Feature card hover — CSS-based since this is a server component */}
+      <style>{`.feature-card-active:hover { border-left-color: var(--color-amber) !important; background-color: var(--color-surface-2) !important; }`}</style>
+      {/* ══ HERO ════════════════════════════════════════════════════ */}
       <section
         className="fade-in-up"
         style={{
@@ -133,6 +138,7 @@ export default function Home() {
           >
             Start Training →
           </Link>
+          {showSupervisorButton && (
           <Link
             href="/dashboard/supervisor"
             style={{
@@ -150,6 +156,7 @@ export default function Home() {
           >
             Supervisor Dashboard
           </Link>
+          )}
         </div>
       </section>
 
@@ -168,6 +175,7 @@ export default function Home() {
         {FEATURES.map((f) => (
           <div
             key={f.title}
+            className={f.active ? "feature-card-active" : undefined}
             style={{
               backgroundColor: "var(--color-surface)",
               border: "1px solid var(--color-border)",
@@ -178,16 +186,6 @@ export default function Home() {
               cursor: f.active ? "pointer" : "not-allowed",
               transition: "border-color 0.2s, background-color 0.2s",
               borderLeft: "3px solid transparent",
-            }}
-            onMouseEnter={(e) => {
-              if (f.active) {
-                e.currentTarget.style.borderLeftColor = "var(--color-amber)"
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)"
-              }
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderLeftColor = "transparent"
-              e.currentTarget.style.backgroundColor = "var(--color-surface)"
             }}
           >
             {f.active ? (

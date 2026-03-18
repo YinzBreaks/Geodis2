@@ -13,8 +13,10 @@ import { RFDevice } from "@/components/simulator/RFDevice"
 import { DeviceSelector } from "@/components/simulator/DeviceSelector"
 import { CoachingPanel } from "@/components/simulator/CoachingPanel"
 import { StepProgressBar } from "@/components/simulator/StepProgressBar"
+import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
 import { useSimulation } from "@/hooks/useSimulation"
 import { DifficultyLevel } from "@/types/domain"
+import { getExpectedInputType } from "@/lib/stepKeyMap"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
 import type { SessionResult } from "@/types/domain"
 
@@ -47,6 +49,7 @@ export default function SimPage() {
     persistSession,
     actionCount,
     estimatedTotalSteps,
+    sendAction,
   } = useSimulation()
 
   // Trigger DB persistence as soon as the result is ready (fire-and-forget)
@@ -118,10 +121,11 @@ export default function SimPage() {
 
         {/*
           Layout:
-            BEGINNER      → [CoachingPanel] [RF Device]
-            INTERMEDIATE+ → [RF Device] (coaching panel hidden)
+            BEGINNER      → [CoachingPanel] [RF Device] [WarehouseFloor]
+            INTERMEDIATE+ → [RF Device] [WarehouseFloor]
 
-          Both panels are the same height so the RF device stays centered.
+          WarehouseFloor shows contextual scannable assets.
+          Text input on RFDevice is hidden on scan steps (input type = 'scan').
           On narrow screens the panels stack vertically.
         */}
         <div
@@ -141,6 +145,14 @@ export default function SimPage() {
             />
           )}
           <RFDevice />
+          <div style={{ width: 320, minHeight: 480 }}>
+            <WarehouseFloor
+              session={session}
+              difficulty={session.difficulty}
+              onScan={(barcode) => sendAction({ type: "SCAN", value: barcode })}
+              onConfirm={() => sendAction({ type: "CONFIRM", step: session.currentStep })}
+            />
+          </div>
         </div>
 
         <button

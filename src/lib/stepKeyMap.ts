@@ -47,3 +47,50 @@ const STEP_KEY_MAP: Partial<Record<WorkflowStep, string>> = {
 export function getExpectedKey(step: WorkflowStep): string | undefined {
   return STEP_KEY_MAP[step]
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// INPUT TYPE HELPER — determines if a step needs scan, text, keypress, or none
+// Used by sim/page.tsx to hide/show the text input field.
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Steps where the trainee scans a barcode (via the warehouse floor). */
+const SCAN_STEPS = new Set<WorkflowStep>([
+  WorkflowStep.BC_SCAN_CART_BARCODE,
+  WorkflowStep.BC_SCAN_TOTE_BARCODE,
+  WorkflowStep.BC_SCAN_ZONE_TASK_GROUP,
+  WorkflowStep.PK_SCAN_ITEM_UPC,
+  WorkflowStep.PK_SCAN_TOTE_BARCODE,
+  WorkflowStep.PK_VERIFY_LOCATION,
+])
+
+/** Steps where the trainee types text on the RF Device (menu selections). */
+const TEXT_STEPS = new Set<WorkflowStep>([
+  WorkflowStep.BC_LOGIN_RF,
+  WorkflowStep.BC_SELECT_BBWD,
+  WorkflowStep.BC_SELECT_OUTBOUND,
+  WorkflowStep.BC_SELECT_MAKE_TOTE_CART,
+  WorkflowStep.PK_ENTER_QUANTITY,
+])
+
+/**
+ * Returns the expected input type for a given workflow step.
+ *
+ * - `'scan'`     — trainee clicks a barcode on the warehouse floor (text input hidden)
+ * - `'text'`     — trainee types a value on the RF Device (text input visible)
+ * - `'keypress'` — trainee presses a soft key (CTRL+T, CTRL+A, etc.)
+ * - `'none'`     — physical/confirm action, no text input needed
+ *
+ * @example
+ *   getExpectedInputType(WorkflowStep.PK_SCAN_ITEM_UPC)   // "scan"
+ *   getExpectedInputType(WorkflowStep.BC_SELECT_BBWD)      // "text"
+ *   getExpectedInputType(WorkflowStep.BC_PRESS_CTRL_T)     // "keypress"
+ *   getExpectedInputType(WorkflowStep.PK_TRAVEL_TO_LOCATION) // "none"
+ */
+export function getExpectedInputType(
+  step: WorkflowStep
+): "scan" | "text" | "keypress" | "none" {
+  if (SCAN_STEPS.has(step)) return "scan"
+  if (TEXT_STEPS.has(step)) return "text"
+  if (STEP_KEY_MAP[step] !== undefined) return "keypress"
+  return "none"
+}

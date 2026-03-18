@@ -53,9 +53,20 @@ function serializeReport(report: FloorReadinessReport): SerializedFloorReadiness
 
 export default async function TraineeDashboardPage() {
   // ── Auth check ─────────────────────────────────────────────────────────────
-  const { userId } = await getRoleFromSession()
-  if (!userId) {
+  const { userId, role } = await getRoleFromSession()
+  if (!userId || !role) {
     redirect("/login")
+  }
+
+  // Bug 7: non-trainees who land on /dashboard/trainee must be sent to their
+  // own dashboard. A supervisor logging in should never see "Welcome back, Sam".
+  if (role !== "TRAINEE") {
+    const roleDashboard: Record<string, string> = {
+      SUPERVISOR: "/dashboard/supervisor",
+      PICK_LEAD: "/dashboard/lead",
+      WAREHOUSE_MGR: "/dashboard/manager",
+    }
+    redirect(roleDashboard[role] ?? "/dashboard/supervisor")
   }
 
   // ── Fetch all data for this user in parallel ───────────────────────────────
@@ -103,7 +114,10 @@ export default async function TraineeDashboardPage() {
   }
 
   // ── Build floorReadiness inputs ────────────────────────────────────────────
-  const sessionInputs: SimSessionInput[] = dbSessions.map((s) => ({
+  type DbSession = typeof dbSessions[number]
+  type DbProgress = typeof dbProgress[number]
+
+  const sessionInputs: SimSessionInput[] = dbSessions.map((s: DbSession) => ({
     id: s.id,
     moduleId: s.moduleId,
     difficulty: s.difficulty,
@@ -116,7 +130,7 @@ export default async function TraineeDashboardPage() {
     completedAt: s.completedAt,
   }))
 
-  const progressInputs: ModuleProgressInput[] = dbProgress.map((p) => ({
+  const progressInputs: ModuleProgressInput[] = dbProgress.map((p: DbProgress) => ({
     moduleId: p.moduleId,
     completed: p.completed,
     bestScore: p.bestScore,
@@ -125,7 +139,7 @@ export default async function TraineeDashboardPage() {
   const floorReport = assessFloorReadiness(sessionInputs, progressInputs)
 
   // ── Serialize for client (Date → string) ──────────────────────────────────
-  const serializedSessions: TraineeDashboardSession[] = dbSessions.map((s) => ({
+  const serializedSessions: TraineeDashboardSession[] = dbSessions.map((s: DbSession) => ({
     id: s.id,
     moduleId: s.moduleId,
     difficulty: s.difficulty,

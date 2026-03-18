@@ -127,22 +127,31 @@ export type SoftKeyId = (typeof SOFT_KEY_IDS)[number]
  *
  * Rules from CLAUDE.md §Canonical Domain Vocabulary + §Workflow Reference:
  *   CTRL+T — enabled at BC_PRESS_CTRL_T
- *   CTRL+E — enabled at BC_SCAN_TOTE_BARCODE when all 9 totes scanned
+ *   CTRL+E — enabled at BC_SCAN_TOTE_BARCODE when all 9 totes have been scanned
+ *             (tote.barcode.length > 0 for every slot)
  *   CTRL+A — enabled at PK_END_OF_TOTE_DISPLAY (press to confirm tote complete)
  *   CTRL+W — enabled at EX_PRESS_CTRL_W, EX_INCORRECT_LOCATION, EX_INCORRECT_TOTE
  *   CTRL+K — enabled at EX_PRESS_CTRL_K, EX_INVALID_ITEM_LAST
+ *
+ * Bug 4 fix: CTRL+E previously used `slot > 9` which is never true (slot caps at 9).
+ * Now checks that all 9 totes have non-empty barcodes, which is set by
+ * advanceAfterSuccessfulScan when each tote is scanned.
+ * Bug 4b fix: CTRL+E is also enabled at BC_PRESS_CTRL_E (the finalize screen shown
+ * after slot 9 scan) so the soft key remains active on that screen.
  */
+const MAX_TOTES_PER_CART = 9 // Per BBWD-WI-030 §5.1: always 9 totes per cart
+
 export function getSoftKeyEnabled(
   session: SimulationSession
 ): Record<SoftKeyId, boolean> {
   const step = session.currentStep
-  const slot = session.currentToteSlot
+  const allTotesScanned =
+    session.currentToteSlot > MAX_TOTES_PER_CART ||
+    session.cart.totes.filter((t) => t.barcode.length > 0).length >= MAX_TOTES_PER_CART
 
   return {
     "CTRL+T": step === WorkflowStep.BC_PRESS_CTRL_T,
-    "CTRL+E":
-      step === WorkflowStep.BC_SCAN_TOTE_BARCODE &&
-      slot > 9, // all 9 scanned (slot advanced past 9)
+    "CTRL+E": (step === WorkflowStep.BC_SCAN_TOTE_BARCODE || step === WorkflowStep.BC_PRESS_CTRL_E) && allTotesScanned,
     "CTRL+A": step === WorkflowStep.PK_END_OF_TOTE_DISPLAY,
     "CTRL+W":
       step === WorkflowStep.EX_PRESS_CTRL_W ||

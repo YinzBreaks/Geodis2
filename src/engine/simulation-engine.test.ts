@@ -194,24 +194,34 @@ describe("Build Cart happy path", () => {
     expect(session.cart.isBuilt).toBe(false)
   })
 
-  it("BC_LOGIN_RF → confirm → BC_SELECT_BBWD", () => {
+  it("BC_LOGIN_RF → type User ID → BC_SELECT_BBWD", () => {
     const { session: next, result } = dispatch(session, {
-      type: "CONFIRM",
-      step: WorkflowStep.BC_LOGIN_RF,
+      type: "TYPE",
+      text: "testuser",
     })
     expect(result.success).toBe(true)
     expect(next.currentStep).toBe(WorkflowStep.BC_SELECT_BBWD)
   })
 
+  it("BC_LOGIN_RF rejects empty User ID", () => {
+    const { session: same, result } = dispatch(session, {
+      type: "TYPE",
+      text: "",
+    })
+    expect(result.success).toBe(false)
+    expect(result.feedback).toMatch(/enter your user id/i)
+    expect(same.currentStep).toBe(WorkflowStep.BC_LOGIN_RF)
+  })
+
   it("BC_SELECT_BBWD → type '1' → BC_SELECT_OUTBOUND", () => {
-    let s = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_LOGIN_RF }).session
+    let s = dispatch(session, { type: "TYPE", text: "testuser" }).session
     const { session: next, result } = dispatch(s, { type: "TYPE", text: "1" })
     expect(result.success).toBe(true)
     expect(next.currentStep).toBe(WorkflowStep.BC_SELECT_OUTBOUND)
   })
 
   it("BC_SELECT_OUTBOUND → type '2' → BC_PRESS_CTRL_T", () => {
-    let s = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_LOGIN_RF }).session
+    let s = dispatch(session, { type: "TYPE", text: "testuser" }).session
     s = dispatch(s, { type: "TYPE", text: "1" }).session
     const { session: next, result } = dispatch(s, { type: "TYPE", text: "2" })
     expect(result.success).toBe(true)
@@ -219,7 +229,7 @@ describe("Build Cart happy path", () => {
   })
 
   it("navigates through CTRL+T → task group confirm → zone scan", () => {
-    let s = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_LOGIN_RF }).session
+    let s = dispatch(session, { type: "TYPE", text: "testuser" }).session
     s = dispatch(s, { type: "TYPE", text: "1" }).session
     s = dispatch(s, { type: "TYPE", text: "2" }).session
     s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+T" }).session
@@ -230,7 +240,7 @@ describe("Build Cart happy path", () => {
   })
 
   it("zone scan → BC_SELECT_MAKE_TOTE_CART", () => {
-    let s = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_LOGIN_RF }).session
+    let s = dispatch(session, { type: "TYPE", text: "testuser" }).session
     s = dispatch(s, { type: "TYPE", text: "1" }).session
     s = dispatch(s, { type: "TYPE", text: "2" }).session
     s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+T" }).session
@@ -270,8 +280,10 @@ describe("Build Cart happy path", () => {
         // After slots 1–8: advance to next slot placement
         expect(s.currentStep).toBe(WorkflowStep.BC_PLACE_TOTE_IN_SLOT)
       } else {
-        // After slot 9: stay at BC_SCAN_TOTE_BARCODE, waiting for CTRL+E
-        expect(s.currentStep).toBe(WorkflowStep.BC_SCAN_TOTE_BARCODE)
+        // After slot 9: advance to BC_PRESS_CTRL_E finalize screen
+        // Per FIX 1: slot 9 scan now moves to finalize screen rather than
+        // staying at BC_SCAN_TOTE_BARCODE.
+        expect(s.currentStep).toBe(WorkflowStep.BC_PRESS_CTRL_E)
       }
     }
 
@@ -581,8 +593,8 @@ describe("Wrong item scan returns WRONG_ITEM and does not advance state", () => 
   })
 })
 
-describe("Wrong tote scan returns WRONG_TOTE and does not advance state", () => {
-  it("wrong tote barcode at PK_SCAN_TOTE_BARCODE → WRONG_TOTE, logs error", () => {
+describe("Tote scan validation at PK_SCAN_TOTE_BARCODE and BC_SCAN_TOTE_BARCODE", () => {
+  it("non-empty tote barcode at PK_SCAN_TOTE_BARCODE → SUCCESS (sim accepts any scan)", () => {
     const task = makePickTask()
     let s = makePickPhaseSession([task])
     s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_READ_PICK_DISPLAY }).session
@@ -601,16 +613,13 @@ describe("Wrong tote scan returns WRONG_TOTE and does not advance state", () => 
       value: "WRONG-TOTE-BARCODE",
     })
 
-    expect(result.success).toBe(false)
-    expect(result.scanResult).toBe(ScanResult.WRONG_TOTE)
-    // Does not advance to End Of Tote or next pick
-    expect(afterError.currentStep).not.toBe(WorkflowStep.PK_END_OF_TOTE_DISPLAY)
-    expect(afterError.currentStep).not.toBe(WorkflowStep.PK_READ_PICK_DISPLAY)
-    expect(afterError.errors).toHaveLength(1)
-    expect(afterError.errors[0].errorType).toBe(ScanResult.WRONG_TOTE)
+    // Sim accepts any non-empty tote scan — training teaches scanning motion, not barcode memorisation
+    expect(result.success).toBe(true)
+    expect(result.scanResult).toBe(ScanResult.SUCCESS)
+    expect(afterError.errors).toHaveLength(0)
   })
 
-  it("wrong tote scan is logged with WRONG_TOTE result", () => {
+  it("empty tote scan value at PK_SCAN_TOTE_BARCODE → WRONG_TOTE", () => {
     const task = makePickTask()
     let s = makePickPhaseSession([task])
     s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_READ_PICK_DISPLAY }).session
@@ -622,20 +631,19 @@ describe("Wrong tote scan returns WRONG_TOTE and does not advance state", () => 
     s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_PLACE_IN_TOTE }).session
     s = dispatch(s, { type: "TYPE", text: "1" }).session
 
-    const { session: afterError } = dispatch(s, {
+    // Empty scan is rejected — the simulator blocks empty dispatches in the UI,
+    // but the engine itself should also return WRONG_TOTE for an empty barcode.
+    const { session: afterEmpty, result: emptyResult } = dispatch(s, {
       type: "SCAN",
-      value: "WRONG-TOTE-BARCODE",
+      value: "",
     })
-
-    const toteScanEvent = afterError.scanEvents.find(
-      (e) => e.step === WorkflowStep.PK_SCAN_TOTE_BARCODE
-    )
-    expect(toteScanEvent).toBeDefined()
-    expect(toteScanEvent?.result).toBe(ScanResult.WRONG_TOTE)
-    expect(toteScanEvent?.scannedValue).toBe("WRONG-TOTE-BARCODE")
+    expect(emptyResult.success).toBe(false)
+    expect(emptyResult.scanResult).toBe(ScanResult.WRONG_TOTE)
+    // Engine routes to EX_INCORRECT_TOTE on a WRONG_TOTE scan (per §6.4)
+    expect(afterEmpty.currentStep).toBe(WorkflowStep.EX_INCORRECT_TOTE)
   })
 
-  it("wrong tote scan at BC_SCAN_TOTE_BARCODE → WRONG_TOTE", () => {
+  it("non-empty tote barcode at BC_SCAN_TOTE_BARCODE → SUCCESS (sim accepts any scan)", () => {
     const session = startSessionWithTasks("user-test", makeScenario(), [], makeCart())
     let s = advanceThroughBuildCartMenus(session)
     s = dispatch(s, { type: "SCAN", value: s.cart.cartBarcode }).session
@@ -643,10 +651,10 @@ describe("Wrong tote scan returns WRONG_TOTE and does not advance state", () => 
 
     expect(s.currentStep).toBe(WorkflowStep.BC_SCAN_TOTE_BARCODE)
 
-    // Scan wrong tote barcode (expected barcode is s.cart.totes[0].barcode for slot 1)
+    // Any non-empty tote barcode is accepted at BC_SCAN_TOTE_BARCODE — sim teaches the scanning motion
     const { result } = dispatch(s, { type: "SCAN", value: "WRONG-TOTE-000" })
-    expect(result.success).toBe(false)
-    expect(result.scanResult).toBe(ScanResult.WRONG_TOTE)
+    expect(result.success).toBe(true)
+    expect(result.scanResult).toBe(ScanResult.SUCCESS)
   })
 })
 
@@ -692,11 +700,11 @@ describe("getCurrentScreen output", () => {
     expect(locationLine?.value).toBe(task.location.displayLabel)
   })
 
-  it("BC_LOGIN_RF screen has text input type", () => {
+  it("BC_LOGIN_RF screen has NUMERIC input type (renders text input via TYPE mode)", () => {
     const session = startSessionWithTasks("u", makeScenario(), [], makeCart())
     const screen = getCurrentScreen(session)
     expect(screen.workflowStep).toBe(WorkflowStep.BC_LOGIN_RF)
-    expect(screen.inputType).toBe("TEXT")
+    expect(screen.inputType).toBe("NUMERIC")
   })
 })
 
@@ -1255,7 +1263,7 @@ function advanceThroughBuildCartMenus(
   session: SimulationSession
 ): SimulationSession {
   let s = session
-  s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_LOGIN_RF }).session
+  s = dispatch(s, { type: "TYPE", text: "testuser" }).session // BC_LOGIN_RF
   s = dispatch(s, { type: "TYPE", text: "1" }).session // BC_SELECT_BBWD
   s = dispatch(s, { type: "TYPE", text: "2" }).session // BC_SELECT_OUTBOUND
   s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+T" }).session
@@ -1286,3 +1294,72 @@ function runThroughOnePick(
   s = dispatch(s, { type: "SCAN", value: s.cart.totes[task.targetSlot - 1].barcode }).session
   return s
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PICK COUNTER TESTS — Bug 6 regression coverage
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("Pick counter advancement", () => {
+  it("advances currentPickIndex after completing a successful pick", () => {
+    const task = makePickTask({ targetSlot: 1 })
+    let s = makePickPhaseSession([task, makePickTask({ targetSlot: 2 })])
+    expect(s.currentPickIndex).toBe(0)
+    s = runThroughOnePick(s, task)
+    // After a full pick cycle the index should have moved to 1
+    expect(s.currentPickIndex).toBe(1)
+  })
+
+  it("advances currentPickIndex after CTRL+K skip on ITEM_NOT_FOUND (§6.6)", () => {
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+    // Fast-forward to the point just before CTRL+K: EX_PRESS_CTRL_K with active ITEM_NOT_FOUND
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 15,
+    }
+    s = dispatch(s, { type: "SCAN", value: pickQueue[15].item.upcBarcode }, scenario).session
+    // Injection fires → EX_SHORT_INVENTORY
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.EX_SHORT_INVENTORY }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.EX_NOTIFY_LEAD }).session
+    expect(s.currentStep).toBe(WorkflowStep.EX_PRESS_CTRL_K)
+
+    const pickIndexBefore = s.currentPickIndex
+
+    // CTRL+K should skip the pick and advance the counter
+    s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" }).session
+    expect(s.currentStep).toBe(WorkflowStep.PK_READ_PICK_DISPLAY)
+    expect(s.currentPickIndex).toBe(pickIndexBefore + 1)
+    expect(s.errors[0].corrected).toBe(true)
+  })
+
+  it("advances currentPickIndex after CTRL+K skip on WRONG_ITEM last-at-location (§6.5.1)", () => {
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_20_PICKS
+    const base = startSessionWithTasks("user-test", scenario, pickQueue, {
+      ...cart,
+      isBuilt: true,
+    })
+    let s: SimulationSession = {
+      ...base,
+      currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      currentPickIndex: 7,
+    }
+    // Trigger WRONG_ITEM injection (pick 7 in Z1_20_PICKS)
+    s = dispatch(s, { type: "SCAN", value: pickQueue[7].item.upcBarcode }, scenario).session
+    expect(s.currentStep).toBe(WorkflowStep.EX_INVALID_ITEM_LAST)
+
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.EX_INVALID_ITEM_LAST }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.EX_NOTIFY_LEAD }).session
+    expect(s.currentStep).toBe(WorkflowStep.EX_PRESS_CTRL_K)
+
+    const pickIndexBefore = s.currentPickIndex
+
+    // CTRL+K on WRONG_ITEM → PK_PLACE_TOTE_ON_CONVEYOR and index advances
+    s = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+K" }).session
+    expect(s.currentStep).toBe(WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR)
+    expect(s.currentPickIndex).toBe(pickIndexBefore + 1)
+  })
+})

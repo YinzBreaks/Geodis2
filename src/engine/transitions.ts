@@ -39,6 +39,18 @@ type Guard = (
 const alwaysAllow: Guard = () => null
 
 /**
+ * BC_LOGIN_RF requires a non-empty User ID to be typed.
+ * Any non-empty value advances — we are training the habit, not validating real creds.
+ * Per BBWD-WI-030 §5.1.5
+ */
+const guardNonEmptyLogin: Guard = (_session, action) => {
+  if (action.type === "TYPE" && !action.text.trim()) {
+    return "Please enter your User ID"
+  }
+  return null
+}
+
+/**
  * CTRL+E is only valid when all 9 tote slots have been scanned.
  * Per SIMULATION.md §Sequence Enforcement and BBWD-WI-030 §5.1.15
  */
@@ -121,12 +133,13 @@ export const TRANSITIONS: Readonly<
 > = {
   // ── BUILD CART PHASE ─────────────────────────────────────────────────────
 
-  // Per BBWD-WI-030 §5.1.5 — log into RF Device
+  // Per BBWD-WI-030 §5.1.5 — type User ID into RF Device login screen
+  // Any non-empty string advances — teaches login habit without validating real creds.
   [WorkflowStep.BC_LOGIN_RF]: [
     {
-      actionType: "CONFIRM",
+      actionType: "TYPE",
       nextStep: WorkflowStep.BC_SELECT_BBWD,
-      guard: alwaysAllow,
+      guard: guardNonEmptyLogin,
     },
   ],
 
@@ -228,7 +241,15 @@ export const TRANSITIONS: Readonly<
   ],
 
   // Per BBWD-WI-030 §5.1.15 — CTRL+E finalizes cart; transitions to Pick Phase
+  // KEY_PRESS CTRL+E: soft key dispatched from BC_PRESS_CTRL_E finalize screen
+  // CONFIRM: fallback for screen-level Continue button
   [WorkflowStep.BC_PRESS_CTRL_E]: [
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+E",
+      nextStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+      guard: alwaysAllow,
+    },
     {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_READ_PICK_DISPLAY,

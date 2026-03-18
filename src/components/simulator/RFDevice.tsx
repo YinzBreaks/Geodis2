@@ -21,14 +21,19 @@ import {
   useSimulation,
   getInputMode,
   getEnterKeyAction,
+  getSoftKeyEnabled,
   selectScreen,
   selectIsComplete,
 } from "@/hooks/useSimulation"
 import { getExpectedKey } from "@/lib/stepKeyMap"
+import { getExpectedInputType } from "@/lib/stepKeyMap"
 
 export function RFDevice() {
   const { session, result, sendAction, activeDeviceModelId, coaching, lastActionResult } = useSimulation()
   const [inputValue, setInputValue] = useState("")
+  // Bug 5: track inline input errors (empty scan guard) without incrementing
+  // session.errors or triggering error injection
+  const [inputError, setInputError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Derive visual config from the active device model.
@@ -53,6 +58,18 @@ export function RFDevice() {
 
     const rfScreen = selectScreen(session)
     const mode = getInputMode(session.currentStep, rfScreen.inputType)
+
+    // Bug 5: guard empty input — do not dispatch SCAN/TYPE with blank value.
+    // Empty scans would increment session.errors and corrupt the score.
+    if ((mode === "SCAN" || mode === "TYPE") && !inputValue.trim()) {
+      setInputError(
+        mode === "SCAN"
+          ? "Please scan or enter a barcode first"
+          : "Please enter a value first"
+      )
+      return
+    }
+    setInputError(null)
 
     if (mode === "SCAN") {
       sendAction({ type: "SCAN", value: inputValue })
@@ -84,6 +101,8 @@ export function RFDevice() {
     (e: React.KeyboardEvent<HTMLInputElement>) => {
       if (e.key === "Enter") {
         e.preventDefault()
+        // Clear any inline input error on Enter so user gets fresh feedback
+        setInputError(null)
         handleSubmit()
       }
     },
@@ -97,6 +116,10 @@ export function RFDevice() {
   const isComplete = selectIsComplete(session)
   const showFeedback = result && !result.success && result.feedback
   const isAndroid = device.uiStyle === "android"
+
+  // Bug 4: derive per-key enabled state from engine for the current step.
+  // CTRL+E, ^A, ^T, ^W, ^K are all gated — only the valid key pulses and is clickable.
+  const softKeyEnabled = getSoftKeyEnabled(session)
 
   // Animation classes driven by lastActionResult
   const animClass =
@@ -154,8 +177,25 @@ export function RFDevice() {
         />
       </div>
 
-      {/* Feedback strip */}
+      {/* Feedback strip — shows engine error feedback OR inline input error */}
       <div className="min-h-[28px]">
+        {/* Inline input validation error (Bug 5) — does NOT increment error counter */}
+        {inputError && !showFeedback && (
+          <div
+            className="rounded px-2 py-1 text-xs font-mono"
+            style={{
+              backgroundColor: isModern ? "rgba(240, 165, 0, 0.1)" : isAndroid ? "#fffbeb" : "#1c1000",
+              border: isModern
+                ? "1px solid var(--color-amber)"
+                : `1px solid ${isAndroid ? "#fcd34d" : "#78350f"}`,
+              color: isModern ? "var(--color-amber)" : isAndroid ? "#b45309" : "#fcd34d",
+              fontFamily: sc.fontFamily,
+            }}
+          >
+            {inputError}
+          </div>
+        )}
+        {/* Engine error feedback */}
         {showFeedback && (
           <div
             className="rounded px-2 py-1 text-xs font-mono"
@@ -171,7 +211,7 @@ export function RFDevice() {
             {result.feedback}
           </div>
         )}
-        {result?.success && !showFeedback && (
+        {result?.success && !showFeedback && !inputError && (
           <div
             className="text-[10px] font-mono text-center"
             style={{ color: isModern ? "var(--color-success)" : isAndroid ? "#16a34a" : "#15803d" }}
@@ -182,9 +222,42 @@ export function RFDevice() {
       </div>
 
       {/* Input area */}
-      {!isComplete && (
-        <>
-          {inputMode !== "CONFIRM" ? (
+      {!isComplete && (() => {
+        const expectedInput = getExpectedInputType(session.currentStep)
+        // On scan steps, hide the text input — user scans via warehouse floor
+        if (expectedInput === "scan") {
+          return (
+            <button
+              type="button"
+              onClick={() => {
+                const el = document.getElementById("warehouse-floor")
+                if (!el) return
+                el.scrollIntoView({ behavior: "smooth", block: "nearest" })
+                el.classList.add("floor-flash")
+                setTimeout(() => el.classList.remove("floor-flash"), 900)
+              }}
+              className="text-[10px] font-mono text-center py-2 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
+              style={{
+                backgroundColor: isModern ? "var(--color-surface)" : isAndroid ? "#f8fafc" : "#18181b",
+                color: isModern ? "var(--color-amber)" : isAndroid ? "#b45309" : "#fcd34d",
+                border: `1px dashed ${isModern ? "var(--color-amber)" : isAndroid ? "#fcd34d" : "#713f12"}`,
+                minHeight: touchTarget,
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                cursor: "pointer",
+              }}
+            >
+              ↙ Scan on Warehouse Floor
+            </button>
+          )
+        }
+        // On keypress steps, the soft key bar handles it — no input shown
+        if (expectedInput === "keypress") {
+          return null
+        }
+        // Text input for TYPE steps, Continue button for CONFIRM/none steps
+        return inputMode !== "CONFIRM" ? (
             <div className="flex gap-2">
               <input
                 ref={inputRef}
@@ -235,16 +308,16 @@ export function RFDevice() {
                 Continue
               </button>
             )
-          )}
-        </>
-      )}
+          )
+      })()}
 
-      {/* Soft key row — highlightKey pulses on key-only steps */}
+      {/* Soft key row — highlightKey pulses on key-only steps; enabledKeys dims invalid keys */}
       <SoftKeyBar
         onKey={handleSoftKey}
         disabled={isComplete}
         uiStyle={device.uiStyle}
         highlightKey={session ? getExpectedKey(session.currentStep) : undefined}
+        enabledKeys={softKeyEnabled}
       />
 
       {/* Step indicator (training aid) */}
