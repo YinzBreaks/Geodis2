@@ -60,6 +60,8 @@ interface Props {
   displayRows?: number
   /** Width of the emulator in pixels. Defaults to TERMINAL_COLS * ch when omitted. */
   emulatorWidthPx?: number
+  /** Override the default "8px 10px" padding. Pass "0" or "4px 6px" for tight overlays. */
+  padding?: string
 }
 
 export function RFDeviceDisplay({
@@ -71,6 +73,7 @@ export function RFDeviceDisplay({
   stepName,
   displayRows,
   emulatorWidthPx,
+  padding,
 }: Props) {
   const cfg = screenConfig ?? TERMINAL_DEFAULTS
 
@@ -100,7 +103,7 @@ export function RFDeviceDisplay({
         fontFamily: cfg.fontFamily,
         fontSize: cfg.fontSize ?? "13px",
         lineHeight: cfg.lineHeight ?? "1.4",
-        padding: "8px 10px",
+        padding: padding ?? "8px 10px",
         width: emulatorWidthPx ? `${emulatorWidthPx}px` : `${TERMINAL_COLS}ch`,
         maxWidth: "100%",
         overflowX: "hidden",
