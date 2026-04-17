@@ -32,16 +32,17 @@ import type { CoachingState } from "@/types/coaching"
 import { selectScreen } from "@/hooks/useSimulation"
 
 // ─── DEBUG: set true to render hotspot outlines for calibration ───────────────
-const DEBUG_OVERLAY = false
+const DEBUG_OVERLAY = true
 
 // ─── Screen overlay calibration constants ────────────────────────────────────
-// Percentages relative to the scanner.png image dimensions.
-// Tweak these to align the overlay with the physical LCD in the photo.
+// Measured from scanner.png at 1270×999px.
+// left/top = distance from image top-left corner to LCD top-left corner.
+// width/height = LCD area size. Tweak until text fills the screen exactly.
 const SCREEN = {
-  left:   "17.5%",
-  top:    "18.0%",
-  width:  "38.5%",
-  height: "38.0%",
+  left:   "20.5%",
+  top:    "17.0%",
+  width:  "34.5%",
+  height: "41.0%",
 }
 
 // ─── Key hotspot type ─────────────────────────────────────────────────────────
@@ -84,63 +85,47 @@ interface KeyHotspot {
 // cx/cy are center-points; w/h are button dimensions. All as image-percentage.
 const KEY_MAP: KeyHotspot[] = [
   // ── Left modifier column ────────────────────────────────────────────────────
-  // ESC → fires CTRL+W (back)
-  { id: "ESC",      label: "ESC",       cx: "13.0%", cy: "23.0%", w: "7.5%", h: "5.0%", ctrlKey: "CTRL+W" },
-  // Back / Forward navigation arrows
-  { id: "BACK_FWD", label: "← →",       cx: "13.0%", cy: "29.5%", w: "7.5%", h: "4.5%" },
-  // MENU/TAB
-  { id: "MENU_TAB", label: "MENU/TAB",  cx: "13.0%", cy: "36.0%", w: "7.5%", h: "5.0%", action: "TAB" },
-  // ALT/CTRL — toggles ctrlActive mode
-  { id: "ALT_CTRL", label: "ALT/CTRL",  cx: "13.0%", cy: "43.5%", w: "7.5%", h: "5.5%", action: "CTRL_TOGGLE" },
-  // SHIFT — toggles shiftActive mode
-  { id: "SHIFT",    label: "SHIFT",     cx: "13.0%", cy: "52.0%", w: "7.5%", h: "5.5%", action: "SHIFT_TOGGLE" },
-  // Blue scan trigger button (large thumb button)
-  { id: "BLUE_SCAN",label: "SCAN",      cx: "11.0%", cy: "61.0%", w: "8.0%", h: "7.0%", action: "SCAN_TRIGGER" },
+  { id: "ESC",      label: "ESC",      cx: "15.0%", cy: "22.5%", w: "7.0%", h: "5.0%", ctrlKey: "CTRL+W" },
+  { id: "BACK_FWD", label: "← →",      cx: "15.0%", cy: "28.5%", w: "7.0%", h: "4.5%" },
+  { id: "MENU_TAB", label: "MENU/TAB", cx: "15.0%", cy: "34.5%", w: "7.0%", h: "5.0%", action: "TAB" },
+  { id: "ALT_CTRL", label: "ALT/CTRL", cx: "15.0%", cy: "40.5%", w: "7.0%", h: "5.5%", action: "CTRL_TOGGLE" },
+  { id: "SHIFT",    label: "SHIFT",    cx: "15.0%", cy: "47.5%", w: "7.0%", h: "5.5%", action: "SHIFT_TOGGLE" },
+  { id: "BLUE_SCAN",label: "SCAN",     cx: "13.0%", cy: "55.5%", w: "8.0%", h: "7.0%", action: "SCAN_TRIGGER" },
 
-  // ── Keyboard row 1: F1/1/AB — F2/2/CD — F3/3/EF ────────────────────────────
-  // A/B key → primary "1", shift "A", ctrl = CTRL+A
-  { id: "K1", label: "1/AB", cx: "61.5%", cy: "23.5%", w: "7.5%", h: "7.0%", primary: "1", shiftChar: "A", ctrlKey: "CTRL+A" },
-  // C/D key → primary "2", shift "C"
-  { id: "K2", label: "2/CD", cx: "73.0%", cy: "23.5%", w: "7.5%", h: "7.0%", primary: "2", shiftChar: "C" },
-  // E/F key → primary "3", shift "E", ctrl = CTRL+E
-  { id: "K3", label: "3/EF", cx: "84.5%", cy: "23.5%", w: "7.5%", h: "7.0%", primary: "3", shiftChar: "E", ctrlKey: "CTRL+E" },
+  // ── Keyboard row 1: 1/AB — 2/CD — 3/EF ────────────────────────────────────
+  { id: "K1", label: "1/AB", cx: "66.5%", cy: "22.0%", w: "6.0%", h: "6.5%", primary: "1", shiftChar: "A", ctrlKey: "CTRL+A" },
+  { id: "K2", label: "2/CD", cx: "76.0%", cy: "22.0%", w: "6.0%", h: "6.5%", primary: "2", shiftChar: "C" },
+  { id: "K3", label: "3/EF", cx: "85.5%", cy: "22.0%", w: "6.0%", h: "6.5%", primary: "3", shiftChar: "E", ctrlKey: "CTRL+E" },
 
-  // ── Keyboard row 2: F4/4/GH — F5/5/IJ — F6/6/KL ────────────────────────────
-  { id: "K4", label: "4/GH", cx: "61.5%", cy: "33.0%", w: "7.5%", h: "7.0%", primary: "4", shiftChar: "G" },
-  { id: "K5", label: "5/IJ", cx: "73.0%", cy: "33.0%", w: "7.5%", h: "7.0%", primary: "5", shiftChar: "I" },
-  // K/L key → ctrl = CTRL+K
-  { id: "K6", label: "6/KL", cx: "84.5%", cy: "33.0%", w: "7.5%", h: "7.0%", primary: "6", shiftChar: "K", ctrlKey: "CTRL+K" },
+  // ── Keyboard row 2: 4/GH — 5/IJ — 6/KL ────────────────────────────────────
+  { id: "K4", label: "4/GH", cx: "66.5%", cy: "30.5%", w: "6.0%", h: "6.5%", primary: "4", shiftChar: "G" },
+  { id: "K5", label: "5/IJ", cx: "76.0%", cy: "30.5%", w: "6.0%", h: "6.5%", primary: "5", shiftChar: "I" },
+  { id: "K6", label: "6/KL", cx: "85.5%", cy: "30.5%", w: "6.0%", h: "6.5%", primary: "6", shiftChar: "K", ctrlKey: "CTRL+K" },
 
-  // ── Keyboard row 3: F7/7/MN — F8/8/OP — F9/9/QR ────────────────────────────
-  { id: "K7", label: "7/MN", cx: "61.5%", cy: "43.0%", w: "7.5%", h: "7.0%", primary: "7", shiftChar: "M" },
-  { id: "K8", label: "8/OP", cx: "73.0%", cy: "43.0%", w: "7.5%", h: "7.0%", primary: "8", shiftChar: "O" },
-  { id: "K9", label: "9/QR", cx: "84.5%", cy: "43.0%", w: "7.5%", h: "7.0%", primary: "9", shiftChar: "Q" },
+  // ── Keyboard row 3: 7/MN — 8/OP — 9/QR ────────────────────────────────────
+  { id: "K7", label: "7/MN", cx: "66.5%", cy: "39.0%", w: "6.0%", h: "6.5%", primary: "7", shiftChar: "M" },
+  { id: "K8", label: "8/OP", cx: "76.0%", cy: "39.0%", w: "6.0%", h: "6.5%", primary: "8", shiftChar: "O" },
+  { id: "K9", label: "9/QR", cx: "85.5%", cy: "39.0%", w: "6.0%", h: "6.5%", primary: "9", shiftChar: "Q" },
 
-  // ── Keyboard row 4: S/T — U/V — W/X ─────────────────────────────────────────
-  // S/T → shift sends "T"; ctrl = CTRL+T
-  { id: "KST", label: "S/T", cx: "61.5%", cy: "52.0%", w: "7.5%", h: "6.5%", primary: "S", shiftChar: "T", ctrlKey: "CTRL+T" },
-  { id: "KUV", label: "U/V", cx: "73.0%", cy: "52.0%", w: "7.5%", h: "6.5%", primary: "U", shiftChar: "V" },
-  // W/X → ctrl = CTRL+W
-  { id: "KWX", label: "W/X", cx: "84.5%", cy: "52.0%", w: "7.5%", h: "6.5%", primary: "W", shiftChar: "X", ctrlKey: "CTRL+W" },
+  // ── Keyboard row 4: S/T — U/V — W/X ────────────────────────────────────────
+  { id: "KST", label: "S/T", cx: "66.5%", cy: "45.5%", w: "6.0%", h: "6.0%", primary: "S", shiftChar: "T", ctrlKey: "CTRL+T" },
+  { id: "KUV", label: "U/V", cx: "76.0%", cy: "45.5%", w: "6.0%", h: "6.0%", primary: "U", shiftChar: "V" },
+  { id: "KWX", label: "W/X", cx: "85.5%", cy: "45.5%", w: "6.0%", h: "6.0%", primary: "W", shiftChar: "X", ctrlKey: "CTRL+W" },
 
-  // ── Keyboard row 5: BK5P/backspace — F10/0 — </^ arrows ─────────────────────
-  { id: "KBSP", label: "BK5P", cx: "61.5%", cy: "60.5%", w: "7.5%", h: "6.0%", action: "BACKSPACE" },
-  { id: "K0",   label: "0",    cx: "73.0%", cy: "60.5%", w: "7.5%", h: "6.0%", primary: "0" },
-  // Arrow keys — no character mapping
-  { id: "KARR", label: "< ^",  cx: "84.5%", cy: "60.5%", w: "7.5%", h: "6.0%" },
+  // ── Keyboard row 5: BK5P — 0 — arrows ──────────────────────────────────────
+  { id: "KBSP", label: "BK5P", cx: "66.5%", cy: "51.5%", w: "6.0%", h: "6.0%", action: "BACKSPACE" },
+  { id: "K0",   label: "0",    cx: "76.0%", cy: "51.5%", w: "6.0%", h: "6.0%", primary: "0" },
+  { id: "KARR", label: "< ^",  cx: "85.5%", cy: "51.5%", w: "6.0%", h: "6.0%" },
 
-  // ── Large thumb buttons + Y/Z row ────────────────────────────────────────────
-  // Left orange-ring thumb button (no standard action assigned yet)
-  { id: "THUMB_L", label: "Thumb L", cx: "63.0%", cy: "67.0%", w: "8.5%", h: "7.5%" },
-  // Right dark thumb button
-  { id: "THUMB_R", label: "Thumb R", cx: "74.0%", cy: "67.0%", w: "8.5%", h: "7.5%" },
-  // Y/Z key (far right, vertically centered between rows 5 and 6)
-  { id: "KYZ", label: "Y/Z", cx: "84.5%", cy: "66.0%", w: "7.5%", h: "6.5%", primary: "Y", shiftChar: "Z" },
+  // ── Large thumb buttons + Y/Z ────────────────────────────────────────────────
+  { id: "THUMB_L", label: "Thumb L", cx: "67.5%", cy: "57.5%", w: "8.0%", h: "7.0%" },
+  { id: "THUMB_R", label: "Thumb R", cx: "77.0%", cy: "57.5%", w: "8.0%", h: "7.0%" },
+  { id: "KYZ",    label: "Y/Z",     cx: "88.5%", cy: "55.5%", w: "6.0%", h: "6.0%", primary: "Y", shiftChar: "Z" },
 
-  // ── Bottom row: P1 — P2 — ENTER ──────────────────────────────────────────────
-  { id: "P1",    label: "P1",    cx: "40.0%", cy: "74.5%", w: "10%",  h: "5.5%", action: "P1" },
-  { id: "P2",    label: "P2",    cx: "51.5%", cy: "74.5%", w: "10%",  h: "5.5%", action: "P2" },
-  { id: "ENTER", label: "ENTER", cx: "64.5%", cy: "74.5%", w: "13%",  h: "5.5%", action: "ENTER" },
+  // ── Bottom row: P1 — P2 — ENTER ─────────────────────────────────────────────
+  { id: "P1",    label: "P1",    cx: "38.0%", cy: "64.0%", w: "9.5%",  h: "5.5%", action: "P1" },
+  { id: "P2",    label: "P2",    cx: "48.5%", cy: "64.0%", w: "9.5%",  h: "5.5%", action: "P2" },
+  { id: "ENTER", label: "ENTER", cx: "61.0%", cy: "64.0%", w: "14.0%", h: "5.5%", action: "ENTER" },
 ]
 
 // Keys that have a CTRL combo mapped — lit blue in ctrlActive mode
@@ -296,24 +281,37 @@ export function WT4000PhotoShell({
         {/* ── Screen overlay — positioned over the LCD area in the photo ─────── */}
         <div
           style={{
-            position:   "absolute",
-            left:       SCREEN.left,
-            top:        SCREEN.top,
-            width:      SCREEN.width,
-            height:     SCREEN.height,
-            overflow:   "hidden",
-            // Faint border visible during calibration; invisible in production
-            outline:    DEBUG_OVERLAY ? "2px solid lime" : undefined,
+            position:        "absolute",
+            left:            SCREEN.left,
+            top:             SCREEN.top,
+            width:           SCREEN.width,
+            height:          SCREEN.height,
+            overflow:        "hidden",
+            backgroundColor: "#000000",
+            // Lime outline in debug mode so you can see the boundary
+            outline:         DEBUG_OVERLAY ? "2px solid lime" : undefined,
           }}
         >
-          <RFDeviceDisplay
-            screen={rfScreen}
-            inputValue={inputValue}
-            screenConfig={sc}
-            highlightLine={coaching.content?.highlightLine}
-            renderMode="terminal"
-            stepName={session.currentStep.replace(/_/g, " ")}
-          />
+          {/* Scale font so 20 chars fill the overlay width.
+              The overlay is ~34.5% of max 640px = ~220px wide.
+              20 chars × (char_width) = 220px → char_width ≈ 11px at ratio 0.6 → fontSize ≈ 10px.
+              We use a CSS var driven by container query instead so it
+              scales automatically as the photo scales. */}
+          <div style={{ width: "100%", height: "100%", fontSize: "clamp(6px, 1.55vw, 10px)" }}>
+            <RFDeviceDisplay
+              screen={rfScreen}
+              inputValue={inputValue}
+              screenConfig={{
+                ...sc,
+                // Override font size so text scales with the overlay
+                fontSize: "1em",
+                lineHeight: "1.35",
+              }}
+              highlightLine={coaching.content?.highlightLine}
+              renderMode="terminal"
+              stepName={session.currentStep.replace(/_/g, " ")}
+            />
+          </div>
           <CoachingTooltip
             highlightLine={coaching.content?.highlightLine}
             screenLineCount={rfScreen.lines.length}
