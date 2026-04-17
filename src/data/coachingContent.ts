@@ -25,6 +25,41 @@ import type { CoachingContent } from "@/types/coaching"
  */
 export const COACHING_CONTENT: Partial<Record<WorkflowStep, CoachingContent>> =
   {
+    // ── BUILD CART — PRE-LOGIN PHYSICAL STEPS ───────────────────────────────
+    // Per BBWD-WI-030 §5.1.1–5.1.4 — steps before the RF Device is touched
+
+    [WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER]: {
+      action: "Walk to the Command Center to meet your Tasker or CSR",
+      sopContext:
+        "§5.1.1 — Every shift starts at the Command Center. The Tasker (or CSR) is the supervisor on duty who assigns your zone, tells you how many totes to grab, and gives you any special instructions for the day. Do not start picking until you have spoken to them.",
+      fieldDef:
+        "Command Center = the main supervisor station on the warehouse floor, usually near the center of the pick zone. Ask any team member if you are not sure where it is.",
+    },
+
+    [WorkflowStep.BC_RECEIVE_TOTE_COUNT]: {
+      action: "Ask the Tasker how many totes to load on your cart",
+      sopContext:
+        "§5.1.2 — The Tasker tells you the exact number of totes to load for your zone and task group. Loading the wrong number wastes time and causes scan errors. The standard is 9 totes per cart — confirm any deviation with your Lead.",
+      fieldDef:
+        "Tote count = the number of empty pick totes you will load onto the cart before logging in. The system tracks each tote barcode, so you must scan exactly the number the Tasker specifies.",
+    },
+
+    [WorkflowStep.BC_OBTAIN_CART]: {
+      action: "Collect a Pick Cart and load the correct number of empty totes onto it",
+      sopContext:
+        "§5.1.3 — Pick Carts are stored at the cart staging area near the Command Center. Choose any available cart that is clean and free of items from a previous round. The cart barcode label is on the handle or frame.",
+      fieldDef:
+        "Pick Cart = the wheeled cart you push through the warehouse. It has 9 numbered slots (1–9) for totes. The cart has a scannable barcode used to register it in the WMS.",
+    },
+
+    [WorkflowStep.BC_LOAD_TOTES]: {
+      action: "Place empty pick totes onto the cart slots — one tote per slot",
+      sopContext:
+        "§5.1.4 — Load one tote per slot. Totes must be stable — do not stack or lean them. You will scan each tote barcode into the matching slot number during the Build Cart step. Get totes from the tote supply rack near the Command Center.",
+      fieldDef:
+        "Tote = a barcoded plastic container that holds picked items. Each tote goes into one numbered slot on the cart. You will scan it into that slot using the RF Device in the next step.",
+    },
+
     // ── BUILD CART — LOGIN ───────────────────────────────────────────────────
 
     [WorkflowStep.BC_LOGIN_RF]: {
@@ -131,6 +166,14 @@ export const COACHING_CONTENT: Partial<Record<WorkflowStep, CoachingContent>> =
     },
 
     // ── PICK PHASE — NAVIGATION ──────────────────────────────────────────────
+
+    [WorkflowStep.PK_PICKUP_CART]: {
+      action: "Pick up the cart and get ready to start picking",
+      sopContext:
+        "§5.2.1 — With the cart built and active, you are now entering the Pick Phase. Grab your cart from the staging area (if you set it down during login), ensure all 9 totes are secure, and be ready to travel to your first pick location.",
+      fieldDef:
+        "Pick Cart = the wheeled cart holding your 9 totes. You push it through the aisles as you pick. Keep the cart close when scanning — you will place items directly into the totes on it.",
+    },
 
     [WorkflowStep.PK_READ_PICK_DISPLAY]: {
       action: "Read the ALOC on screen — that is where you need to walk to — then press Continue",
@@ -247,16 +290,34 @@ export const COACHING_CONTENT: Partial<Record<WorkflowStep, CoachingContent>> =
 
     // ── PICK STAGE — ROUND TRANSITIONS ───────────────────────────────────────
 
+    [WorkflowStep.PS_TRASH_PICKUP]: {
+      action: "Collect and dispose of any empty boxes, packaging, or debris before continuing",
+      sopContext:
+        "§5.2.15 (BBWD-WI-030) — Trash pickup is required throughout the picking process. Clear any empty boxes or packaging material from the aisle or shelf face before moving on. A clean floor prevents trips and picker congestion.",
+    },
+
+    [WorkflowStep.PS_LAST_ITEM_IN_BOX]: {
+      action: "The item you just picked was the last one in the box — break down the empty box and place it in the recycling bin",
+      sopContext:
+        "§5.2 (BBWD-WI-030) — When you pick the last item from a master case, the empty box must be broken down and placed in the recycling bin at the end of the aisle. Do not leave empty boxes on the shelf or floor.",
+    },
+
+    [WorkflowStep.PS_LAST_ITEM_ON_PALLET]: {
+      action: "The item you just picked was the last one on the pallet — notify your Lead that the pallet location is now empty",
+      sopContext:
+        "§5.2 (BBWD-WI-030) — An empty pallet location must be reported to your Lead or CSR so they can update the WMS and arrange replenishment. Do not attempt to move the pallet yourself unless instructed.",
+    },
+
     [WorkflowStep.PS_CONTINUE_NEXT_TOTE]: {
       action: "Press Continue to start picking items for your next tote",
       sopContext:
-        "Your current tote is on the Putwall and the system has advanced to the next tote. You will now receive pick locations for the remaining totes on your cart.",
+        "§5.2.14 (BBWD-WI-030) — Continue steps 5.2.2–5.2.10 until all totes are complete. Your current tote is on the Putwall and the system has advanced to the next tote. You will now receive pick locations for the remaining totes on your cart.",
     },
 
     [WorkflowStep.PS_ROUND_COMPLETE]: {
       action: "Round complete — review your score below",
       sopContext:
-        "You have finished all picks in this scenario. The system has calculated your accuracy and speed score. Review your results and ask your Lead for feedback on any errors.",
+        "§5.2.13 (BBWD-WI-030) — Place the completed tote on the nearest conveyor (Putwall). All totes for this round are finished. The system has calculated your accuracy and speed score. Review your results and ask your Lead for feedback on any errors.",
     },
 
     // ── EXCEPTION HANDLING ────────────────────────────────────────────────────

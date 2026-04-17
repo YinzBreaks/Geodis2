@@ -1,13 +1,13 @@
-/**
- * RFDevice — RF Device terminal emulator (top-level simulator component)
+﻿/**
+ * RFDevice â€” RF Device terminal emulator (top-level simulator component)
  *
  * Manages input state and routes user interactions to the engine via
  * useSimulation.sendAction(). Orchestrates RFDeviceDisplay + SoftKeyBar.
  *
  * Visual appearance is driven entirely by the active device model from the
- * Zustand store — no hardcoded colors or fonts.
+ * Zustand store â€” no hardcoded colors or fonts.
  *
- * Per CLAUDE.md §Architecture: components render and delegate — no business logic.
+ * Per CLAUDE.md Â§Architecture: components render and delegate â€” no business logic.
  * Business logic lives in useSimulation (Zustand) and the engine.
  */
 "use client"
@@ -16,7 +16,8 @@ import { useState, useRef, useEffect, useCallback } from "react"
 import { RFDeviceDisplay } from "./RFDeviceDisplay"
 import { SoftKeyBar } from "./SoftKeyBar"
 import { CoachingTooltip } from "./CoachingTooltip"
-import { getDeviceModel } from "@/types/devices"
+import { WT4000PhotoShell } from "./WT4000PhotoShell"
+import { getDeviceModel, type RFDeviceModel } from "@/types/devices"
 import {
   useSimulation,
   getInputMode,
@@ -27,6 +28,8 @@ import {
 } from "@/hooks/useSimulation"
 import { getExpectedKey } from "@/lib/stepKeyMap"
 import { getExpectedInputType } from "@/lib/stepKeyMap"
+import type { EngineResult, SimulationSession } from "@/types/domain"
+import type { CoachingState } from "@/types/coaching"
 
 export function RFDevice() {
   const { session, result, sendAction, activeDeviceModelId, coaching, lastActionResult } = useSimulation()
@@ -59,7 +62,7 @@ export function RFDevice() {
     const rfScreen = selectScreen(session)
     const mode = getInputMode(session.currentStep, rfScreen.inputType)
 
-    // Bug 5: guard empty input — do not dispatch SCAN/TYPE with blank value.
+    // Bug 5: guard empty input â€” do not dispatch SCAN/TYPE with blank value.
     // Empty scans would increment session.errors and corrupt the score.
     if ((mode === "SCAN" || mode === "TYPE") && !inputValue.trim()) {
       setInputError(
@@ -116,9 +119,10 @@ export function RFDevice() {
   const isComplete = selectIsComplete(session)
   const showFeedback = result && !result.success && result.feedback
   const isAndroid = device.uiStyle === "android"
+  const isWT4000 = device.modelId === "SYMBOL_WT4000"
 
   // Bug 4: derive per-key enabled state from engine for the current step.
-  // CTRL+E, ^A, ^T, ^W, ^K are all gated — only the valid key pulses and is clickable.
+  // CTRL+E, ^A, ^T, ^W, ^K are all gated â€” only the valid key pulses and is clickable.
   const softKeyEnabled = getSoftKeyEnabled(session)
 
   // Animation classes driven by lastActionResult
@@ -128,6 +132,32 @@ export function RFDevice() {
       : lastActionResult === "error"
         ? "error-shake"
         : ""
+
+  // â”€â”€ WT4000 wrist terminal: photo-realistic shell â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  if (isWT4000) {
+    return (
+      <WT4000PhotoShell
+        device={device}
+        animClass={animClass}
+        lastActionResult={lastActionResult}
+        rfScreen={rfScreen}
+        inputValue={inputValue}
+        inputMode={inputMode}
+        isComplete={isComplete}
+        showFeedback={showFeedback}
+        result={result}
+        inputError={inputError}
+        session={session}
+        coaching={coaching}
+        softKeyEnabled={softKeyEnabled}
+        inputRef={inputRef}
+        handleSubmit={handleSubmit}
+        handleKeyDown={handleKeyDown}
+        handleSoftKey={handleSoftKey}
+        setInputValue={setInputValue}
+      />
+    )
+  }
 
   return (
     <div
@@ -150,10 +180,10 @@ export function RFDevice() {
         className="text-[9px] font-mono text-center tracking-widest uppercase"
         style={{ color: isModern ? "var(--color-text-muted)" : isAndroid ? "#94a3b8" : "#4b5563" }}
       >
-        {device.displayName} — GEODIS RF
+        {device.displayName} â€” GEODIS RF
       </div>
 
-      {/* Screen — relative container holds RFDeviceDisplay + CoachingTooltip arrow */}
+      {/* Screen â€” relative container holds RFDeviceDisplay + CoachingTooltip arrow */}
       <div
         style={{
           position: "relative",
@@ -177,9 +207,9 @@ export function RFDevice() {
         />
       </div>
 
-      {/* Feedback strip — shows engine error feedback OR inline input error */}
+      {/* Feedback strip â€” shows engine error feedback OR inline input error */}
       <div className="min-h-[28px]">
-        {/* Inline input validation error (Bug 5) — does NOT increment error counter */}
+        {/* Inline input validation error (Bug 5) â€” does NOT increment error counter */}
         {inputError && !showFeedback && (
           <div
             className="rounded px-2 py-1 text-xs font-mono"
@@ -216,7 +246,7 @@ export function RFDevice() {
             className="text-[10px] font-mono text-center"
             style={{ color: isModern ? "var(--color-success)" : isAndroid ? "#16a34a" : "#15803d" }}
           >
-            ✓ OK
+            âœ“ OK
           </div>
         )}
       </div>
@@ -224,7 +254,7 @@ export function RFDevice() {
       {/* Input area */}
       {!isComplete && (() => {
         const expectedInput = getExpectedInputType(session.currentStep)
-        // On scan steps, hide the text input — user scans via warehouse floor
+        // On scan steps, hide the text input â€” user scans via warehouse floor
         if (expectedInput === "scan") {
           return (
             <button
@@ -248,11 +278,11 @@ export function RFDevice() {
                 cursor: "pointer",
               }}
             >
-              ↙ Scan on Warehouse Floor
+              â†™ Scan on Warehouse Floor
             </button>
           )
         }
-        // On keypress steps, the soft key bar handles it — no input shown
+        // On keypress steps, the soft key bar handles it â€” no input shown
         if (expectedInput === "keypress") {
           return null
         }
@@ -272,7 +302,7 @@ export function RFDevice() {
                   borderColor: isModern ? "var(--color-border)" : ly.screenBorderColor,
                   minHeight: touchTarget,
                 }}
-                placeholder={inputMode === "SCAN" ? "Scan barcode…" : "Enter value…"}
+                placeholder={inputMode === "SCAN" ? "Scan barcodeâ€¦" : "Enter valueâ€¦"}
                 autoFocus
               />
               <button
@@ -291,7 +321,7 @@ export function RFDevice() {
               </button>
             </div>
           ) : (
-            // Hide Continue on key-only steps — the trainee must press the pulsing soft key.
+            // Hide Continue on key-only steps â€” the trainee must press the pulsing soft key.
             // getExpectedKey returns the key string if this step has no CONFIRM transition.
             !getExpectedKey(session.currentStep) && (
               <button
@@ -311,7 +341,7 @@ export function RFDevice() {
           )
       })()}
 
-      {/* Soft key row — highlightKey pulses on key-only steps; enabledKeys dims invalid keys */}
+      {/* Soft key row â€” highlightKey pulses on key-only steps; enabledKeys dims invalid keys */}
       <SoftKeyBar
         onKey={handleSoftKey}
         disabled={isComplete}
@@ -330,4 +360,4 @@ export function RFDevice() {
     </div>
   )
 }
-
+// â”€â”€â”€ WT4000Shell has been replaced by WT4000PhotoShell (WT4000PhotoShell.tsx)

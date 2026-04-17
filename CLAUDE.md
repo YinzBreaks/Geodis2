@@ -265,17 +265,20 @@ in the `RF_DEVICE_MODELS` registry. No other files need to change.
 
 ```
 Currently supported models:
-  ZEBRA_TC520K       — PRIMARY (confirmed March 2026): 5-inch Android, portrait,
-                       ~390px emulator width, no physical keyboard, SE4710 imager,
-                       all-touch + side-trigger scan, soft key bar (bottom, 5 buttons),
-                       Android WMS aesthetic (white bg, Roboto/Inter, 56 px min targets)
+  SYMBOL_WT4000      — PRIMARY (confirmed March 2026): landscape terminal,
+                       20×6 chars, 240px emulator width, physical keypad,
+                       white-on-black terminal, monospace font,
+                       soft key bar (bottom, 5 buttons)
   HONEYWELL_CK65     — 20×8 chars, physical keypad, no touchscreen, green terminal
+  ZEBRA_TC520K       — 5-inch Android, portrait, ~390px emulator width,
+                       no physical keyboard, SE4710 imager, all-touch + side-trigger,
+                       Android WMS aesthetic (white bg, Roboto/Inter, 56 px min targets)
   ZEBRA_TC52         — 24×10 chars, touchscreen, no physical CTRL keys, soft key overlay
                        (legacy model — superseded by TC520K)
   GENERIC_TERMINAL   — fallback / unconfirmed device
 
 Active device:
-  ACTIVE_DEVICE_MODEL_ID = "ZEBRA_TC520K"   (in /src/types/devices.ts)
+  ACTIVE_DEVICE_MODEL_ID = "SYMBOL_WT4000"   (in /src/types/devices.ts)
   Confirmed by GEODIS IT — March 2026.
 
 Soft key bar (TC520K and TC52):

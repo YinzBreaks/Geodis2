@@ -36,3 +36,13 @@ body {
   0%, 100% { opacity: 1;    transform: translateX(0);  }
   50%       { opacity: 0.5; transform: translateX(3px); }
 }
+
+/* ─── WT4000 photo shell — keyboard hotspot hover ────────────────────────── */
+/* Invisible by default; shows a subtle white tint on hover so the user knows */
+/* the key is interactive without obscuring the photo.                         */
+.wt4000-hotspot:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.08) !important;
+}
+.wt4000-hotspot:active:not(:disabled) {
+  background: rgba(255, 255, 255, 0.18) !important;
+}

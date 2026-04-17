@@ -184,14 +184,22 @@ describe("Build Cart happy path", () => {
 
   beforeEach(() => {
     session = startSessionWithTasks("user-001", scenario, [], cart)
+    // Session now starts at BC_TRAVEL_TO_COMMAND_CENTER (FIX 2).
+    // Advance through the 4 pre-login physical steps to reach BC_LOGIN_RF
+    // so the remaining Build Cart tests can continue from the login screen.
+    session = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER }).session
+    session = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_RECEIVE_TOTE_COUNT }).session
+    session = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_OBTAIN_CART }).session
+    session = dispatch(session, { type: "CONFIRM", step: WorkflowStep.BC_LOAD_TOTES }).session
     expect(session.currentStep).toBe(WorkflowStep.BC_LOGIN_RF)
     expect(session.status).toBe("IN_PROGRESS")
   })
 
-  it("starts at BC_LOGIN_RF with status IN_PROGRESS", () => {
-    expect(session.currentStep).toBe(WorkflowStep.BC_LOGIN_RF)
-    expect(session.status).toBe("IN_PROGRESS")
-    expect(session.cart.isBuilt).toBe(false)
+  it("starts at BC_TRAVEL_TO_COMMAND_CENTER with status IN_PROGRESS", () => {
+    const fresh = startSessionWithTasks("user-001", scenario, [], cart)
+    expect(fresh.currentStep).toBe(WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER)
+    expect(fresh.status).toBe("IN_PROGRESS")
+    expect(fresh.cart.isBuilt).toBe(false)
   })
 
   it("BC_LOGIN_RF → type User ID → BC_SELECT_BBWD", () => {
@@ -701,8 +709,13 @@ describe("getCurrentScreen output", () => {
   })
 
   it("BC_LOGIN_RF screen has NUMERIC input type (renders text input via TYPE mode)", () => {
-    const session = startSessionWithTasks("u", makeScenario(), [], makeCart())
-    const screen = getCurrentScreen(session)
+    let s = startSessionWithTasks("u", makeScenario(), [], makeCart())
+    // Session starts at BC_TRAVEL_TO_COMMAND_CENTER — advance to BC_LOGIN_RF
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_RECEIVE_TOTE_COUNT }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_OBTAIN_CART }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_LOAD_TOTES }).session
+    const screen = getCurrentScreen(s)
     expect(screen.workflowStep).toBe(WorkflowStep.BC_LOGIN_RF)
     expect(screen.inputType).toBe("NUMERIC")
   })
@@ -1173,7 +1186,7 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
   it("Aloc line has isHighlighted: true", () => {
     const task = makePickTask()
     const screen = getCurrentScreen(sessionAtItemScanStep(task))
-    const alocLine = screen.lines.find((l) => l.label === "ALOC:")
+    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
     expect(alocLine?.isHighlighted).toBe(true)
   })
 
@@ -1182,7 +1195,7 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
     const screen = getCurrentScreen(sessionAtItemScanStep(task))
     const cursorLine = screen.lines.find((l) => l.isCursorField)
     expect(cursorLine).toBeDefined()
-    expect(cursorLine?.label).toBe("ITEM BARCODE:")
+    expect(cursorLine?.label).toBe("Item Barcode:")
   })
 
   it("screen reflects live session data — location, SKU, and tote ID from current pick", () => {
@@ -1197,10 +1210,10 @@ describe("Screen generator: PK_SCAN_ITEM_UPC exact field layout", () => {
     expect(screen.workflowStep).toBe(WorkflowStep.PK_SCAN_ITEM_UPC)
     expect(screen.inputType).toBe("BARCODE")
 
-    const alocLine = screen.lines.find((l) => l.label === "ALOC:")
+    const alocLine = screen.lines.find((l) => l.label === "Aloc:")
     expect(alocLine?.value).toBe("512-007-B2")
 
-    const itemLine = screen.lines.find((l) => l.label === "ITEM:")
+    const itemLine = screen.lines.find((l) => l.label === "Item:")
     expect(itemLine?.value).toBe("LIVE-SKU-TEST")
   })
 })
@@ -1263,6 +1276,12 @@ function advanceThroughBuildCartMenus(
   session: SimulationSession
 ): SimulationSession {
   let s = session
+  // Pre-login physical steps (BC_TRAVEL_TO_COMMAND_CENTER → BC_LOGIN_RF)
+  // Added in Phase 3 FIX 2 — session now starts here instead of BC_LOGIN_RF.
+  s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER }).session
+  s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_RECEIVE_TOTE_COUNT }).session
+  s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_OBTAIN_CART }).session
+  s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_LOAD_TOTES }).session
   s = dispatch(s, { type: "TYPE", text: "testuser" }).session // BC_LOGIN_RF
   s = dispatch(s, { type: "TYPE", text: "1" }).session // BC_SELECT_BBWD
   s = dispatch(s, { type: "TYPE", text: "2" }).session // BC_SELECT_OUTBOUND

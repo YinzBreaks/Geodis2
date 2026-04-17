@@ -17,11 +17,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
- * Estimated height of the RF Device bezel label + top padding before the
- * screen area starts, in pixels. Accounts for the device label row and
- * outer padding of the bezel container.
+ * Offset in pixels from the top of the position:relative wrapper to the
+ * first terminal line. The wrapper starts at the screen area (padding only),
+ * so this is just the container padding (8px).
  */
-const SCREEN_TOP_OFFSET_PX = 58
+const SCREEN_TOP_OFFSET_PX = 8
 
 /**
  * Estimated height in pixels of the terminal screen area.

@@ -48,10 +48,13 @@ export function DeviceSelector() {
         aria-label="Select RF Device model"
       >
         {Object.values(RF_DEVICE_MODELS).map((model) => {
+          const isRealDevice = model.modelId === "SYMBOL_WT4000"
           const isModern = model.uiStyle === "modern"
-          const label = isModern
-            ? `${model.displayName}  ✦ Default`
-            : `${model.displayName} — Classic`
+          const label = isRealDevice
+            ? `${model.displayName} ← Real Device`
+            : isModern
+              ? `${model.displayName}  ✦ Default`
+              : `${model.displayName} — Classic`
           return (
             <option key={model.modelId} value={model.modelId}>
               {label}

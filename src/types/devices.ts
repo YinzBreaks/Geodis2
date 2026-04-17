@@ -92,7 +92,7 @@ export interface RFDeviceModel {
    * Where to dock the soft key bar.
    * Only relevant when showSoftKeys is true.
    */
-  softKeyPosition?: "bottom" | "top"
+  softKeyPosition?: "bottom" | "top" | "side"
   /** Physical display orientation. */
   orientation?: "portrait" | "landscape"
   /**
@@ -286,6 +286,50 @@ export const RF_DEVICE_MODELS: Readonly<Record<string, RFDeviceModel>> = {
   },
 
   /**
+   * Symbol WT4000 — Wrist-mounted terminal confirmed from real GEODIS device photos.
+   *
+   * Physical specs:
+   *   - Symbol / Zebra WT4000-series wrist-mounted unit
+   *   - Small monochrome LCD: ~20 chars × 6 lines
+   *   - Physical QWERTY keyboard with CTRL/SHIFT/TAB/ESC side keys
+   *   - No touchscreen; external ring scanner attached by cable
+   *   - Landscape orientation, wide/short aspect ratio
+   *   - White text on black background; blue field highlights
+   *
+   * Per real device photos captured 2026-04-15
+   */
+  SYMBOL_WT4000: {
+    modelId: "SYMBOL_WT4000",
+    displayName: "Symbol WT4000 (Wrist Terminal)",
+    displayColumns: 20,
+    displayRows: 6,
+    hasPhysicalCtrlKey: true,
+    hasTouchscreen: false,
+    uiStyle: "terminal",
+    showSoftKeys: true,
+    softKeyPosition: "side",
+    orientation: "landscape",
+    emulatorWidthPx: 240,
+    minTouchTargetPx: 44,
+    fontFamily: "'Courier New', Courier, monospace",
+    screen: {
+      bgColor: "#000000",
+      textColor: "#FFFFFF",
+      fontFamily: "'Courier New', Courier, monospace",
+      highlightColor: "#4FC3F7",
+      cursorColor: "#FFFFFF",
+      labelColor: "#FFFFFF",
+      fontSize: "13px",
+      lineHeight: "1.4",
+    },
+    layout: {
+      showBezel: true,
+      bezelColor: "#1a1a1a",
+      screenBorderColor: "#333333",
+    },
+  },
+
+  /**
    * Generic Terminal — fallback / unconfirmed device.
    * Per CLAUDE.md: Change ACTIVE_DEVICE_MODEL_ID once hardware is confirmed.
    */
@@ -331,6 +375,7 @@ export type RFDeviceModelId =
   | "ZEBRA_TC52"
   | "ZEBRA_TC520K"
   | "WAREHOUSEPRO_MODERN"
+  | "SYMBOL_WT4000"
   | "GENERIC_TERMINAL"
 
 /**
@@ -341,7 +386,7 @@ export type RFDeviceModelId =
  *
  * @see RF_DEVICE_MODELS
  */
-export const ACTIVE_DEVICE_MODEL_ID: RFDeviceModelId = "WAREHOUSEPRO_MODERN"
+export const ACTIVE_DEVICE_MODEL_ID: RFDeviceModelId = "SYMBOL_WT4000"
 
 /** Convenience: the active RFDeviceModel object derived from the ID above. */
 export const ACTIVE_DEVICE: RFDeviceModel =

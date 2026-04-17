@@ -60,7 +60,6 @@ const SCAN_STEPS = new Set<WorkflowStep>([
   WorkflowStep.BC_SCAN_ZONE_TASK_GROUP,
   WorkflowStep.PK_SCAN_ITEM_UPC,
   WorkflowStep.PK_SCAN_TOTE_BARCODE,
-  WorkflowStep.PK_VERIFY_LOCATION,
 ])
 
 /** Steps where the trainee types text on the RF Device (menu selections). */

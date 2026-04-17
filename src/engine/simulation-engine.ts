@@ -82,7 +82,7 @@ export function startSession(
 
     completedPicks: [],
 
-    currentStep: WorkflowStep.BC_LOGIN_RF,
+    currentStep: WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER,
     currentPickIndex: 0,
     currentToteSlot: 1 as ToteSlot,
 
@@ -116,7 +116,7 @@ export function startSessionWithTasks(
     pickQueue,
     completedPicks: [],
 
-    currentStep: WorkflowStep.BC_LOGIN_RF,
+    currentStep: WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER,
     currentPickIndex: 0,
     currentToteSlot: 1 as ToteSlot,
 

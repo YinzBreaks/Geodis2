@@ -299,6 +299,13 @@ export function needsAttentionFlag(
 ): { flagged: boolean; reason: string } {
   const completedSessions = sessions.filter((s) => s.status === "COMPLETED")
 
+  // Guard: do not flag trainees with fewer than 3 completed sessions.
+  // They are still in the initial learning phase — flagging too early
+  // creates noise for supervisors. Per audit M-8.
+  if (completedSessions.length < 3) {
+    return { flagged: false, reason: "" }
+  }
+
   // Build chronological score history
   const scoreHistory = completedSessions
     .filter((s) => s.finalScore !== null)

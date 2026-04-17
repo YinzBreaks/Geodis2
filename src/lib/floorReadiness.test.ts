@@ -484,6 +484,8 @@ describe("needsAttentionFlag", () => {
 
   it("flags when exception resolution rate is below 60%", () => {
     const sessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-03-03") }),
+      makeSession({ finalScore: 72, completedAt: new Date("2026-03-05") }),
       makeSessionWithErrors(
         [
           { errorType: ScanResult.WRONG_ITEM, corrected: false },
@@ -501,8 +503,9 @@ describe("needsAttentionFlag", () => {
   it("flags when no activity in 7+ days (and has sessions)", () => {
     const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
     const sessions = [
-      makeSession({ finalScore: 70, completedAt: eightDaysAgo }),
+      makeSession({ finalScore: 70, completedAt: new Date(eightDaysAgo.getTime() - 6 * 24 * 60 * 60 * 1000) }),
       makeSession({ finalScore: 74, completedAt: new Date(eightDaysAgo.getTime() - 3 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 72, completedAt: eightDaysAgo }),
     ]
     const { flagged, reason } = needsAttentionFlag(sessions)
     expect(flagged).toBe(true)
@@ -551,6 +554,8 @@ describe("needsAttentionFlag", () => {
 
     // c) Low resolution
     const lowResSessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-03-03") }),
+      makeSession({ finalScore: 72, completedAt: new Date("2026-03-05") }),
       makeSessionWithErrors(
         [
           { errorType: ScanResult.WRONG_ITEM, corrected: false },
@@ -564,7 +569,9 @@ describe("needsAttentionFlag", () => {
     // d) Inactive
     const nineAgo = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
     const inactiveSessions = [
-      makeSession({ finalScore: 70, completedAt: nineAgo }),
+      makeSession({ finalScore: 70, completedAt: new Date(nineAgo.getTime() - 6 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 72, completedAt: new Date(nineAgo.getTime() - 3 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 74, completedAt: nineAgo }),
     ]
     reasons.push(needsAttentionFlag(inactiveSessions).reason)
 

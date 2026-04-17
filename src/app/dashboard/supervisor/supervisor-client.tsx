@@ -181,6 +181,21 @@ export function SupervisorDashboardClient({
                   >
                     Schedule Coaching
                   </button>
+                  <a
+                    href={`/dashboard/supervisor/trainee/${t.userId}`}
+                    style={{
+                      padding: "6px 12px",
+                      color: "var(--color-text-secondary)",
+                      fontFamily: "var(--font-display)",
+                      fontSize: 12,
+                      fontWeight: 600,
+                      borderRadius: "var(--radius-md)",
+                      cursor: "pointer",
+                      textDecoration: "none",
+                    }}
+                  >
+                    View Sessions →
+                  </a>
                 </div>
               )
             })}

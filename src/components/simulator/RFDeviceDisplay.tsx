@@ -56,6 +56,10 @@ interface Props {
   renderMode?: "terminal" | "android" | "modern"
   /** Title shown in the modern title bar — step name */
   stepName?: string
+  /** Maximum visible rows for the terminal renderer. Defaults to screen.lines.length (unclamped). */
+  displayRows?: number
+  /** Width of the emulator in pixels. Defaults to TERMINAL_COLS * ch when omitted. */
+  emulatorWidthPx?: number
 }
 
 export function RFDeviceDisplay({
@@ -65,6 +69,8 @@ export function RFDeviceDisplay({
   highlightLine,
   renderMode = "terminal",
   stepName,
+  displayRows,
+  emulatorWidthPx,
 }: Props) {
   const cfg = screenConfig ?? TERMINAL_DEFAULTS
 
@@ -81,6 +87,11 @@ export function RFDeviceDisplay({
     )
   }
 
+  // Clamp lines to displayRows when the device config limits visible rows.
+  const visibleLines = displayRows
+    ? screen.lines.slice(0, displayRows)
+    : screen.lines
+
   // Terminal rendering path (original)
   return (
     <div
@@ -90,13 +101,13 @@ export function RFDeviceDisplay({
         fontSize: cfg.fontSize ?? "13px",
         lineHeight: cfg.lineHeight ?? "1.4",
         padding: "8px 10px",
-        width: `${TERMINAL_COLS}ch`,
+        width: emulatorWidthPx ? `${emulatorWidthPx}px` : `${TERMINAL_COLS}ch`,
         maxWidth: "100%",
         overflowX: "hidden",
         userSelect: "none",
       }}
     >
-      {screen.lines.map((line, i) => (
+      {visibleLines.map((line, i) => (
         <TerminalLine
           key={i}
           line={line}
@@ -350,8 +361,8 @@ function TerminalLine({
           <div
             style={{
               color: cfg.labelColor,
-              whiteSpace: "pre",
-              overflow: "hidden",
+              whiteSpace: "pre-wrap",
+              overflowWrap: "break-word",
             }}
           >
             {line.label}
@@ -360,12 +371,12 @@ function TerminalLine({
         <div
           style={{
             color: cfg.cursorColor,
-            whiteSpace: "pre",
-            overflow: "hidden",
+            whiteSpace: "pre-wrap",
+            overflowWrap: "break-word",
           }}
         >
           {inputValue}
-          <span className="terminal-cursor">_</span>
+          <span className="terminal-cursor" style={{ color: cfg.cursorColor }}>_</span>
         </div>
       </div>
     )
@@ -375,10 +386,10 @@ function TerminalLine({
   if (line.label && line.value) {
     return (
       <div style={{ backgroundColor: coachingBg }}>
-        <div style={{ whiteSpace: "pre", overflow: "hidden", color: cfg.labelColor }}>
+        <div style={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", color: cfg.labelColor }}>
           {line.label}
         </div>
-        <div style={{ whiteSpace: "pre", overflow: "hidden", color: textColor }}>
+        <div style={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", color: textColor }}>
           {line.value}
         </div>
       </div>
@@ -388,7 +399,7 @@ function TerminalLine({
   // ── Label-only line ────────────────────────────────────────────────────
   if (line.label) {
     return (
-      <div style={{ whiteSpace: "pre", overflow: "hidden", color: cfg.labelColor, backgroundColor: coachingBg }}>
+      <div style={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", color: cfg.labelColor, backgroundColor: coachingBg }}>
         {line.label}
       </div>
     )
@@ -397,7 +408,7 @@ function TerminalLine({
   // ── Value-only line ─────────────────────────────────────────────────
   if (line.value) {
     return (
-      <div style={{ whiteSpace: "pre", overflow: "hidden", color: textColor, backgroundColor: coachingBg }}>
+      <div style={{ whiteSpace: "pre-wrap", overflowWrap: "break-word", color: textColor, backgroundColor: coachingBg }}>
         {line.value}
       </div>
     )

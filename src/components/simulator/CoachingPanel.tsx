@@ -95,7 +95,7 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
               fontWeight: 700,
             }}
           >
-            !
+            ⚡
           </span>
         )}
         <span
@@ -110,7 +110,7 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
             fontFamily: "var(--font-display)",
           }}
         >
-          {isException ? "EXCEPTION SCENARIO" : "Step Guide"}
+          {isException ? "⚡ EXCEPTION SCENARIO" : "Step Guide"}
         </span>
       </div>
 
