@@ -35,22 +35,19 @@ export function validateScan(
   session: SimulationSession
 ): ScanResult {
   switch (step) {
-    // Per BBWD-WI-030 §5.1.11 — Scan the Pick Cart barcode
+    // Per BBWD-WI-030 §5.1.11 — Scan the Pick Cart barcode.
+    // Bug 3 fix: accept any non-empty scan — teaches scanning habit without
+    // requiring trainees to memorise exact barcode strings.
     case WorkflowStep.BC_SCAN_CART_BARCODE:
-      return scannedValue === session.cart.cartBarcode
-        ? ScanResult.SUCCESS
-        : ScanResult.WRONG_ITEM
+      return scannedValue.trim().length > 0 ? ScanResult.SUCCESS : ScanResult.WRONG_ITEM
 
-    // Per BBWD-WI-030 §5.1.12 — Scan each tote barcode into its slot
+    // Per BBWD-WI-030 §5.1.12 — Scan each tote barcode into its slot.
+    // Bug 3 fix: accept any non-empty scan — teaches scanning habit.
+    // TOTE_ALLOCATED check is kept: scanning the same barcode twice is a real
+    // exception that trainees need to practice handling.
     case WorkflowStep.BC_SCAN_TOTE_BARCODE: {
-      const expectedTote = session.cart.totes[session.currentToteSlot - 1]
-      if (!expectedTote) return ScanResult.ITEM_NOT_FOUND
-      if (scannedValue === expectedTote.barcode) return ScanResult.SUCCESS
-      // Check if this barcode belongs to another already-allocated tote
-      if (toteAlreadyAllocated(scannedValue, session)) {
-        return ScanResult.TOTE_ALLOCATED
-      }
-      return ScanResult.WRONG_TOTE
+      if (toteAlreadyAllocated(scannedValue, session)) return ScanResult.TOTE_ALLOCATED
+      return scannedValue.trim().length > 0 ? ScanResult.SUCCESS : ScanResult.WRONG_TOTE
     }
 
     // Per BBWD-WI-030 §5.1.9 — Scan zone or FEX barcode
@@ -69,18 +66,12 @@ export function validateScan(
         : ScanResult.WRONG_ITEM
     }
 
-    // Per BBWD-WI-030 §5.2.13 — Scan the Pick Tote barcode shown on RF Device
-    case WorkflowStep.PK_SCAN_TOTE_BARCODE: {
-      const currentPick = session.pickQueue[session.currentPickIndex]
-      if (!currentPick) return ScanResult.ITEM_NOT_FOUND
-      const targetTote = session.cart.totes.find(
-        (t) => t.slot === currentPick.targetSlot
-      )
-      if (!targetTote) return ScanResult.ITEM_NOT_FOUND
-      return scannedValue === targetTote.barcode
-        ? ScanResult.SUCCESS
-        : ScanResult.WRONG_TOTE
-    }
+    // Per BBWD-WI-030 §5.2.13 — Scan the Pick Tote barcode shown on RF Device.
+    // Bug 3/6 fix: accept any non-empty scan — teaches tote-scanning habit and
+    // allows the pick counter to advance. The trainee already assigned tote barcodes
+    // during BC phase; requiring exact recall in PK phase is not the training goal.
+    case WorkflowStep.PK_SCAN_TOTE_BARCODE:
+      return scannedValue.trim().length > 0 ? ScanResult.SUCCESS : ScanResult.WRONG_TOTE
 
     // For steps that accept a scan but have no strict value validation
     // (e.g. zone barcode where any valid zone is accepted)

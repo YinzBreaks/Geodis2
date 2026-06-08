@@ -43,6 +43,7 @@ export function calculateScore(
 
   // TODO: Replace 150 with confirmed facility benchmark
   //       from GEODIS operations. See CLAUDE.md open decisions.
+  //       Ask: Anthony Kruse or Ed Meeks.
   const TARGET_PICKS_PER_HOUR = scenario.targetPicksPerHour ?? 150
 
   // When totalTimeMs has not yet been stamped (session still in progress),

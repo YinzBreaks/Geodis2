@@ -16,9 +16,19 @@
  */
 "use client"
 
+import dynamic from "next/dynamic"
 import Link from "next/link"
 import type { FloorReadyStatus, FloorReadyGap, ExceptionStats, ScoreTrend } from "@/lib/floorReadiness"
 import { ScanResult } from "@/types/domain"
+import type { ScoreDataPoint } from "@/components/dashboard/ScoreTrendChart"
+
+const ScoreTrendChart = dynamic(
+  () =>
+    import("@/components/dashboard/ScoreTrendChart").then((m) => ({
+      default: m.ScoreTrendChart,
+    })),
+  { ssr: false }
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EXPORTED TYPES (used by page.tsx for server → client serialization)
@@ -695,6 +705,24 @@ interface ScoresSectionProps {
 function ScoresSection({ sessions }: ScoresSectionProps) {
   const groups = groupByScenario(sessions)
 
+  // Build chronological ScoreDataPoint array from all completed sessions for the trend chart
+  const trendData: ScoreDataPoint[] = sessions
+    .filter((s) => s.status === "COMPLETED" && s.finalScore !== null)
+    .sort(
+      (a, b) =>
+        new Date(a.completedAt ?? a.startedAt).getTime() -
+        new Date(b.completedAt ?? b.startedAt).getTime()
+    )
+    .map((s, i) => ({
+      label: new Date(s.completedAt ?? s.startedAt).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+      }),
+      score: s.finalScore ?? 0,
+      accuracy: s.accuracyScore ?? undefined,
+      passed: s.passed ?? false,
+    }))
+
   const difficultyBadge: Record<
     string,
     { label: string; bg: string; text: string }
@@ -716,67 +744,83 @@ function ScoresSection({ sessions }: ScoresSectionProps) {
           No completed simulations yet — start your first one above!
         </p>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-          {groups.map((group) => {
-            const badge =
-              difficultyBadge[group.difficulty] ??
-              difficultyBadge.BEGINNER
+        <>
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {groups.map((group) => {
+              const badge =
+                difficultyBadge[group.difficulty] ??
+                difficultyBadge.BEGINNER
 
-            return (
-              <div
-                key={group.moduleId}
-                className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col gap-3"
-              >
-                {/* Title + difficulty */}
-                <div>
-                  <p className="text-slate-800 font-semibold text-sm leading-snug">
-                    {group.title}
-                  </p>
-                  <span
-                    className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${badge.bg} ${badge.text}`}
-                  >
-                    {badge.label}
-                  </span>
-                </div>
-
-                {/* Best score — monospace */}
-                <div className="flex items-end justify-between">
+              return (
+                <div
+                  key={group.moduleId}
+                  className="rounded-xl border border-slate-200 bg-white p-4 flex flex-col gap-3"
+                >
+                  {/* Title + difficulty */}
                   <div>
-                    <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">
-                      Best score
+                    <p className="text-slate-800 font-semibold text-sm leading-snug">
+                      {group.title}
                     </p>
-                    <p className="text-3xl font-mono font-bold text-slate-800">
-                      {Math.round(group.bestScore)}
-                    </p>
+                    <span
+                      className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full font-medium ${badge.bg} ${badge.text}`}
+                    >
+                      {badge.label}
+                    </span>
                   </div>
 
-                  {/* Sparkline */}
-                  <div className="text-right">
-                    <p className="text-xs text-slate-400 mb-1">trend</p>
-                    <Sparkline scores={group.recentScores} />
+                  {/* Best score — monospace */}
+                  <div className="flex items-end justify-between">
+                    <div>
+                      <p className="text-xs text-slate-400 uppercase tracking-wide mb-0.5">
+                        Best score
+                      </p>
+                      <p className="text-3xl font-mono font-bold text-slate-800">
+                        {Math.round(group.bestScore)}
+                      </p>
+                    </div>
+
+                    {/* Sparkline */}
+                    <div className="text-right">
+                      <p className="text-xs text-slate-400 mb-1">trend</p>
+                      <Sparkline scores={group.recentScores} />
+                    </div>
+                  </div>
+
+                  {/* Pass/fail badge */}
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
+                        group.passed
+                          ? "bg-green-100 text-green-700"
+                          : "bg-slate-100 text-slate-500"
+                      }`}
+                    >
+                      {group.passed ? "PASSED" : "NOT YET"}
+                    </span>
+                    <span className="text-xs text-slate-400">
+                      {group.attempts}{" "}
+                      {group.attempts === 1 ? "attempt" : "attempts"}
+                    </span>
                   </div>
                 </div>
+              )
+            })}
+          </div>
 
-                {/* Pass/fail badge */}
-                <div className="flex items-center justify-between">
-                  <span
-                    className={`text-xs font-mono font-semibold px-2 py-1 rounded ${
-                      group.passed
-                        ? "bg-green-100 text-green-700"
-                        : "bg-slate-100 text-slate-500"
-                    }`}
-                  >
-                    {group.passed ? "PASSED" : "NOT YET"}
-                  </span>
-                  <span className="text-xs text-slate-400">
-                    {group.attempts}{" "}
-                    {group.attempts === 1 ? "attempt" : "attempts"}
-                  </span>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+          {/* Score trend chart — shows all attempts over time */}
+          {trendData.length >= 2 && (
+            <div className="mt-6 rounded-xl border border-slate-200 bg-white p-4">
+              <p className="text-xs font-mono uppercase tracking-widest text-slate-400 mb-3">
+                SCORE OVER TIME
+              </p>
+              <ScoreTrendChart
+                data={trendData}
+                showAccuracy={true}
+                height={220}
+              />
+            </div>
+          )}
+        </>
       )}
     </section>
   )
@@ -1040,7 +1084,7 @@ function SessionHistorySection({ sessions }: SessionHistorySectionProps) {
                     <td className="px-3 py-3 text-center">
                       {s.status === "COMPLETED" ? (
                         <Link
-                          href={`/dashboard/supervisor/replay/${s.id}`}
+                          href={`/dashboard/trainee/replay/${s.id}`}
                           className="text-xs text-blue-600 hover:text-blue-800 hover:underline font-medium"
                         >
                           View

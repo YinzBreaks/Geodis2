@@ -15,12 +15,14 @@ import {
   calculateScore,
 } from "@/engine/simulation-engine"
 import { computeSessionResult } from "@/engine/scorer"
+import { EXCEPTION_RESOLUTION } from "@/engine/error-injector"
 import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
 import { COACHING_CONTENT } from "@/data/coachingContent"
 import { ACTIVE_DEVICE_MODEL_ID } from "@/types/devices"
 import {
   WorkflowStep,
   DifficultyLevel,
+  ScanResult,
   type SimulationSession,
   type SimulationScenario,
   type EngineAction,
@@ -29,6 +31,7 @@ import {
   type SessionScore,
   type SessionResult,
   type WarehouseItem,
+  type ErrorScenario,
 } from "@/types/domain"
 import type { CoachingState } from "@/types/coaching"
 
@@ -127,22 +130,31 @@ export type SoftKeyId = (typeof SOFT_KEY_IDS)[number]
  *
  * Rules from CLAUDE.md §Canonical Domain Vocabulary + §Workflow Reference:
  *   CTRL+T — enabled at BC_PRESS_CTRL_T
- *   CTRL+E — enabled at BC_SCAN_TOTE_BARCODE when all 9 totes scanned
+ *   CTRL+E — enabled at BC_SCAN_TOTE_BARCODE when all 9 totes have been scanned
+ *             (tote.barcode.length > 0 for every slot)
  *   CTRL+A — enabled at PK_END_OF_TOTE_DISPLAY (press to confirm tote complete)
  *   CTRL+W — enabled at EX_PRESS_CTRL_W, EX_INCORRECT_LOCATION, EX_INCORRECT_TOTE
  *   CTRL+K — enabled at EX_PRESS_CTRL_K, EX_INVALID_ITEM_LAST
+ *
+ * Bug 4 fix: CTRL+E previously used `slot > 9` which is never true (slot caps at 9).
+ * Now checks that all 9 totes have non-empty barcodes, which is set by
+ * advanceAfterSuccessfulScan when each tote is scanned.
+ * Bug 4b fix: CTRL+E is also enabled at BC_PRESS_CTRL_E (the finalize screen shown
+ * after slot 9 scan) so the soft key remains active on that screen.
  */
+const MAX_TOTES_PER_CART = 9 // Per BBWD-WI-030 §5.1: always 9 totes per cart
+
 export function getSoftKeyEnabled(
   session: SimulationSession
 ): Record<SoftKeyId, boolean> {
   const step = session.currentStep
-  const slot = session.currentToteSlot
+  const allTotesScanned =
+    session.currentToteSlot > MAX_TOTES_PER_CART ||
+    session.cart.totes.filter((t) => t.barcode.length > 0).length >= MAX_TOTES_PER_CART
 
   return {
     "CTRL+T": step === WorkflowStep.BC_PRESS_CTRL_T,
-    "CTRL+E":
-      step === WorkflowStep.BC_SCAN_TOTE_BARCODE &&
-      slot > 9, // all 9 scanned (slot advanced past 9)
+    "CTRL+E": (step === WorkflowStep.BC_SCAN_TOTE_BARCODE || step === WorkflowStep.BC_PRESS_CTRL_E) && allTotesScanned,
     "CTRL+A": step === WorkflowStep.PK_END_OF_TOTE_DISPLAY,
     "CTRL+W":
       step === WorkflowStep.EX_PRESS_CTRL_W ||
@@ -292,6 +304,12 @@ interface SimulationState {
   recordPulse: () => void
   /** Switch the emulator to a different device model at runtime. */
   setActiveDevice: (modelId: string) => void
+  /**
+   * Inject an exception (Overhaul 4 / Phase 11) that fires on the trainee's
+   * next scan at the current pick index. Appends an ErrorScenario to the live
+   * scenario — the pure engine reads scenario.errorScenarios unchanged.
+   */
+  injectException: (errorType: ScanResult, isLastItemAtLocation?: boolean) => void
   reset: () => void
 }
 
@@ -469,6 +487,38 @@ export const useSimulation = create<SimulationState>((set, get) => ({
 
   setActiveDevice(modelId: string) {
     set({ activeDeviceModelId: modelId })
+  },
+
+  injectException(errorType: ScanResult, isLastItemAtLocation = true) {
+    const { session, scenario } = get()
+    if (!session || !scenario) return
+
+    const pickIndex = session.currentPickIndex
+
+    // Skip if an injection is already queued/fired at this pick index.
+    const alreadyQueued = scenario.errorScenarios.some(
+      (e) => e.injectAtPickIndex === pickIndex && e.errorType === errorType
+    )
+    if (alreadyQueued) return
+
+    const injected: ErrorScenario = {
+      scenarioId: `inject-${Date.now()}`,
+      injectAtPickIndex: pickIndex,
+      errorType,
+      description: `Supervisor-injected ${errorType} at pick ${pickIndex + 1}`,
+      expectedResolution: EXCEPTION_RESOLUTION[errorType] ?? [],
+      sopReference: "BBWD-WI-030 §6",
+      isLastItemAtLocation,
+    }
+
+    // Append to the live scenario; the pure engine reads errorScenarios on the
+    // next dispatch and fires the injection. No engine modification needed.
+    set({
+      scenario: {
+        ...scenario,
+        errorScenarios: [...scenario.errorScenarios, injected],
+      },
+    })
   },
 
   reset() {

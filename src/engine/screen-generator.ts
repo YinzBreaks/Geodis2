@@ -14,6 +14,28 @@ import {
   type RFDeviceScreen,
 } from "@/types/domain"
 
+/** Per BBWD-WI-030 §5.1: always 9 totes */
+const MAX_TOTES_PER_CART = 9
+
+/**
+ * Units of measure that do NOT pluralise by appending "s".
+ * "1 EACH" / "3 EACH" — not "EACHs". Sourced from GEODIS item catalog conventions.
+ */
+const NON_PLURALIZING_UNITS = new Set([
+  "EACH", "EA", "UNIT", "ROLL", "SHEET", "CASE", "PACK", "BOX", "PALLET",
+])
+
+/**
+ * Format a unit-of-measure string for display on the RF Device Qty line.
+ * Pluralises normally (e.g. "Pair" → "Pairs") but suppresses the trailing "s"
+ * for units that are grammatically invariant (e.g. "EACH" stays "EACH").
+ * Per BBWD-WI-030 §5.2 RF Device display conventions.
+ */
+function formatPickUnit(qty: number, unit: string): string {
+  if (NON_PLURALIZING_UNITS.has(unit.toUpperCase())) return unit
+  return qty === 1 ? unit : unit + "s"
+}
+
 /**
  * Generate the RFDeviceScreen for the current session state.
  *
@@ -40,23 +62,28 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
           { label: "PASSWORD:", isCursorField: false },
         ],
         activeField: "USER ID",
-        inputType: "TEXT",
+        // NUMERIC → getInputMode returns TYPE → text input renders so the
+        // trainee can type their User ID. Per BBWD-WI-030 §5.1.5.
+        inputType: "NUMERIC",
       }
 
+    // Per BBWD-WI-030 §5.1.6 — Type "1" for BBWD → Enter
+    // ✓ validated against real device photos 2026-04-15
+    // Top-level system selector: choose BBWD from available systems
     case WorkflowStep.BC_SELECT_BBWD:
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { value: "Main Menu" },
+          { value: "BBWD System" },
           { value: "1) BBWD" },
-          { value: "2) Other" },
           { label: "SELECT:", isCursorField: true },
         ],
         activeField: "Select",
         inputType: "NUMERIC",
       }
 
+    // Per BBWD-WI-030 §5.1.7 — Type "2" for Outbound Phase II → Enter
     case WorkflowStep.BC_SELECT_OUTBOUND:
       return {
         screenId: `screen-${step}`,
@@ -71,16 +98,18 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         inputType: "NUMERIC",
       }
 
+    // ✓ validated against real device photos 2026-04-15
     case WorkflowStep.BC_PRESS_CTRL_T:
     case WorkflowStep.BC_CONFIRM_TASK_GROUP:
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { value: "Task Group" },
-          { label: "GROUP:", value: session.cart.taskGroup },
-          { value: "Press ENTER to confirm" },
+          { value: "Update Task Group" },
+          { label: "Task Group:", value: `#${session.cart.taskGroup}` },
+          { label: "Locn:", isCursorField: true },
         ],
+        activeField: "Locn",
         inputType: "TEXT",
       }
 
@@ -96,19 +125,28 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         inputType: "BARCODE",
       }
 
+    // Per BBWD-WI-030 §5.1.10 — [US only] Type "1" for Make Tote Cart BB → Enter
+    // ✓ validated against real device photos 2026-04-15
+    // Full function menu — shows all cart/picking/audit options + Whse/BU
     case WorkflowStep.BC_SELECT_MAKE_TOTE_CART:
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { value: "Cart Type" },
-          { value: "1) Make Tote Cart BB" },
-          { label: "SELECT:", isCursorField: true },
+          { value: "1 Make Tote Cart BB" },
+          { value: "2 Pick Tote Cart BB" },
+          { value: "3 RF Tote Audit" },
+          { value: "4 Hospital" },
+          { value: "5 HSP Unpack OLPN" },
+          { value: "6 Ptwy Unpack OLPN BB" },
+          { value: "Whse/BU :01/01" },
+          { label: "Choice:", isCursorField: true },
         ],
-        activeField: "Select",
+        activeField: "Choice",
         inputType: "NUMERIC",
       }
 
+    // ✓ validated against real device photos 2026-04-15
     // Per SIMULATION.md §RF Device Screen Generator example
     case WorkflowStep.BC_SCAN_CART_BARCODE:
       return {
@@ -116,16 +154,16 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         workflowStep: step,
         lines: [
           { value: "Make Tote Cart BB" },
-          { label: "PICK CART #:", isCursorField: true },
+          { label: "Pick Cart #:", isCursorField: true },
         ],
         activeField: "Pick Cart #",
         inputType: "BARCODE",
       }
 
+    // ✓ validated against real device photos 2026-04-15
+    // Real device: cart # value on its own line below label, Slot and Tote below
     case WorkflowStep.BC_PLACE_TOTE_IN_SLOT:
     case WorkflowStep.BC_SCAN_TOTE_BARCODE: {
-      // Show the already-scanned barcode for the current slot (if any), or blank.
-      // Per task spec: "Tote: {toteId or blank if not yet scanned}"
       const currentTote = session.cart.totes[session.currentToteSlot - 1]
       const toteLabel = currentTote?.barcode ?? ""
       return {
@@ -133,12 +171,12 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         workflowStep: step,
         lines: [
           { value: "Make Tote Cart BB" },
-          { label: "PICK CART #:", value: session.cart.cartBarcode },
-          { label: "SLOT:", value: String(session.currentToteSlot) },
-          { label: "TOTE:", value: toteLabel || undefined },
-          { label: "SCAN TOTE:", isCursorField: true },
+          { label: "Pick Cart #:" },
+          { value: session.cart.cartBarcode },
+          { label: "Slot:", value: String(session.currentToteSlot) },
+          { label: "Tote:", value: toteLabel || undefined, isCursorField: !toteLabel },
         ],
-        activeField: "Scan Tote",
+        activeField: "Tote",
         inputType: "BARCODE",
         contextualData: {
           slot: String(session.currentToteSlot),
@@ -148,27 +186,49 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
       }
     }
 
+    // Per BBWD-WI-030 §5.1.15 — CTRL+E finalizes cart; transitions to Pick Phase
+    // inputType KEYBOARD_SHORTCUT: the only valid input is pressing CTRL+E
+    // via the soft key bar. activeField tells the soft key renderer which button
+    // to highlight.
+    case WorkflowStep.BC_PRESS_CTRL_E:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "Make Tote Cart BB" },
+          { label: "Pick Cart #:", value: session.cart.cartBarcode },
+          { value: `All ${MAX_TOTES_PER_CART} totes scanned` },
+          { value: "Press CTRL+E to finalize" },
+        ],
+        inputType: "KEYBOARD_SHORTCUT",
+        activeField: "CTRL+E",
+      }
+
     // ── Pick screens ────────────────────────────────────────────────────
 
+    // ✓ validated against real device photos 2026-04-15
     // Per SIMULATION.md §RF Device Screen Generator (§5.2 pick display)
+    // Real device shows: Tote, Aloc (highlighted), Item, Item (Last 4), Qty + Unit, Item Barcode: _
     case WorkflowStep.PK_SCAN_ITEM_UPC:
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "TOTE:", value: tote?.barcode ?? tote?.toteId },
+          { label: "Tote:", value: tote?.barcode ?? tote?.toteId },
           {
-            label: "ALOC:",
+            label: "Aloc:",
             value: pick?.location.displayLabel,
             isHighlighted: true,
           },
-          { label: "ITEM:", value: pick?.item.sku },
-          { label: "ITEM (LAST 4):", value: pick?.item.lastFourDigits },
+          { label: "Item:", value: pick?.item.sku },
+          { label: "Item (Last 4):", value: pick?.item.lastFourDigits },
           {
-            label: `QTY: ${pick?.quantityRequired ?? ""}`,
-            value: pick?.item.unitOfMeasure,
+            label: "Qty:",
+            value: pick
+              ? `${pick.quantityRequired} ${formatPickUnit(pick.quantityRequired, pick.item.unitOfMeasure)}`
+              : undefined,
           },
-          { label: "ITEM BARCODE:", isCursorField: true },
+          { label: "Item Barcode:", isCursorField: true },
         ],
         activeField: "Item Barcode",
         inputType: "BARCODE",
@@ -189,19 +249,21 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "TOTE:", value: tote?.barcode ?? tote?.toteId },
+          { label: "Tote:", value: tote?.barcode ?? tote?.toteId },
           {
-            label: "ALOC:",
+            label: "Aloc:",
             value: pick?.location.displayLabel,
             isHighlighted: true,
           },
-          { label: "ITEM:", value: pick?.item.sku },
-          { label: "ITEM (LAST 4):", value: pick?.item.lastFourDigits },
+          { label: "Item:", value: pick?.item.sku },
+          { label: "Item (Last 4):", value: pick?.item.lastFourDigits },
           {
-            label: `QTY: ${pick?.quantityRequired ?? ""}`,
-            value: pick?.item.unitOfMeasure,
+            label: "Qty:",
+            value: pick
+              ? `${pick.quantityRequired} ${formatPickUnit(pick.quantityRequired, pick.item.unitOfMeasure)}`
+              : undefined,
           },
-          { label: "ITEM BARCODE:", isCursorField: true },
+          { label: "Item Barcode:", isCursorField: true },
         ],
         activeField: "Item Barcode",
         inputType: "BARCODE",
@@ -426,6 +488,51 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
           { value: "(Inventory Control)" },
           { value: "Press ENTER when done" },
         ],
+      }
+
+    // ── Pick-phase login/menu screens ────────────────────────────────────
+    // Mirror BC_LOGIN_RF / BC_SELECT_BBWD / BC_SELECT_OUTBOUND for the
+    // STANDALONE PICK MODE path (PK_PICKUP_CART → PK_LOGIN_RF → …).
+    // Per BBWD-WI-030 §5.2.2–4.
+
+    case WorkflowStep.PK_LOGIN_RF:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "BBWD Logistics" },
+          { label: "USER ID:", isCursorField: true },
+        ],
+        activeField: "USER ID",
+        inputType: "TEXT",
+      }
+
+    case WorkflowStep.PK_SELECT_BBWD:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "1 BBWD" },
+          { value: "2 Inbound" },
+          { value: "3 Audit" },
+          { label: "Choice:", isCursorField: true },
+        ],
+        activeField: "Choice",
+        inputType: "NUMERIC",
+      }
+
+    case WorkflowStep.PK_SELECT_OUTBOUND:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "1 Outbound Phase II" },
+          { value: "2 Outbound Phase I" },
+          { value: "3 Repack" },
+          { label: "Choice:", isCursorField: true },
+        ],
+        activeField: "Choice",
+        inputType: "NUMERIC",
       }
 
     default:

@@ -18,6 +18,7 @@ import {
   getExceptionCoverage,
   getScoreTrend,
   getGaps,
+  needsAttentionFlag,
   type SimSessionInput,
   type ModuleProgressInput,
 } from "@/lib/floorReadiness"
@@ -321,6 +322,9 @@ describe("assessFloorReadiness", () => {
 
   it("returns IN_PROGRESS with correct gap when missing ADVANCED pass", () => {
     // 3 passed intermediate sessions with all exception types
+    // Use recent dates to avoid triggering the "no activity in 7+ days" flag
+    const now = new Date()
+    const daysAgo = (d: number) => new Date(now.getTime() - d * 24 * 60 * 60 * 1000)
     const allErrors = [
       ScanResult.WRONG_ITEM, ScanResult.WRONG_TOTE, ScanResult.WRONG_LOCATION,
       ScanResult.TOTE_ALLOCATED, ScanResult.CART_ALLOCATED, ScanResult.ITEM_NOT_FOUND,
@@ -333,21 +337,21 @@ describe("assessFloorReadiness", () => {
         passed: true,
         finalScore: 80,
         accuracyScore: 85,
-        completedAt: new Date("2026-02-28"),
+        completedAt: daysAgo(4),
       }),
       makeSession({
         difficulty: DifficultyLevel.INTERMEDIATE,
         passed: true,
         finalScore: 82,
         accuracyScore: 88,
-        completedAt: new Date("2026-03-01"),
+        completedAt: daysAgo(2),
       }),
       makeSession({
         difficulty: DifficultyLevel.INTERMEDIATE,
         passed: true,
         finalScore: 85,
         accuracyScore: 90,
-        completedAt: new Date("2026-03-02"),
+        completedAt: daysAgo(1),
       }),
     ]
 
@@ -438,5 +442,143 @@ describe("assessFloorReadiness", () => {
 
     const report = assessFloorReadiness(sessions, [])
     expect(report.trend).toBe("declining")
+  })
+})
+
+// ─────────────────────────────────────────────────────────────────────────────
+// needsAttentionFlag
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe("needsAttentionFlag", () => {
+  it("flags when latest score < 60 after 3+ sessions", () => {
+    const sessions = [
+      makeSession({ finalScore: 55, completedAt: new Date("2026-02-27") }),
+      makeSession({ finalScore: 57, completedAt: new Date("2026-03-01") }),
+      makeSession({ finalScore: 59, completedAt: new Date("2026-03-04") }),
+    ]
+    const { flagged, reason } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(true)
+    expect(reason).toBe("Scores below 60 after 3+ attempts")
+  })
+
+  it("does NOT flag when score < 60 but fewer than 3 sessions (still learning)", () => {
+    const sessions = [
+      makeSession({ finalScore: 45, completedAt: new Date("2026-03-01") }),
+      makeSession({ finalScore: 52, completedAt: new Date("2026-03-04") }),
+    ]
+    const { flagged } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(false)
+  })
+
+  it("flags when score is declining across last 3 sessions", () => {
+    const sessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-02-27") }),
+      makeSession({ finalScore: 70, completedAt: new Date("2026-03-01") }),
+      makeSession({ finalScore: 65, completedAt: new Date("2026-03-04") }),
+      makeSession({ finalScore: 60, completedAt: new Date("2026-03-07") }),
+    ]
+    const { flagged, reason } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(true)
+    expect(reason).toBe("Score declining across last 3 sessions")
+  })
+
+  it("flags when exception resolution rate is below 60%", () => {
+    const sessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-03-03") }),
+      makeSession({ finalScore: 72, completedAt: new Date("2026-03-05") }),
+      makeSessionWithErrors(
+        [
+          { errorType: ScanResult.WRONG_ITEM, corrected: false },
+          { errorType: ScanResult.WRONG_ITEM, corrected: false },
+          { errorType: ScanResult.WRONG_ITEM, corrected: true },
+        ],
+        { finalScore: 72, completedAt: new Date("2026-03-07") }
+      ),
+    ]
+    const { flagged, reason } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(true)
+    expect(reason).toBe("Exception resolution below 60%")
+  })
+
+  it("flags when no activity in 7+ days (and has sessions)", () => {
+    const eightDaysAgo = new Date(Date.now() - 8 * 24 * 60 * 60 * 1000)
+    const sessions = [
+      makeSession({ finalScore: 70, completedAt: new Date(eightDaysAgo.getTime() - 6 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 74, completedAt: new Date(eightDaysAgo.getTime() - 3 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 72, completedAt: eightDaysAgo }),
+    ]
+    const { flagged, reason } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(true)
+    expect(reason).toBe("No activity in 7+ days")
+  })
+
+  it("does NOT flag an improving trainee with recent activity and good resolution", () => {
+    const twoDaysAgo = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000)
+    const sessions = [
+      makeSessionWithErrors(
+        [{ errorType: ScanResult.WRONG_ITEM, corrected: true }],
+        { finalScore: 65, completedAt: new Date("2026-03-01") }
+      ),
+      makeSessionWithErrors(
+        [{ errorType: ScanResult.WRONG_TOTE, corrected: true }],
+        { finalScore: 72, completedAt: new Date("2026-03-04") }
+      ),
+      makeSessionWithErrors(
+        [{ errorType: ScanResult.WRONG_LOCATION, corrected: true }],
+        { finalScore: 78, completedAt: twoDaysAgo }
+      ),
+    ]
+    const { flagged } = needsAttentionFlag(sessions)
+    expect(flagged).toBe(false)
+  })
+
+  it("returns a human-readable reason string for each flag type", () => {
+    // All four reason strings must be non-empty and human-readable
+    const reasons: string[] = []
+
+    // a) Low score
+    const lowScoreSessions = [
+      makeSession({ finalScore: 50, completedAt: new Date("2026-02-28") }),
+      makeSession({ finalScore: 52, completedAt: new Date("2026-03-01") }),
+      makeSession({ finalScore: 55, completedAt: new Date("2026-03-02") }),
+    ]
+    reasons.push(needsAttentionFlag(lowScoreSessions).reason)
+
+    // b) Declining
+    const decliningSessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-02-27") }),
+      makeSession({ finalScore: 68, completedAt: new Date("2026-03-01") }),
+      makeSession({ finalScore: 61, completedAt: new Date("2026-03-04") }),
+    ]
+    reasons.push(needsAttentionFlag(decliningSessions).reason)
+
+    // c) Low resolution
+    const lowResSessions = [
+      makeSession({ finalScore: 75, completedAt: new Date("2026-03-03") }),
+      makeSession({ finalScore: 72, completedAt: new Date("2026-03-05") }),
+      makeSessionWithErrors(
+        [
+          { errorType: ScanResult.WRONG_ITEM, corrected: false },
+          { errorType: ScanResult.WRONG_ITEM, corrected: false },
+        ],
+        { finalScore: 70, completedAt: new Date("2026-03-07") }
+      ),
+    ]
+    reasons.push(needsAttentionFlag(lowResSessions).reason)
+
+    // d) Inactive
+    const nineAgo = new Date(Date.now() - 9 * 24 * 60 * 60 * 1000)
+    const inactiveSessions = [
+      makeSession({ finalScore: 70, completedAt: new Date(nineAgo.getTime() - 6 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 72, completedAt: new Date(nineAgo.getTime() - 3 * 24 * 60 * 60 * 1000) }),
+      makeSession({ finalScore: 74, completedAt: nineAgo }),
+    ]
+    reasons.push(needsAttentionFlag(inactiveSessions).reason)
+
+    // All reasons must be non-empty strings with at least 5 characters
+    for (const r of reasons) {
+      expect(typeof r).toBe("string")
+      expect(r.length).toBeGreaterThan(5)
+    }
   })
 })
