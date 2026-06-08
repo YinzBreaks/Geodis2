@@ -1,4 +1,4 @@
-﻿/**
+/**
  * RFDevice â€” RF Device terminal emulator (top-level simulator component)
  *
  * Manages input state and routes user interactions to the engine via
@@ -30,6 +30,7 @@ import { getExpectedKey } from "@/lib/stepKeyMap"
 import { getExpectedInputType } from "@/lib/stepKeyMap"
 import type { EngineResult, SimulationSession } from "@/types/domain"
 import type { CoachingState } from "@/types/coaching"
+import { playSuccessBeep, playErrorBuzz } from "@/lib/audio"
 
 export function RFDevice() {
   const { session, result, sendAction, activeDeviceModelId, coaching, lastActionResult } = useSimulation()
@@ -54,6 +55,15 @@ export function RFDevice() {
       inputRef.current?.focus()
     }
   }, [session?.currentStep]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Play audio feedback on action result
+  useEffect(() => {
+    if (lastActionResult === "correct") {
+      playSuccessBeep()
+    } else if (lastActionResult === "error") {
+      playErrorBuzz()
+    }
+  }, [lastActionResult])
 
   const handleSubmit = useCallback(() => {
     if (!session) return

@@ -13,7 +13,10 @@ import { RFDevice } from "@/components/simulator/RFDevice"
 import { DeviceSelector } from "@/components/simulator/DeviceSelector"
 import { CoachingPanel } from "@/components/simulator/CoachingPanel"
 import { StepProgressBar } from "@/components/simulator/StepProgressBar"
+import { GameStatsBar } from "@/components/simulator/GameStatsBar"
 import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
+import { WarehouseMap } from "@/components/warehouse/WarehouseMap"
+import { ExceptionInjector } from "@/components/simulator/ExceptionInjector"
 import { useSimulation } from "@/hooks/useSimulation"
 import { DifficultyLevel } from "@/types/domain"
 import { getExpectedInputType } from "@/lib/stepKeyMap"
@@ -96,6 +99,8 @@ export default function SimPage() {
             currentStep={displayStep}
             label={`Step ${displayStep + 1} of ${displayTotal}`}
           />
+          {/* Live gamification HUD — score / streak / accuracy / pace (Overhaul 3C) */}
+          <GameStatsBar session={session} />
           <div
             className="flex gap-4"
             style={{
@@ -120,38 +125,44 @@ export default function SimPage() {
         </div>
 
         {/*
-          Layout:
-            BEGINNER      → [CoachingPanel] [RF Device] [WarehouseFloor]
-            INTERMEDIATE+ → [RF Device] [WarehouseFloor]
+          Layout (stable 3-column grid — the RF Device column never moves):
+            col 1 (300px) → CoachingPanel for BEGINNER, otherwise an empty
+                            reserved spacer so the device stays centered.
+            col 2 (auto)  → RF Device (fixed position regardless of state).
+            col 3 (320px) → WarehouseFloor with contextual scannable assets.
 
-          WarehouseFloor shows contextual scannable assets.
-          Text input on RFDevice is hidden on scan steps (input type = 'scan').
-          On narrow screens the panels stack vertically.
+          Using a grid with fixed side-column widths means the device no longer
+          shifts horizontally when the coaching panel appears/disappears or the
+          warehouse floor content changes size. On narrow screens the columns
+          collapse to a single centered column.
         */}
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "row",
-            alignItems: "flex-start",
-            gap: 20,
-            flexWrap: "wrap",
-            justifyContent: "center",
-          }}
-        >
-          {isBeginner && (
-            <CoachingPanel
-              coaching={coaching}
-              difficulty={session.difficulty}
-            />
-          )}
-          <RFDevice />
-          <div style={{ width: 320, minHeight: 480 }}>
+        <div className="sim-stage">
+          <div className="sim-col-left">
+            {/* Top-down warehouse map with animated pick routing (Overhaul 1A) */}
+            <WarehouseMap session={session} difficulty={session.difficulty} />
+            {isBeginner && (
+              <div style={{ marginTop: 16 }}>
+                <CoachingPanel
+                  coaching={coaching}
+                  difficulty={session.difficulty}
+                />
+              </div>
+            )}
+          </div>
+          <div className="sim-col-center">
+            <RFDevice />
+          </div>
+          <div className="sim-col-right">
             <WarehouseFloor
               session={session}
               difficulty={session.difficulty}
               onScan={(barcode) => sendAction({ type: "SCAN", value: barcode })}
               onConfirm={() => sendAction({ type: "CONFIRM", step: session.currentStep })}
             />
+            {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
+            <div style={{ marginTop: 16 }}>
+              <ExceptionInjector />
+            </div>
           </div>
         </div>
 

@@ -67,34 +67,112 @@ export function PickTote({
         transition: "box-shadow 0.3s",
       }}
     >
-      {/* Tote SVG */}
       <svg
         viewBox="0 0 80 56"
-        style={{ width: 80, height: 56 }}
+        style={{ width: 80, height: 56, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }}
         aria-label={`Tote Slot ${slotNumber}`}
       >
-        {/* Tote body — green border + tint when loaded, dark blue otherwise */}
-        <rect x="2" y="6" width="76" height="48" rx="3"
-          fill={isLoaded ? "#142e20" : "#1e3a5f"} stroke={isLoaded ? "#22c55e" : "#15304f"} strokeWidth="1.5" />
-        {/* Rounded top edge */}
-        <rect x="2" y="6" width="76" height="8" rx="3"
-          fill={isLoaded ? "#1a3d28" : "#254d7a"} />
-        {/* Items inside — small rectangles if itemCount > 0 */}
-        {Array.from({ length: Math.min(itemCount, 4) }, (_, i) => (
-          <rect
-            key={i}
-            x={8 + (i % 2) * 32}
-            y={22 + Math.floor(i / 2) * 14}
-            width={28}
-            height={10}
-            rx={1}
-            fill="#94a3b8"
-            opacity={0.6}
-          />
-        ))}
-        {/* Loaded checkmark — shown when tote scanned in but no items picked yet */}
+        <defs>
+          {/* Blue Plastic Gloss Gradient */}
+          <linearGradient id="toteBlue" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#2563eb" />
+            <stop offset="30%" stopColor="#1d4ed8" />
+            <stop offset="100%" stopColor="#1e3a8a" />
+          </linearGradient>
+          {/* Active Green Plastic Gradient */}
+          <linearGradient id="toteGreen" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#10b981" />
+            <stop offset="30%" stopColor="#059669" />
+            <stop offset="100%" stopColor="#065f46" />
+          </linearGradient>
+          {/* Unloaded Empty Tote Gradient */}
+          <linearGradient id="toteEmpty" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#475569" />
+            <stop offset="100%" stopColor="#1e293b" />
+          </linearGradient>
+          
+          {/* Package item gradients */}
+          <linearGradient id="pkgYellow" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#fef08a" />
+            <stop offset="100%" stopColor="#ca8a04" />
+          </linearGradient>
+          <linearGradient id="pkgBlue" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#93c5fd" />
+            <stop offset="100%" stopColor="#2563eb" />
+          </linearGradient>
+        </defs>
+
+        {/* Tote Body */}
+        <rect
+          x="2"
+          y="6"
+          width="76"
+          height="48"
+          rx="4"
+          fill={isLoaded ? (itemCount > 0 ? "url(#toteGreen)" : "url(#toteBlue)") : "url(#toteEmpty)"}
+          stroke={isLoaded ? "#10b981" : "#334155"}
+          strokeWidth="1.5"
+        />
+
+        {/* Nested top rim */}
+        <rect
+          x="1"
+          y="6"
+          width="78"
+          height="7"
+          rx="2"
+          fill={isLoaded ? "#34d399" : "#64748b"}
+          opacity="0.8"
+        />
+
+        {/* Structural vertical ribs (very realistic for warehouse nesting plastic totes) */}
+        <line x1="12" y1="13" x2="12" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+        <line x1="24" y1="13" x2="24" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+        <line x1="36" y1="13" x2="36" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+        <line x1="44" y1="13" x2="44" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+        <line x1="56" y1="13" x2="56" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+        <line x1="68" y1="13" x2="68" y2="50" stroke="#1e293b" strokeWidth="1.5" opacity="0.3" />
+
+        {/* Left/Right handle cutouts */}
+        <rect x="6" y="24" width="3" height="12" rx="1.5" fill="#111827" opacity="0.6" />
+        <rect x="71" y="24" width="3" height="12" rx="1.5" fill="#111827" opacity="0.6" />
+
+        {/* Items inside — colorful small 3D boxes if itemCount > 0 */}
+        {isLoaded && Array.from({ length: Math.min(itemCount, 4) }, (_, i) => {
+          const itemColor = i % 2 === 0 ? "url(#pkgYellow)" : "url(#pkgBlue)"
+          const itemStroke = i % 2 === 0 ? "#854d0e" : "#1e40af"
+          return (
+            <g key={i} opacity="0.9" style={{ filter: "drop-shadow(0 1px 2px rgba(0,0,0,0.2))" }}>
+              <rect
+                x={12 + (i % 2) * 30}
+                y={20 + Math.floor(i / 2) * 15}
+                width={26}
+                height={11}
+                rx="1.5"
+                fill={itemColor}
+                stroke={itemStroke}
+                strokeWidth="0.5"
+              />
+              {/* Shipping tape line on the package inside tote */}
+              <line
+                x1={25 + (i % 2) * 30}
+                y1={20 + Math.floor(i / 2) * 15}
+                x2={25 + (i % 2) * 30}
+                y2={31 + Math.floor(i / 2) * 15}
+                stroke="#6b7280"
+                strokeWidth="0.5"
+                opacity="0.5"
+              />
+            </g>
+          )
+        })}
+
+        {/* Checked/Scanned empty tote indicator */}
         {isLoaded && itemCount === 0 && (
-          <text x="40" y="38" textAnchor="middle" fontSize="18" fill="#22c55e" opacity={0.85} fontWeight="bold">✓</text>
+          <g>
+            <circle cx="40" cy="30" r="11" fill="#10b981" opacity="0.9" />
+            <text x="40" y="35" textAnchor="middle" fontSize="14" fill="#ffffff" fontWeight="bold">✓</text>
+          </g>
         )}
       </svg>
 

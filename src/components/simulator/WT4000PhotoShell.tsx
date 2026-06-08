@@ -32,17 +32,17 @@ import type { CoachingState } from "@/types/coaching"
 import { selectScreen } from "@/hooks/useSimulation"
 
 // ─── DEBUG: set true to render hotspot outlines for calibration ───────────────
-const DEBUG_OVERLAY = true
+const DEBUG_OVERLAY = false
 
 // ─── Screen overlay calibration constants ────────────────────────────────────
 // Pixel-measured from scanner.png at 1270×999px.
 // left/top = distance from image top-left to LCD glass top-left corner.
 // width/height = LCD glass dimensions. All as percentages of image size.
 const SCREEN = {
-  left:   "13.2%",
-  top:    "18.5%",
-  width:  "40.5%",
-  height: "38.7%",
+  left:   "25.8%",
+  top:    "22.2%",
+  width:  "34.3%",
+  height: "35.4%",
 }
 
 // ─── Key hotspot type ─────────────────────────────────────────────────────────
@@ -85,47 +85,48 @@ interface KeyHotspot {
 // cx/cy are center-points; w/h are button dimensions. All as image-percentage.
 const KEY_MAP: KeyHotspot[] = [
   // ── Left modifier column (cx ≈ 7.9%, measured from scanner.png) ────────────
-  { id: "ESC",      label: "ESC",      cx: "7.9%", cy: "21.5%", w: "5.5%", h: "4.5%", ctrlKey: "CTRL+W" },
-  { id: "BACK_FWD", label: "← →",      cx: "7.9%", cy: "27.2%", w: "5.5%", h: "4.0%" },
-  { id: "MENU_TAB", label: "MENU/TAB", cx: "7.9%", cy: "31.3%", w: "5.5%", h: "4.5%", action: "TAB" },
-  { id: "ALT_CTRL", label: "ALT/CTRL", cx: "7.9%", cy: "37.0%", w: "5.5%", h: "5.0%", action: "CTRL_TOGGLE" },
-  { id: "SHIFT",    label: "SHIFT",    cx: "7.9%", cy: "43.0%", w: "5.5%", h: "5.0%", action: "SHIFT_TOGGLE" },
-  { id: "BLUE_SCAN",label: "SCAN",     cx: "7.5%", cy: "50.0%", w: "6.5%", h: "6.5%", action: "SCAN_TRIGGER" },
+  { id: "ESC",      label: "ESC",      cx: "16.4%", cy: "24.1%", w: "4.7%", h: "4.1%", ctrlKey: "CTRL+W" },
+  { id: "BACK_FWD", label: "← →",      cx: "16.4%", cy: "32.5%", w: "4.7%", h: "3.7%" },
+  { id: "MENU_TAB", label: "MENU/TAB", cx: "16.4%", cy: "32.7%", w: "4.7%", h: "4.1%", action: "TAB" },
+  { id: "ALT_CTRL", label: "ALT/CTRL", cx: "16.4%", cy: "40.5%", w: "4.7%", h: "4.6%", action: "CTRL_TOGGLE" },
+  { id: "SHIFT",    label: "SHIFT",    cx: "16.4%", cy: "49.5%", w: "4.7%", h: "4.6%", action: "SHIFT_TOGGLE" },
+  { id: "BLUE_SCAN",label: "SCAN",     cx: "16.8%", cy: "58.0%", w: "5.5%", h: "5.9%", action: "SCAN_TRIGGER" },
 
   // ── Keyboard row 1: 1/AB — 2/CD — 3/EF ────────────────────────────────────
-  { id: "K1", label: "1/AB", cx: "55.9%", cy: "23.2%", w: "6.5%", h: "6.0%", primary: "1", shiftChar: "A", ctrlKey: "CTRL+A" },
-  { id: "K2", label: "2/CD", cx: "64.6%", cy: "23.2%", w: "6.5%", h: "6.0%", primary: "2", shiftChar: "C" },
-  { id: "K3", label: "3/EF", cx: "73.2%", cy: "23.2%", w: "6.5%", h: "6.0%", primary: "3", shiftChar: "E", ctrlKey: "CTRL+E" },
+  { id: "K1", label: "1/AB", cx: "67.0%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "1", shiftChar: "A", ctrlKey: "CTRL+A" },
+  { id: "K2", label: "2/CD", cx: "74.8%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "2", shiftChar: "C" },
+  { id: "K3", label: "3/EF", cx: "82.3%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "3", shiftChar: "E", ctrlKey: "CTRL+E" },
 
   // ── Keyboard row 2: 4/GH — 5/IJ — 6/KL ────────────────────────────────────
-  { id: "K4", label: "4/GH", cx: "55.9%", cy: "30.7%", w: "6.5%", h: "6.0%", primary: "4", shiftChar: "G" },
-  { id: "K5", label: "5/IJ", cx: "64.6%", cy: "30.7%", w: "6.5%", h: "6.0%", primary: "5", shiftChar: "I" },
-  { id: "K6", label: "6/KL", cx: "73.2%", cy: "30.7%", w: "6.5%", h: "6.0%", primary: "6", shiftChar: "K", ctrlKey: "CTRL+K" },
+  { id: "K4", label: "4/GH", cx: "67.0%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "4", shiftChar: "G" },
+  { id: "K5", label: "5/IJ", cx: "74.8%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "5", shiftChar: "I" },
+  { id: "K6", label: "6/KL", cx: "82.3%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "6", shiftChar: "K", ctrlKey: "CTRL+K" },
 
   // ── Keyboard row 3: 7/MN — 8/OP — 9/QR ────────────────────────────────────
-  { id: "K7", label: "7/MN", cx: "55.9%", cy: "38.5%", w: "6.5%", h: "6.0%", primary: "7", shiftChar: "M" },
-  { id: "K8", label: "8/OP", cx: "64.6%", cy: "38.5%", w: "6.5%", h: "6.0%", primary: "8", shiftChar: "O" },
-  { id: "K9", label: "9/QR", cx: "73.2%", cy: "38.5%", w: "6.5%", h: "6.0%", primary: "9", shiftChar: "Q" },
+  { id: "K7", label: "7/MN", cx: "67.0%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "7", shiftChar: "M" },
+  { id: "K8", label: "8/OP", cx: "74.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "8", shiftChar: "O" },
+  { id: "K9", label: "9/QR", cx: "82.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "9", shiftChar: "Q" },
 
   // ── Keyboard row 4: S/T — U/V — W/X ────────────────────────────────────────
-  { id: "KST", label: "S/T", cx: "55.9%", cy: "45.1%", w: "6.5%", h: "5.5%", primary: "S", shiftChar: "T", ctrlKey: "CTRL+T" },
-  { id: "KUV", label: "U/V", cx: "64.6%", cy: "45.1%", w: "6.5%", h: "5.5%", primary: "U", shiftChar: "V" },
-  { id: "KWX", label: "W/X", cx: "73.2%", cy: "45.1%", w: "6.5%", h: "5.5%", primary: "W", shiftChar: "X", ctrlKey: "CTRL+W" },
+  { id: "KST", label: "S/T", cx: "67.0%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "S", shiftChar: "T", ctrlKey: "CTRL+T" },
+  { id: "KUV", label: "U/V", cx: "74.8%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "U", shiftChar: "V" },
+  { id: "KWX", label: "W/X", cx: "83.3%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "W", shiftChar: "X", ctrlKey: "CTRL+W" },
 
   // ── Keyboard row 5: BK5P — 0 — </^ ─────────────────────────────────────────
-  { id: "KBSP", label: "BK5P", cx: "55.9%", cy: "50.5%", w: "6.5%", h: "5.5%", action: "BACKSPACE" },
-  { id: "K0",   label: "0",    cx: "64.6%", cy: "50.5%", w: "6.5%", h: "5.5%", primary: "0" },
-  { id: "KARR", label: "< ^",  cx: "73.2%", cy: "50.5%", w: "6.5%", h: "5.5%" },
+  { id: "KBSP", label: "BK5P", cx: "67.0%", cy: "53.5%", w: "5.5%", h: "5.0%", action: "BACKSPACE" },
+  { id: "K0",   label: "0",    cx: "74.8%", cy: "53.5%", w: "5.5%", h: "5.0%", primary: "0" },
+  { id: "KARR", label: "< ^",  cx: "83.3%", cy: "53.5%", w: "5.5%", h: "5.0%" },
+
 
   // ── Large thumb buttons + Y/Z ────────────────────────────────────────────────
-  { id: "THUMB_L", label: "Thumb L", cx: "58.3%", cy: "55.2%", w: "8.0%", h: "6.5%" },
-  { id: "THUMB_R", label: "Thumb R", cx: "67.2%", cy: "55.2%", w: "8.0%", h: "6.5%" },
-  { id: "KYZ",     label: "Y/Z",     cx: "77.0%", cy: "55.2%", w: "6.5%", h: "5.5%", primary: "Y", shiftChar: "Z" },
+  { id: "THUMB_L", label: "Thumb L", cx: "67.7%", cy: "58.0%", w: "6.8%", h: "5.9%" },
+  { id: "THUMB_R", label: "Thumb R", cx: "75.9%", cy: "58.0%", w: "6.8%", h: "5.9%" },
+  { id: "KYZ",     label: "Y/Z",     cx: "83.3%", cy: "57.5%", w: "5.5%", h: "5.0%", primary: "Y", shiftChar: "Z" },
 
   // ── Bottom row: P1 — P2 — ENTER ─────────────────────────────────────────────
-  { id: "P1",    label: "P1",    cx: "34.3%", cy: "61.6%", w: "9.0%",  h: "5.5%", action: "P1" },
-  { id: "P2",    label: "P2",    cx: "42.5%", cy: "61.6%", w: "9.0%",  h: "5.5%", action: "P2" },
-  { id: "ENTER", label: "ENTER", cx: "54.3%", cy: "61.6%", w: "14.0%", h: "5.5%", action: "ENTER" },
+  { id: "P1",    label: "P1",    cx: "37.0%", cy: "67.0%", w: "9.0%",  h: "5.0%", action: "P1" },
+  { id: "P2",    label: "P2",    cx: "49.0%", cy: "67.0%", w: "9.0%",  h: "5.0%", action: "P2" },
+  { id: "ENTER", label: "ENTER", cx: "63.5%", cy: "66.5%", w: "11.0%", h: "5.0%", action: "ENTER" },
 ]
 
 // Keys that have a CTRL combo mapped — lit blue in ctrlActive mode

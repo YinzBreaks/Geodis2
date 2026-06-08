@@ -107,3 +107,62 @@
 .pulse-amber {
   animation: pulseAmber 1.5s ease-in-out infinite;
 }
+
+/* ── 9. SCAN LASER — red laser line sweeping a barcode (Overhaul 2A) ──────── */
+@keyframes scanLaser {
+  0%   { top: 8%;  opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { top: 92%; opacity: 0; }
+}
+
+.scan-laser {
+  position: absolute;
+  left: 4%;
+  right: 4%;
+  height: 2px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, transparent, var(--danger-bright), transparent);
+  box-shadow: 0 0 6px 1px var(--danger-bright);
+  pointer-events: none;
+  z-index: 5;
+}
+
+.scan-laser.scanning {
+  animation: scanLaser 0.3s linear forwards;
+}
+
+/* ── 10. SCREEN FLASH — green success / red error border flash (Overhaul 2A) ─ */
+@keyframes flashSuccess {
+  0%   { box-shadow: 0 0 0 0 var(--success-glow), inset 0 0 0 2px var(--success-bright); }
+  100% { box-shadow: 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
+}
+
+@keyframes flashError {
+  0%   { box-shadow: 0 0 0 0 var(--danger-glow), inset 0 0 0 2px var(--danger-bright); }
+  100% { box-shadow: 0 0 0 0 transparent, inset 0 0 0 0 transparent; }
+}
+
+.flash-success { animation: flashSuccess 0.45s ease-out; }
+.flash-error   { animation: flashError 0.5s ease-out; }
+
+/* ── 11. ITEM PICK LIFT — item lifts off shelf toward tote (Overhaul 1B) ──── */
+@keyframes pickLift {
+  0%   { transform: translate(0, 0) scale(1); opacity: 1; }
+  60%  { transform: translate(0, -18px) scale(1.08); opacity: 1; }
+  100% { transform: translate(40px, -28px) scale(0.4); opacity: 0; }
+}
+
+.pick-lift {
+  animation: pickLift 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94) forwards;
+}
+
+/* ── 12. STREAK FLAME — gamification streak badge pulse (Overhaul 3C) ─────── */
+@keyframes streakFlame {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 2px var(--amber-bright)); }
+  50%      { transform: scale(1.15); filter: drop-shadow(0 0 8px var(--amber-bright)); }
+}
+
+.streak-flame {
+  animation: streakFlame 0.9s ease-in-out infinite;
+}

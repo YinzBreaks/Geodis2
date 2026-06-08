@@ -26,10 +26,29 @@
   --color-text-secondary: #8b949e;
   --color-text-muted:     #484f58;
 
+  /* ── Overhaul palette — Titans / Industrial Warehouse fusion ─────────── */
+  /* Additive: legacy tokens above remain the dashboard default; these are   */
+  /* the immersive-simulator accents used by the overhaul components.        */
+  --navy:            #0c2340; /* primary dark */
+  --ice-blue:        #4b9cd3; /* accent, interactive */
+  --ice-white:       #e8f4fd; /* light surfaces */
+  --amber-bright:    #f5a623; /* warnings, active states */
+  --success-bright:  #2ecc71; /* scan success, complete */
+  --danger-bright:   #e74c3c; /* errors, invalid scans */
+  --concrete:        #8b8d8e; /* inactive, disabled */
+  --warehouse-floor: #2a2a2a; /* simulator background */
+  --ice-blue-glow:   rgba(75, 156, 211, 0.25);
+  --success-glow:    rgba(46, 204, 113, 0.30);
+  --danger-glow:     rgba(231, 76, 60, 0.30);
+
   /* ── Typography ──────────────────────────────────────────────────────── */
   --font-display: 'Barlow Condensed', sans-serif;
   --font-ui:      'DM Sans', sans-serif;
   --font-mono:    'JetBrains Mono', monospace;
+  /* RF terminal authenticity — monospace matching the WT4000 screen photos */
+  --font-terminal: 'IBM Plex Mono', 'JetBrains Mono', 'Courier New', monospace;
+  /* Functional coaching/body UI */
+  --font-body: 'Inter', 'DM Sans', sans-serif;
 
   /* ── Spacing + radius ────────────────────────────────────────────────── */
   --radius-sm:       4px;

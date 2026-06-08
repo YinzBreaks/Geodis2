@@ -98,6 +98,7 @@ export function RFDeviceDisplay({
   // Terminal rendering path (original)
   return (
     <div
+      className="retro-lcd-screen retro-lcd-text"
       style={{
         backgroundColor: cfg.bgColor,
         fontFamily: cfg.fontFamily,
@@ -108,6 +109,7 @@ export function RFDeviceDisplay({
         maxWidth: "100%",
         overflowX: "hidden",
         userSelect: "none",
+        position: "relative",
       }}
     >
       {visibleLines.map((line, i) => (

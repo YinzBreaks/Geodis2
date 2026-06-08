@@ -15,12 +15,14 @@ import {
   calculateScore,
 } from "@/engine/simulation-engine"
 import { computeSessionResult } from "@/engine/scorer"
+import { EXCEPTION_RESOLUTION } from "@/engine/error-injector"
 import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
 import { COACHING_CONTENT } from "@/data/coachingContent"
 import { ACTIVE_DEVICE_MODEL_ID } from "@/types/devices"
 import {
   WorkflowStep,
   DifficultyLevel,
+  ScanResult,
   type SimulationSession,
   type SimulationScenario,
   type EngineAction,
@@ -29,6 +31,7 @@ import {
   type SessionScore,
   type SessionResult,
   type WarehouseItem,
+  type ErrorScenario,
 } from "@/types/domain"
 import type { CoachingState } from "@/types/coaching"
 
@@ -301,6 +304,12 @@ interface SimulationState {
   recordPulse: () => void
   /** Switch the emulator to a different device model at runtime. */
   setActiveDevice: (modelId: string) => void
+  /**
+   * Inject an exception (Overhaul 4 / Phase 11) that fires on the trainee's
+   * next scan at the current pick index. Appends an ErrorScenario to the live
+   * scenario — the pure engine reads scenario.errorScenarios unchanged.
+   */
+  injectException: (errorType: ScanResult, isLastItemAtLocation?: boolean) => void
   reset: () => void
 }
 
@@ -478,6 +487,38 @@ export const useSimulation = create<SimulationState>((set, get) => ({
 
   setActiveDevice(modelId: string) {
     set({ activeDeviceModelId: modelId })
+  },
+
+  injectException(errorType: ScanResult, isLastItemAtLocation = true) {
+    const { session, scenario } = get()
+    if (!session || !scenario) return
+
+    const pickIndex = session.currentPickIndex
+
+    // Skip if an injection is already queued/fired at this pick index.
+    const alreadyQueued = scenario.errorScenarios.some(
+      (e) => e.injectAtPickIndex === pickIndex && e.errorType === errorType
+    )
+    if (alreadyQueued) return
+
+    const injected: ErrorScenario = {
+      scenarioId: `inject-${Date.now()}`,
+      injectAtPickIndex: pickIndex,
+      errorType,
+      description: `Supervisor-injected ${errorType} at pick ${pickIndex + 1}`,
+      expectedResolution: EXCEPTION_RESOLUTION[errorType] ?? [],
+      sopReference: "BBWD-WI-030 §6",
+      isLastItemAtLocation,
+    }
+
+    // Append to the live scenario; the pure engine reads errorScenarios on the
+    // next dispatch and fires the injection. No engine modification needed.
+    set({
+      scenario: {
+        ...scenario,
+        errorScenarios: [...scenario.errorScenarios, injected],
+      },
+    })
   },
 
   reset() {

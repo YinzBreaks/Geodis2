@@ -67,20 +67,46 @@ export function ItemLabel({
         transition: "box-shadow 0.3s, background-color 0.2s",
       }}
     >
-      {/* Product box shape SVG */}
       <svg
         viewBox="0 0 64 44"
-        style={{ width: 64, height: 44 }}
+        style={{ width: 64, height: 44, filter: "drop-shadow(0 2px 3px rgba(0,0,0,0.15))" }}
         aria-label={displayName}
       >
+        <defs>
+          {/* Detailed Box Body Gradient */}
+          <linearGradient id="itemBoxBody" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#f59e0b" />
+            <stop offset="40%" stopColor="#d97706" />
+            <stop offset="100%" stopColor="#92400e" />
+          </linearGradient>
+          {/* Detailed Box Top Flap Gradient */}
+          <linearGradient id="itemBoxFlap" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#ca8a04" />
+            <stop offset="50%" stopColor="#fef08a" />
+            <stop offset="100%" stopColor="#a16207" />
+          </linearGradient>
+        </defs>
+
         {/* Box body */}
-        <rect x="2" y="4" width="60" height="36" rx="3"
-          fill="#e2e8f0" stroke="#94a3b8" strokeWidth="1" />
+        <rect x="2" y="4" width="60" height="36" rx="2"
+          fill="url(#itemBoxBody)" stroke="#92400e" strokeWidth="0.75" />
+        
+        {/* Box fold crease line */}
+        <line x1="32" y1="4" x2="32" y2="40" stroke="#78350f" strokeWidth="0.5" opacity="0.4" />
+
         {/* Box flap */}
-        <path d="M2,4 L12,0 L52,0 L62,4" fill="#cbd5e1" stroke="#94a3b8" strokeWidth="1" />
-        {/* Product label stripe */}
-        <rect x="10" y="14" width="44" height="8" rx="1"
-          fill="#fff" stroke="#d1d5db" strokeWidth="0.5" />
+        <path d="M2,4 L12,0 L52,0 L62,4 Z" fill="url(#itemBoxFlap)" stroke="#a16207" strokeWidth="0.75" />
+
+        {/* Product shipping label sticker */}
+        <rect x="8" y="12" width="30" height="12" rx="1"
+          fill="#ffffff" stroke="#e2e8f0" strokeWidth="0.5" />
+        {/* Dummy shipping label lines */}
+        <line x1="12" y1="15" x2="26" y2="15" stroke="#475569" strokeWidth="1" />
+        <line x1="12" y1="18" x2="32" y2="18" stroke="#475569" strokeWidth="0.75" />
+        <line x1="12" y1="21" x2="22" y2="21" stroke="#94a3b8" strokeWidth="0.75" />
+
+        {/* Clear/brown packaging tape running down center fold */}
+        <rect x="30" y="4" width="4" height="36" fill="#ca8a04" opacity="0.35" />
       </svg>
 
       {/* Item name */}

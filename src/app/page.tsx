@@ -12,8 +12,8 @@ const FEATURES: { title: string; description: string; href: string; active: bool
   {
     title: "Labs",
     description: "Step-by-step guided lessons",
-    href: "#",
-    active: false,
+    href: "/labs",
+    active: true,
   },
   {
     title: "Quiz Bank",
@@ -29,130 +29,47 @@ export default async function Home() {
     role === "SUPERVISOR" || role === "PICK_LEAD" || role === "WAREHOUSE_MGR"
 
   return (
-    <main
-      style={{
-        minHeight: "100vh",
-        backgroundColor: "var(--color-base)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-      }}
-    >
+    <main className="min-h-screen bg-[var(--color-base)] flex flex-col items-center">
       {/* Feature card hover — CSS-based since this is a server component */}
       <style>{`.feature-card-active:hover { border-left-color: var(--color-amber) !important; background-color: var(--color-surface-2) !important; }`}</style>
+      
       {/* ══ HERO ════════════════════════════════════════════════════ */}
-      <section
-        className="fade-in-up"
-        style={{
-          width: "100%",
-          padding: "6rem 1.5rem 4rem",
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          textAlign: "center",
-          position: "relative",
-          overflow: "hidden",
-        }}
-      >
+      <section className="fade-in-up w-full pt-24 pb-16 px-6 flex flex-col items-center justify-center text-center relative overflow-hidden">
         {/* Signature grid texture */}
         <div
           aria-hidden="true"
+          className="absolute inset-0 opacity-30 pointer-events-none"
           style={{
-            position: "absolute",
-            inset: 0,
             backgroundImage:
               "linear-gradient(var(--color-border) 1px, transparent 1px), linear-gradient(90deg, var(--color-border) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
-            opacity: 0.3,
-            pointerEvents: "none",
           }}
         />
 
-        <h1
-          style={{
-            fontFamily: "var(--font-display)",
-            fontWeight: 700,
-            fontSize: "clamp(3rem, 8vw, 7rem)",
-            color: "var(--color-text-primary)",
-            letterSpacing: "0.05em",
-            lineHeight: 1,
-            position: "relative",
-          }}
-        >
+        <h1 className="font-display font-bold text-[clamp(3rem,8vw,7rem)] text-[var(--color-text-primary)] tracking-wide leading-none relative">
           WAREHOUSEPRO
         </h1>
-        <p
-          style={{
-            fontFamily: "var(--font-ui)",
-            color: "var(--color-text-secondary)",
-            fontSize: "1.125rem",
-            marginTop: "0.75rem",
-            position: "relative",
-          }}
-        >
+        <p className="font-ui text-[var(--color-text-secondary)] text-lg mt-3 relative">
           RF Picking Training Platform
         </p>
 
         {/* SOP badge */}
-        <span
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: "0.6875rem",
-            color: "var(--color-text-muted)",
-            marginTop: "1.25rem",
-            padding: "0.25rem 0.75rem",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-sm)",
-            position: "relative",
-          }}
-        >
+        <span className="font-mono text-[0.6875rem] text-[var(--color-text-muted)] mt-5 px-3 py-1 border border-[var(--color-border)] rounded-[var(--radius-sm)] relative">
           GEODIS · BBWD-WI-030 · v0.1.0
         </span>
 
         {/* CTA buttons */}
-        <div
-          style={{
-            display: "flex",
-            gap: "0.75rem",
-            marginTop: "2.5rem",
-            flexWrap: "wrap",
-            justifyContent: "center",
-            position: "relative",
-          }}
-        >
+        <div className="flex gap-3 mt-10 flex-wrap justify-center relative">
           <Link
             href="/sim"
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 700,
-              fontSize: "0.875rem",
-              letterSpacing: "0.05em",
-              backgroundColor: "var(--color-amber)",
-              color: "var(--color-base)",
-              padding: "0.75rem 2rem",
-              borderRadius: "var(--radius-md)",
-              textDecoration: "none",
-              transition: "background-color 0.15s",
-            }}
+            className="font-display font-bold text-sm tracking-wide bg-[var(--color-amber)] text-[var(--color-base)] px-8 py-3 rounded-[var(--radius-md)] no-underline transition-colors hover:bg-amber-500"
           >
             Start Training →
           </Link>
           {showSupervisorButton && (
           <Link
             href="/dashboard/supervisor"
-            style={{
-              fontFamily: "var(--font-display)",
-              fontWeight: 600,
-              fontSize: "0.875rem",
-              letterSpacing: "0.05em",
-              color: "var(--color-amber)",
-              border: "1px solid var(--color-amber-dim)",
-              padding: "0.75rem 2rem",
-              borderRadius: "var(--radius-md)",
-              textDecoration: "none",
-              transition: "background-color 0.15s, color 0.15s",
-            }}
+            className="font-display font-semibold text-sm tracking-wide text-[var(--color-amber)] border border-[var(--color-amber-dim)] px-8 py-3 rounded-[var(--radius-md)] no-underline transition-colors hover:bg-[var(--color-amber)] hover:text-[var(--color-base)]"
           >
             Supervisor Dashboard
           </Link>
@@ -161,80 +78,27 @@ export default async function Home() {
       </section>
 
       {/* ══ FEATURE CARDS ═════════════════════════════════════════════════ */}
-      <section
-        className="fade-in-up fade-in-up-2"
-        style={{
-          width: "100%",
-          maxWidth: "56rem",
-          padding: "0 1.5rem 3rem",
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(16rem, 1fr))",
-          gap: "1rem",
-        }}
-      >
+      <section className="fade-in-up fade-in-up-2 w-full max-w-4xl px-6 pb-12 grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-4">
         {FEATURES.map((f) => (
           <div
             key={f.title}
-            className={f.active ? "feature-card-active" : undefined}
-            style={{
-              backgroundColor: "var(--color-surface)",
-              border: "1px solid var(--color-border)",
-              borderRadius: "var(--radius-md)",
-              padding: "1.5rem",
-              boxShadow: "var(--shadow-card)",
-              opacity: f.active ? 1 : 0.45,
-              cursor: f.active ? "pointer" : "not-allowed",
-              transition: "border-color 0.2s, background-color 0.2s",
-              borderLeft: "3px solid transparent",
-            }}
+            className={`bg-[var(--color-surface)] border border-[var(--color-border)] rounded-[var(--radius-md)] p-6 shadow-[var(--shadow-card)] transition-colors border-l-[3px] border-l-transparent ${f.active ? 'opacity-100 cursor-pointer feature-card-active' : 'opacity-45 cursor-not-allowed'}`}
           >
             {f.active ? (
-              <Link href={f.href} style={{ textDecoration: "none" }}>
-                <p
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: "0.875rem",
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    color: "var(--color-text-primary)",
-                    marginBottom: "0.375rem",
-                  }}
-                >
+              <Link href={f.href} className="no-underline block h-full w-full">
+                <p className="font-display font-bold text-sm tracking-wide uppercase text-[var(--color-text-primary)] mb-1.5">
                   {f.title}
                 </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "0.8125rem",
-                    color: "var(--color-text-secondary)",
-                  }}
-                >
+                <p className="font-ui text-[0.8125rem] text-[var(--color-text-secondary)]">
                   {f.description}
                 </p>
               </Link>
             ) : (
               <>
-                <p
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: "0.875rem",
-                    letterSpacing: "0.05em",
-                    textTransform: "uppercase",
-                    color: "var(--color-text-primary)",
-                    marginBottom: "0.375rem",
-                  }}
-                >
+                <p className="font-display font-bold text-sm tracking-wide uppercase text-[var(--color-text-primary)] mb-1.5">
                   {f.title}
                 </p>
-                <p
-                  style={{
-                    fontFamily: "var(--font-ui)",
-                    fontSize: "0.8125rem",
-                    color: "var(--color-text-muted)",
-                  }}
-                >
+                <p className="font-ui text-[0.8125rem] text-[var(--color-text-muted)]">
                   {f.description} — Coming Soon
                 </p>
               </>
@@ -244,19 +108,10 @@ export default async function Home() {
       </section>
 
       {/* ══ FOOTER ════════════════════════════════════════════════════════ */}
-      <footer
-        className="fade-in-up fade-in-up-3"
-        style={{
-          marginTop: "auto",
-          padding: "2rem 1rem",
-          textAlign: "center",
-          fontFamily: "var(--font-ui)",
-          fontSize: "0.6875rem",
-          color: "var(--color-text-muted)",
-        }}
-      >
+      <footer className="fade-in-up fade-in-up-3 mt-auto py-8 px-4 text-center font-ui text-[0.6875rem] text-[var(--color-text-muted)]">
         GEODIS Logistics · WarehousePro Training Platform · BBWD-WI-030
       </footer>
     </main>
   )
 }
+
