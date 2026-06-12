@@ -14,15 +14,22 @@
  */
 "use client"
 
-import { useMemo } from "react"
-import { WorkflowStep, DifficultyLevel, type SimulationSession, type WarehouseItem, type ToteSlot } from "@/types/domain"
+import { WorkflowStep, DifficultyLevel, type SimulationSession } from "@/types/domain"
 import { getAssetContext } from "@/lib/assetContext"
-import { getDecoyItems } from "@/hooks/useSimulation"
 import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
-import { PickCart } from "./assets/PickCart"
-import { PickTote } from "./assets/PickTote"
-import { ShelfLocation } from "./assets/ShelfLocation"
-import { ItemLabel } from "./assets/ItemLabel"
+import dynamic from "next/dynamic"
+
+const WarehouseScene3D = dynamic(
+  () => import("./3d/WarehouseScene3D").then((mod) => mod.WarehouseScene3D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-white font-mono text-xs rounded-xl">
+        Loading 3D…
+      </div>
+    ),
+  }
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -66,37 +73,29 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
       </div>
 
       {/* Scene — contextual based on current step */}
-      <div className="flex-1 flex items-center justify-center overflow-auto">
-        {ctx.scannableAsset === "zone" && (
-          <ZoneCard
-            zone={session.cart.taskGroup}
-            scannable={true}
-            highlighted={effectiveHighlight === session.cart.taskGroup}
-            difficulty={difficulty}
-            onScan={onScan}
+      <div className="flex-1 w-full h-full relative">
+        {ctx.scannableAsset === "zone" ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <ZoneCard
+              zone={session.cart.taskGroup}
+              scannable={true}
+              highlighted={effectiveHighlight === session.cart.taskGroup}
+              difficulty={difficulty}
+              onScan={onScan}
+            />
+          </div>
+        ) : (!ctx.showCart && !ctx.showShelf ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <PostRoundOverlay session={session} />
+          </div>
+        ) : (
+          <WarehouseScene3D 
+            session={session} 
+            difficulty={difficulty} 
+            onScan={onScan} 
+            onConfirm={onConfirm}
           />
-        )}
-        {ctx.showShelf && (
-          <ShelfScene
-            session={session}
-            difficulty={difficulty}
-            ctx={ctx}
-            effectiveHighlight={effectiveHighlight}
-            onScan={onScan}
-          />
-        )}
-        {ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
-          <CartScene
-            session={session}
-            difficulty={difficulty}
-            ctx={ctx}
-            effectiveHighlight={effectiveHighlight}
-            onScan={onScan}
-          />
-        )}
-        {!ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
-          <PostRoundOverlay session={session} />
-        )}
+        ))}
       </div>
 
       {/* Exception overlay — shown on top of the scene during EX_* steps */}
@@ -248,206 +247,6 @@ function ZoneCard({
           ← SCAN THIS
         </div>
       )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SHELF SCENE — during pick steps
-// Per BBWD-WI-030 §5.2: Pick procedure
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ShelfScene({
-  session,
-  difficulty,
-  ctx,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  ctx: ReturnType<typeof getAssetContext>
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  const pick = session.pickQueue[session.currentPickIndex]
-
-  // Decoy items for difficulty-aware shelf display.
-  // Hooks must be called unconditionally — getDecoyItems returns [] when pick is null.
-  const decoys = useMemo(
-    () => getDecoyItems(session, difficulty),
-    [session.currentPickIndex, difficulty] // eslint-disable-line react-hooks/exhaustive-deps
-  )
-
-  // Shuffle correct item + decoys deterministically.
-  // Guard against no active pick (returns empty array, component returns null below).
-  const shelfItems = useMemo(() => {
-    if (!pick) return []
-    const items: { item: WarehouseItem; isCorrect: boolean }[] = [
-      { item: pick.item, isCorrect: true },
-      ...decoys.map((d) => ({ item: d, isCorrect: false })),
-    ]
-    const seed = session.currentPickIndex
-    return items.sort((a, b) => {
-      const ha = hashCode(a.item.itemId + seed)
-      const hb = hashCode(b.item.itemId + seed)
-      return ha - hb
-    })
-  }, [pick, decoys, session.currentPickIndex])
-
-  if (!pick) return null
-
-  return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      {/* Shelf with location */}
-      <ShelfLocation
-        aloc={pick.location.displayLabel}
-        itemBarcode={pick.item.upcBarcode}
-        itemName={pick.item.description}
-        quantity={pick.quantityRequired}
-        scannable={ctx.scannableAsset === "location"}
-        highlighted={effectiveHighlight === pick.location.displayLabel}
-        difficulty={difficulty}
-        onScan={onScan}
-      />
-
-      {/* Item labels — shown during PK_SCAN_ITEM_UPC */}
-      {ctx.showItem && ctx.scannableAsset === "item" && (
-        <div className="flex flex-wrap gap-2 justify-center mt-1">
-          {shelfItems.map(({ item, isCorrect }) => (
-            <ItemLabel
-              key={item.itemId}
-              itemBarcode={item.upcBarcode}
-              itemName={item.description}
-              scannable={true}
-              highlighted={isCorrect && effectiveHighlight === item.upcBarcode}
-              difficulty={difficulty}
-              onScan={onScan}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Pick info */}
-      <div className="text-slate-500 text-[10px] font-mono text-center">
-        Qty: {pick.quantityRequired} × {pick.item.unitOfMeasure} → Tote S{pick.targetSlot}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CART SCENE — during build cart + tote scan steps
-// Per BBWD-WI-030 §5.1: Build Cart procedure
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CartScene({
-  session,
-  difficulty,
-  ctx,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  ctx: ReturnType<typeof getAssetContext>
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  const cartHighlighted = ctx.scannableAsset === "cart" &&
-    effectiveHighlight === session.cart.cartBarcode
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <PickCart
-        cartBarcode={session.cart.cartBarcode}
-        scannable={ctx.scannableAsset === "cart"}
-        highlighted={cartHighlighted}
-        difficulty={difficulty}
-        onScan={onScan}
-      />
-
-      {/* Tote grid — 3×3 when showTotes is true */}
-      {ctx.showTotes && (
-        <ToteGrid
-          session={session}
-          difficulty={difficulty}
-          scannableAsset={ctx.scannableAsset}
-          activeToteSlot={ctx.activeToteSlot ?? null}
-          effectiveHighlight={effectiveHighlight}
-          onScan={onScan}
-        />
-      )}
-
-      {/* Slot progress indicator */}
-      {ctx.showTotes && (
-        <div className="text-slate-400 text-xs font-mono">
-          {(session.currentStep === WorkflowStep.BC_PRESS_CTRL_E ||
-            session.currentStep.startsWith("PK_")
-              ? 9
-              : Math.min(session.currentToteSlot - 1, 9)
-          )} / 9 totes loaded
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOTE GRID — 3×3 grid of tote components
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ToteGrid({
-  session,
-  difficulty,
-  scannableAsset,
-  activeToteSlot,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  scannableAsset: string | null
-  /** Per-pick target slot from assetContext; null during build-cart steps. */
-  activeToteSlot: ToteSlot | null
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-1.5" style={{ maxWidth: 280 }}>
-      {session.cart.totes.map((tote, i) => {
-        const slotNum = (i + 1) as ToteSlot
-        // During pick phase, use pick.targetSlot (from activeToteSlot) to
-        // determine which tote is scannable. Fall back to currentToteSlot
-        // during build cart (activeToteSlot is null except at PK_SCAN_TOTE_BARCODE).
-        const activeSlot = activeToteSlot ?? session.currentToteSlot
-        const isCurrent = slotNum === activeSlot
-        const isHighlighted = effectiveHighlight === tote.barcode
-        const canScan = scannableAsset === "tote" && isCurrent
-        // All totes are loaded once we reach BC_PRESS_CTRL_E or pick phase.
-        // During build cart, only slots before the current one are fully loaded.
-        const inPickPhase =
-          session.currentStep.startsWith("PK_") ||
-          session.currentStep.startsWith("PS_")
-        const isLoaded =
-          inPickPhase ||
-          tote.barcode.length > 0 ||
-          session.currentStep === WorkflowStep.BC_PRESS_CTRL_E
-
-        return (
-          <PickTote
-            key={tote.toteId}
-            toteBarcode={tote.barcode}
-            slotNumber={slotNum}
-            itemCount={tote.pickedItems.length}
-            scannable={canScan}
-            highlighted={isHighlighted}
-            isLoaded={isLoaded}
-            difficulty={difficulty}
-            onScan={onScan}
-          />
-        )
-      })}
     </div>
   )
 }
@@ -620,16 +419,6 @@ function Footer({
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Simple deterministic hash for shuffling decoy items. */
-function hashCode(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0
-  }
-  return hash
-}
 
 /** Human-readable step name for the footer. */
 function humanizeStep(step: WorkflowStep): string {

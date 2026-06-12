@@ -15,7 +15,7 @@ import { CoachingPanel } from "@/components/simulator/CoachingPanel"
 import { StepProgressBar } from "@/components/simulator/StepProgressBar"
 import { GameStatsBar } from "@/components/simulator/GameStatsBar"
 import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
-import { WarehouseMap } from "@/components/warehouse/WarehouseMap"
+import { BlueprintMap } from "@/components/warehouse/BlueprintMap"
 import { ExceptionInjector } from "@/components/simulator/ExceptionInjector"
 import { useSimulation } from "@/hooks/useSimulation"
 import { DifficultyLevel } from "@/types/domain"
@@ -52,7 +52,7 @@ export default function SimPage() {
     persistSession,
     actionCount,
     estimatedTotalSteps,
-    sendAction,
+    processInput,
   } = useSimulation()
 
   // Trigger DB persistence as soon as the result is ready (fire-and-forget)
@@ -61,6 +61,11 @@ export default function SimPage() {
       void persistSession()
     }
   }, [sessionResult, saveStatus, persistSession])
+
+  // Reset the global simulation store when this page unmounts, so navigating
+  // away (e.g. to /simulate) and back doesn't resume a stale session in the
+  // module-level Zustand singleton store.
+  useEffect(() => () => reset(), [reset])
 
   // Results screen — shown when simulation is complete
   if (sessionResult && scenarioKey) {
@@ -85,7 +90,7 @@ export default function SimPage() {
 
     return (
       <div
-        className="min-h-screen flex flex-col items-center justify-center gap-6 p-4"
+        className="min-h-screen flex flex-col items-center gap-6 p-4 py-8"
         style={{ backgroundColor: "var(--color-base)" }}
       >
         {/* Device selector + step progress bar + stats row */}
@@ -125,44 +130,49 @@ export default function SimPage() {
         </div>
 
         {/*
-          Layout (stable 3-column grid — the RF Device column never moves):
-            col 1 (300px) → CoachingPanel for BEGINNER, otherwise an empty
-                            reserved spacer so the device stays centered.
-            col 2 (auto)  → RF Device (fixed position regardless of state).
-            col 3 (320px) → WarehouseFloor with contextual scannable assets.
+          Top row (stable 3-column grid — the RF Device column never moves):
+            col 1 (300px) → Step Guide (CoachingPanel, BEGINNER only).
+            col 2 (auto)  → RF Device (scanner) with its Continue + soft keys.
+            col 3 (320px) → Trainer Exception Injector.
 
-          Using a grid with fixed side-column widths means the device no longer
-          shifts horizontally when the coaching panel appears/disappears or the
-          warehouse floor content changes size. On narrow screens the columns
-          collapse to a single centered column.
+          Fixed side-column widths keep the device from shifting when the
+          coaching panel toggles. Collapses to one column on narrow screens.
         */}
         <div className="sim-stage">
           <div className="sim-col-left">
-            {/* Top-down warehouse map with animated pick routing (Overhaul 1A) */}
-            <WarehouseMap session={session} difficulty={session.difficulty} />
             {isBeginner && (
-              <div style={{ marginTop: 16 }}>
-                <CoachingPanel
-                  coaching={coaching}
-                  difficulty={session.difficulty}
-                />
-              </div>
+              <CoachingPanel coaching={coaching} difficulty={session.difficulty} />
             )}
           </div>
           <div className="sim-col-center">
             <RFDevice />
           </div>
           <div className="sim-col-right">
+            {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
+            <ExceptionInjector />
+          </div>
+        </div>
+
+        {/*
+          Combined floor-plan band — spans the full page width.
+            left  → interactive blueprint map (click a zone to travel)
+            right → 3D warehouse floor (scan assets)
+          Travel steps are driven by clicking the correct zone on the blueprint,
+          which fires the same CONFIRM action the floor's Continue bar uses.
+        */}
+        <div className="sim-floorplan">
+          <BlueprintMap
+            session={session}
+            difficulty={session.difficulty}
+            onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
+          />
+          <div className="sim-floorplan-3d">
             <WarehouseFloor
               session={session}
               difficulty={session.difficulty}
-              onScan={(barcode) => sendAction({ type: "SCAN", value: barcode })}
-              onConfirm={() => sendAction({ type: "CONFIRM", step: session.currentStep })}
+              onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
+              onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
             />
-            {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
-            <div style={{ marginTop: 16 }}>
-              <ExceptionInjector />
-            </div>
           </div>
         </div>
 

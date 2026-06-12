@@ -2,7 +2,7 @@
 
 import { Suspense, useState } from "react"
 import { useSearchParams } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { getBrowserClient } from "@/lib/supabase/client"
 
 function LoginForm() {
   const searchParams = useSearchParams()
@@ -12,10 +12,7 @@ function LoginForm() {
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
 
-  const supabase = createBrowserClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-  )
+  const supabase = getBrowserClient()
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()

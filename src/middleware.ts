@@ -43,9 +43,13 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // If Supabase env vars are not configured, skip auth check and allow through
+  // Fail closed: if Supabase env vars are not configured, a protected route
+  // must NOT be served. Redirect to /login instead of allowing access through.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-    return NextResponse.next()
+    const url = request.nextUrl.clone()
+    url.pathname = "/login"
+    url.searchParams.set("next", pathname)
+    return NextResponse.redirect(url)
   }
 
   // Create Supabase client from request cookies

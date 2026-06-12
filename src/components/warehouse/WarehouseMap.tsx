@@ -17,7 +17,7 @@
  * (snake) path real warehouse pick paths follow.
  */
 
-import { useMemo } from "react"
+import { useMemo, useState, useRef, useEffect } from "react"
 import {
   DifficultyLevel,
   Zone,
@@ -71,6 +71,38 @@ export function WarehouseMap({
   )
   const current = plotted.find((p) => p.index === currentIndex) ?? plotted[0]
 
+  // Pan and Zoom state
+  const [transform, setTransform] = useState({ x: 0, y: 0, scale: 1 })
+  const [isDragging, setIsDragging] = useState(false)
+  const dragStart = useRef({ x: 0, y: 0 })
+  const svgRef = useRef<SVGSVGElement>(null)
+
+  const handleWheel = (e: React.WheelEvent) => {
+    // Zoom around center for simplicity
+    const newScale = Math.min(Math.max(0.5, transform.scale - e.deltaY * 0.005), 4)
+    setTransform((t) => ({ ...t, scale: newScale }))
+  }
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    setIsDragging(true)
+    dragStart.current = { x: e.clientX - transform.x, y: e.clientY - transform.y }
+    if (svgRef.current) svgRef.current.setPointerCapture(e.pointerId)
+  }
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging) return
+    setTransform((t) => ({ ...t, x: e.clientX - dragStart.current.x, y: e.clientY - dragStart.current.y }))
+  }
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    setIsDragging(false)
+    if (svgRef.current) svgRef.current.releasePointerCapture(e.pointerId)
+  }
+
+  const zoomIn = () => setTransform((t) => ({ ...t, scale: Math.min(4, t.scale + 0.2) }))
+  const zoomOut = () => setTransform((t) => ({ ...t, scale: Math.max(0.5, t.scale - 0.2) }))
+  const resetZoom = () => setTransform({ x: 0, y: 0, scale: 1 })
+
   // Breadcrumb path string through all plotted picks (serpentine order).
   const pathD = useMemo(() => {
     if (plotted.length === 0) return ""
@@ -108,15 +140,23 @@ export function WarehouseMap({
         </span>
       </div>
 
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        width="100%"
-        style={{ display: "block", borderRadius: 8, background: "#1f1f1f" }}
-        role="img"
-        aria-label={`Top-down map of zone ${zone} pick path`}
-      >
-        {/* Hazmat striped backdrop */}
-        {haz && (
+      <div className="relative overflow-hidden" style={{ borderRadius: 8, background: "#1f1f1f" }}>
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${width} ${height}`}
+          width="100%"
+          style={{ display: "block", cursor: isDragging ? "grabbing" : "grab", touchAction: "none" }}
+          role="img"
+          aria-label={`Top-down map of zone ${zone} pick path`}
+          onWheel={handleWheel}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerUp}
+        >
+          <g transform={`translate(${transform.x}, ${transform.y}) scale(${transform.scale})`}>
+            {/* Hazmat striped backdrop */}
+            {haz && (
           <>
             <defs>
               <pattern id="hazStripes" width="14" height="14" patternTransform="rotate(45)" patternUnits="userSpaceOnUse">
@@ -224,7 +264,16 @@ export function WarehouseMap({
             <circle cx={CART - 3} cy={CART + 1} r={1.6} fill="var(--navy)" />
           </g>
         )}
+        </g>
       </svg>
+
+        {/* Map Controls */}
+        <div className="absolute top-2 right-2 flex flex-col gap-1 bg-black/50 p-1 rounded backdrop-blur">
+          <button onClick={zoomIn} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono font-bold">+</button>
+          <button onClick={zoomOut} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono font-bold">-</button>
+          <button onClick={resetZoom} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono text-[10px]">R</button>
+        </div>
+      </div>
 
       <p
         className="text-[10px] text-center"

@@ -2,7 +2,8 @@
  * RFDevice â€” RF Device terminal emulator (top-level simulator component)
  *
  * Manages input state and routes user interactions to the engine via
- * useSimulation.sendAction(). Orchestrates RFDeviceDisplay + SoftKeyBar.
+ * useSimulation.processInput() (canonical input contract). Orchestrates
+ * RFDeviceDisplay + SoftKeyBar.
  *
  * Visual appearance is driven entirely by the active device model from the
  * Zustand store â€” no hardcoded colors or fonts.
@@ -21,7 +22,6 @@ import { getDeviceModel, type RFDeviceModel } from "@/types/devices"
 import {
   useSimulation,
   getInputMode,
-  getEnterKeyAction,
   getSoftKeyEnabled,
   selectScreen,
   selectIsComplete,
@@ -33,7 +33,13 @@ import type { CoachingState } from "@/types/coaching"
 import { playSuccessBeep, playErrorBuzz } from "@/lib/audio"
 
 export function RFDevice() {
-  const { session, result, sendAction, activeDeviceModelId, coaching, lastActionResult } = useSimulation()
+  // Atomic selectors — subscribe only to the slices this component renders.
+  const session = useSimulation((s) => s.session)
+  const result = useSimulation((s) => s.result)
+  const processInput = useSimulation((s) => s.processInput)
+  const activeDeviceModelId = useSimulation((s) => s.activeDeviceModelId)
+  const coaching = useSimulation((s) => s.coaching)
+  const lastActionResult = useSimulation((s) => s.lastActionResult)
   const [inputValue, setInputValue] = useState("")
   // Bug 5: track inline input errors (empty scan guard) without incrementing
   // session.errors or triggering error injection
@@ -85,29 +91,25 @@ export function RFDevice() {
     setInputError(null)
 
     if (mode === "SCAN") {
-      sendAction({ type: "SCAN", value: inputValue })
+      processInput({ type: "SCAN", value: inputValue, source: "keyboard" })
     } else if (mode === "TYPE") {
-      sendAction({ type: "TYPE", text: inputValue })
+      processInput({ type: "QUANTITY", value: inputValue, source: "keyboard" })
     } else {
-      sendAction({ type: "CONFIRM", step: session.currentStep })
+      processInput({ type: "CONFIRM", value: "", source: "keyboard" })
     }
     setInputValue("")
-  }, [session, inputValue, sendAction])
+  }, [session, inputValue, processInput])
 
   const handleSoftKey = useCallback(
     (keys: string) => {
       if (!session) return
       if (selectIsComplete(session)) return
 
-      if (keys === "ENTER") {
-        sendAction(getEnterKeyAction(session.currentStep))
-      } else {
-        sendAction({ type: "KEY_PRESS", keys })
-      }
+      processInput({ type: "SOFTKEY", value: keys, source: "click" })
       setInputValue("")
       inputRef.current?.focus()
     },
-    [session, sendAction]
+    [session, processInput]
   )
 
   const handleKeyDown = useCallback(

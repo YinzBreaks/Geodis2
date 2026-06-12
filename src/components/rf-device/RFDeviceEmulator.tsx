@@ -20,7 +20,6 @@ import { getDeviceModel, type RFDeviceModel, type RFDeviceScreenConfig } from "@
 import {
   useSimulation,
   getInputMode,
-  getEnterKeyAction,
   selectScreen,
   selectIsComplete,
   getSoftKeyEnabled,
@@ -60,8 +59,15 @@ interface RFDeviceEmulatorProps {
 }
 
 export function RFDeviceEmulator({ modelId }: RFDeviceEmulatorProps = {}) {
-  const { session, scenario, result, softKeyPulseCount, sendAction, recordPulse, activeDeviceModelId } =
-    useSimulation()
+  // Atomic selectors — subscribe only to the slices this component renders,
+  // so unrelated store updates don't trigger a re-render.
+  const session = useSimulation((s) => s.session)
+  const scenario = useSimulation((s) => s.scenario)
+  const result = useSimulation((s) => s.result)
+  const softKeyPulseCount = useSimulation((s) => s.softKeyPulseCount)
+  const processInput = useSimulation((s) => s.processInput)
+  const recordPulse = useSimulation((s) => s.recordPulse)
+  const activeDeviceModelId = useSimulation((s) => s.activeDeviceModelId)
   const [inputValue, setInputValue] = useState("")
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -90,14 +96,14 @@ export function RFDeviceEmulator({ modelId }: RFDeviceEmulatorProps = {}) {
     const mode = getInputMode(session.currentStep, rfScreen.inputType)
 
     if (mode === "SCAN") {
-      sendAction({ type: "SCAN", value: inputValue })
+      processInput({ type: "SCAN", value: inputValue, source: "keyboard" })
     } else if (mode === "TYPE") {
-      sendAction({ type: "TYPE", text: inputValue })
+      processInput({ type: "QUANTITY", value: inputValue, source: "keyboard" })
     } else {
-      sendAction({ type: "CONFIRM", step: session.currentStep })
+      processInput({ type: "CONFIRM", value: "", source: "keyboard" })
     }
     setInputValue("")
-  }, [session, inputValue, sendAction])
+  }, [session, inputValue, processInput])
 
   // ── Soft key handler ────────────────────────────────────────────────
 
@@ -105,15 +111,11 @@ export function RFDeviceEmulator({ modelId }: RFDeviceEmulatorProps = {}) {
     (keys: string) => {
       if (!session || selectIsComplete(session)) return
 
-      if (keys === "ENTER") {
-        sendAction(getEnterKeyAction(session.currentStep))
-      } else {
-        sendAction({ type: "KEY_PRESS", keys })
-      }
+      processInput({ type: "SOFTKEY", value: keys, source: "click" })
       setInputValue("")
       inputRef.current?.focus()
     },
-    [session, sendAction]
+    [session, processInput]
   )
 
   const handleKeyDown = useCallback(
