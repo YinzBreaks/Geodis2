@@ -51,6 +51,7 @@ interface WarehouseFloorProps {
 export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: WarehouseFloorProps) {
   const step = session.currentStep
   const ctx = getAssetContext(step, session)
+  const pick = session.pickQueue[session.currentPickIndex]
 
   // Difficulty-aware highlighting: ADVANCED never highlights
   const effectiveHighlight = difficulty === DifficultyLevel.ADVANCED
@@ -58,7 +59,7 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
     : ctx.highlightedBarcode
 
   return (
-    <div id="warehouse-floor" className="bg-slate-100 rounded-xl border border-slate-300 p-4 h-full flex flex-col gap-3 overflow-hidden">
+    <div id="warehouse-floor" className="bg-slate-100 rounded-xl border border-slate-300 p-4 h-full flex flex-col gap-3 overflow-y-auto overflow-x-hidden">
       {/* Inject CSS keyframes for scan beam + asset pulse animations */}
       <BarcodeScanStyles />
 
@@ -73,7 +74,7 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
       </div>
 
       {/* Scene — contextual based on current step */}
-      <div className="flex-1 w-full h-full relative">
+      <div className="flex-1 min-h-0 w-full relative">
         {ctx.scannableAsset === "zone" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
             <ZoneCard
@@ -98,6 +99,21 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
         ))}
       </div>
 
+      {/* Always-visible scan targets panel — clear fallback if 3D hit targets fail. */}
+      {(ctx.showCart || ctx.showShelf) && ctx.scannableAsset !== "zone" && (
+        <FallbackScanPanel
+          session={session}
+          scannableAsset={ctx.scannableAsset}
+          activeToteSlot={ctx.activeToteSlot ?? null}
+          onScan={onScan}
+          pickItemBarcode={pick?.item.upcBarcode ?? null}
+          pickLocationLabel={pick?.location.displayLabel ?? null}
+          showCart={ctx.showCart}
+          showTotes={ctx.showTotes}
+          showShelf={ctx.showShelf}
+        />
+      )}
+
       {/* Exception overlay — shown on top of the scene during EX_* steps */}
       {step.startsWith("EX_") && (
         <ExceptionBanner step={step} onConfirm={onConfirm} />
@@ -110,6 +126,113 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
 
       {/* Footer — instruction hint */}
       <Footer step={step} difficulty={difficulty} scannableAsset={ctx.scannableAsset} />
+    </div>
+  )
+}
+
+function FallbackScanPanel({
+  session,
+  scannableAsset,
+  activeToteSlot,
+  onScan,
+  pickItemBarcode,
+  pickLocationLabel,
+  showCart,
+  showTotes,
+  showShelf,
+}: {
+  session: SimulationSession
+  scannableAsset: "cart" | "tote" | "location" | "item" | null
+  activeToteSlot: number | null
+  onScan: (barcode: string) => void
+  pickItemBarcode: string | null
+  pickLocationLabel: string | null
+  showCart: boolean
+  showTotes: boolean
+  showShelf: boolean
+}) {
+  const isCartStep = scannableAsset === "cart"
+  const isItemStep = scannableAsset === "item"
+  const isLocationStep = scannableAsset === "location"
+  const isToteStep = scannableAsset === "tote"
+  const targetSlot = activeToteSlot ?? session.currentToteSlot
+
+  return (
+    <div className="rounded-md border border-slate-500/50 bg-slate-900/70 p-2 flex flex-col gap-2 max-h-44 overflow-y-auto">
+      <div className="text-[10px] font-mono text-slate-300 uppercase tracking-wide">Scan Targets</div>
+
+      {showCart && (
+        <button
+          onClick={() => isCartStep && onScan(session.cart.cartBarcode)}
+          disabled={!isCartStep}
+          data-scan-target={isCartStep ? "active" : "inactive"}
+          data-scan-type="cart"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isCartStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          Cart · {session.cart.cartBarcode}
+        </button>
+      )}
+
+      {showShelf && pickLocationLabel && (
+        <button
+          onClick={() => isLocationStep && onScan(pickLocationLabel)}
+          disabled={!isLocationStep}
+          data-scan-target={isLocationStep ? "active" : "inactive"}
+          data-scan-type="location"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isLocationStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          Location · {pickLocationLabel}
+        </button>
+      )}
+
+      {showShelf && pickItemBarcode && (
+        <button
+          onClick={() => isItemStep && onScan(pickItemBarcode)}
+          disabled={!isItemStep}
+          data-scan-target={isItemStep ? "active" : "inactive"}
+          data-scan-type="item"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isItemStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          Item UPC · {pickItemBarcode}
+        </button>
+      )}
+
+      {showTotes && (
+        <div className="grid grid-cols-3 gap-1.5">
+          {session.cart.totes.map((tote) => {
+            const isTarget = isToteStep && tote.slot === targetSlot
+            return (
+              <button
+                key={tote.toteId}
+                onClick={() => isTarget && onScan(tote.barcode)}
+                disabled={!isTarget}
+                data-scan-target={isTarget ? "active" : "inactive"}
+                data-scan-type="tote"
+                data-scan-slot={String(tote.slot)}
+                className={`rounded px-2 py-1.5 text-[10px] font-mono border transition-colors ${
+                  isTarget
+                    ? "border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35"
+                    : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+                }`}
+              >
+                S{tote.slot} · {tote.barcode.slice(-4)}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

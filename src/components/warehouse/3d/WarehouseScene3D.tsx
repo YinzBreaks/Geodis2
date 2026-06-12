@@ -27,7 +27,7 @@ export function WarehouseScene3D({ session, difficulty, onScan, onConfirm }: War
 
   return (
     <div className="w-full h-full relative bg-slate-900 rounded-xl overflow-hidden border border-slate-700">
-      <Canvas shadows frameloop="demand" camera={{ position: [0, 4, 8], fov: 45 }}>
+      <Canvas shadows frameloop="always" camera={{ position: [0, 2.8, 4.6], fov: 44 }}>
         <color attach="background" args={["#0f172a"]} />
         <hemisphereLight args={["#bcd4ff", "#2a2a2a", 0.6]} />
         <ambientLight intensity={0.15} />
@@ -52,10 +52,12 @@ export function WarehouseScene3D({ session, difficulty, onScan, onConfirm }: War
           <OrbitControls 
             makeDefault
             enabled={!dragging}
-            minPolarAngle={0} 
-            maxPolarAngle={Math.PI / 2 - 0.05} 
-            minDistance={2} 
-            maxDistance={20} 
+            enablePan={false}
+            enableZoom={false}
+            minPolarAngle={0.95}
+            maxPolarAngle={0.95}
+            minAzimuthAngle={0}
+            maxAzimuthAngle={0}
           />
 
           <group position={[0, 0, 0]}>
@@ -97,7 +99,7 @@ export function WarehouseScene3D({ session, difficulty, onScan, onConfirm }: War
         <div className="bg-slate-800/80 px-4 py-2 rounded-full border border-slate-600 text-white font-mono text-xs shadow-lg backdrop-blur">
           {difficulty === DifficultyLevel.BEGINNER && ctx.scannableAsset
             ? `Scan the highlighted ${ctx.scannableAsset} to continue`
-            : "Use mouse to rotate and zoom"}
+            : "Fixed camera view — click highlighted targets to continue"}
         </div>
       </div>
     </div>

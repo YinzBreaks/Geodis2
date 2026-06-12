@@ -204,6 +204,33 @@ describe("getAssetContext", () => {
     // Slot 3 → totes[2] → barcode T00000000011694
     expect(ctx.highlightedBarcode).toBe("T00000000011694")
     expect(ctx.scannableAsset).toBe("tote")
+    expect(ctx.activeToteSlot).toBe(3)
+  })
+
+  it("BC_PLACE_TOTE_IN_SLOT → exposes activeToteSlot for visual targeting", () => {
+    const s = makeSession({
+      currentStep: WorkflowStep.BC_PLACE_TOTE_IN_SLOT,
+      currentToteSlot: 4 as ToteSlot,
+    })
+    const ctx = getAssetContext(s.currentStep, s)
+    expect(ctx.showCart).toBe(true)
+    expect(ctx.showTotes).toBe(true)
+    expect(ctx.scannableAsset).toBeNull()
+    expect(ctx.activeToteSlot).toBe(4)
+  })
+
+  it("PK_SCAN_TOTE_BARCODE → activeToteSlot tracks pick target slot (not currentToteSlot)", () => {
+    const pick = makePickTask()
+    const s = makeSession({
+      currentStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
+      currentToteSlot: 9 as ToteSlot,
+      pickQueue: [{ ...pick, targetSlot: 2 as ToteSlot }],
+      cart: { ...makeCart(), isBuilt: true },
+    })
+    const ctx = getAssetContext(s.currentStep, s)
+    expect(ctx.scannableAsset).toBe("tote")
+    expect(ctx.activeToteSlot).toBe(2)
+    expect(ctx.highlightedBarcode).toBe("T00000000011693")
   })
 
   it("PS_ROUND_COMPLETE → no assets shown", () => {

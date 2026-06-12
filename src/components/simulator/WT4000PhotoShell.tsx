@@ -186,6 +186,24 @@ export function WT4000PhotoShell({
   const [ctrlActive, setCtrlActive] = useState(false)
   const [shiftActive, setShiftActive] = useState(false)
 
+  const triggerFloorScan = useCallback(() => {
+    const floor = document.getElementById("warehouse-floor")
+    if (!floor) return
+
+    const activeTarget = floor.querySelector<HTMLButtonElement>(
+      '[data-scan-target="active"]'
+    )
+
+    if (activeTarget && !activeTarget.disabled) {
+      activeTarget.click()
+      return
+    }
+
+    floor.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    floor.classList.add("floor-flash")
+    setTimeout(() => floor.classList.remove("floor-flash"), 900)
+  }, [])
+
   /** Dispatch the appropriate action for a hotspot click. */
   const handleHotspotClick = useCallback(
     (key: KeyHotspot) => {
@@ -213,12 +231,7 @@ export function WT4000PhotoShell({
         return
       }
       if (key.action === "SCAN_TRIGGER") {
-        const el = document.getElementById("warehouse-floor")
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-          el.classList.add("floor-flash")
-          setTimeout(() => el.classList.remove("floor-flash"), 900)
-        }
+        triggerFloorScan()
         return
       }
       // P1/P2 — no action assigned yet
@@ -261,6 +274,7 @@ export function WT4000PhotoShell({
       handleSubmit,
       handleSoftKey,
       setInputValue,
+      triggerFloorScan,
     ]
   )
 
@@ -545,13 +559,7 @@ export function WT4000PhotoShell({
           return (
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById("warehouse-floor")
-                if (!el) return
-                el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-                el.classList.add("floor-flash")
-                setTimeout(() => el.classList.remove("floor-flash"), 900)
-              }}
+              onClick={triggerFloorScan}
               className="text-[10px] font-mono text-center py-2 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
               style={{
                 backgroundColor: "#18181b",

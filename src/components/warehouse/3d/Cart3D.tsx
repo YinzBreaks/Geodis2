@@ -71,7 +71,7 @@ export function Cart3D({ session, difficulty, ctx, effectiveHighlight, onScan, p
       </mesh>
 
       {/* Cart Barcode Label */}
-      <Html position={[-1.4, 1.4, 0]} center transform distanceFactor={6} rotation={[0, -Math.PI / 2, 0]}>
+      <Html position={[-1.4, 1.4, 0]} center transform scale={0.085} rotation={[0, -Math.PI / 2, 0]}>
         <div 
           className={`px-3 py-2 bg-white rounded cursor-pointer border-2 transition-all hover:scale-105 ${isCartHighlighted && difficulty === DifficultyLevel.BEGINNER ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)] animate-pulse" : "border-slate-300"}`}
           onClick={() => ctx.scannableAsset === "cart" && onScan(session.cart.cartBarcode)}
@@ -95,6 +95,24 @@ export function Cart3D({ session, difficulty, ctx, effectiveHighlight, onScan, p
           {/* Per-tote overlays: inner cavity, items, and the barcode label */}
           {toteData.map(({ tote, slotNum, tPosition, isLoaded, itemCount, canScan, highlighted }) => (
             <group key={tote.toteId} position={tPosition}>
+              {/* Tote body is clickable so scan targets remain usable even if label perspective is awkward. */}
+              <mesh
+                position={[0, 0.01, 0]}
+                onClick={() => canScan && onScan(tote.barcode)}
+                onPointerOver={(e) => {
+                  if (canScan) {
+                    e.stopPropagation()
+                    document.body.style.cursor = "pointer"
+                  }
+                }}
+                onPointerOut={() => {
+                  document.body.style.cursor = "default"
+                }}
+              >
+                <boxGeometry args={[0.84, 0.32, 0.54]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
+
               {/* Inner cavity (fake depth) */}
               <mesh position={[0, 0.151, 0]} rotation={[-Math.PI / 2, 0, 0]}>
                 <planeGeometry args={[0.7, 0.4]} />
@@ -116,7 +134,7 @@ export function Cart3D({ session, difficulty, ctx, effectiveHighlight, onScan, p
                 ))}
 
               {/* Barcode label (front face) */}
-              <Html position={[0, 0, 0.26]} center transform distanceFactor={4}>
+              <Html position={[0, 0, 0.26]} center transform scale={0.07}>
                 <div
                   className={`px-1.5 py-1 bg-white rounded flex items-center gap-1 cursor-pointer border transition-all hover:scale-105 ${
                     highlighted && difficulty === DifficultyLevel.BEGINNER

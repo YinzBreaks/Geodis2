@@ -99,7 +99,7 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
 
             {/* Scannable Item Label UI (Overlay) */}
             {ctx.showItem && ctx.scannableAsset === "item" && (
-              <Html position={[0, 0, 0.31]} center transform distanceFactor={5}>
+              <Html position={[0, 0, 0.31]} center transform scale={0.085}>
                 <div 
                   className={`w-24 bg-white rounded p-1 cursor-pointer border-2 transition-all hover:scale-105 ${isItemHighlighted && difficulty === DifficultyLevel.BEGINNER ? "border-amber-500 shadow-[0_0_15px_rgba(245,158,11,0.8)] animate-pulse" : "border-slate-300"}`}
                   onClick={() => onScan(sItem.item.upcBarcode)}
@@ -115,7 +115,7 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
             
             {/* Drag Hint */}
             {isDraggable && !dragPosition && (
-              <Html position={[0, 0.5, 0]} center transform distanceFactor={5}>
+              <Html position={[0, 0.5, 0]} center transform scale={0.095}>
                 <div className="bg-blue-600 text-white font-bold text-[8px] px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none whitespace-nowrap">
                   DRAG TO TOTE
                 </div>
