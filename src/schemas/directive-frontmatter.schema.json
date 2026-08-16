@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"WarehousePro Directive Frontmatter","type":"object","required":["directiveId","title","sopDocument","sopSection","effectiveDate","version","relatedLabs","relatedSimulations","tags"],"properties":{"relatedLabs":{"type":"array"},"relatedSimulations":{"type":"array"},"tags":{"type":"array"}}}

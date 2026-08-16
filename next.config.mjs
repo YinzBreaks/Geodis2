@@ -7,7 +7,7 @@ const nextConfig = {
    *
    * Per user fix request: "CommonJS/ESM interop failure" prevention.
    */
-  transpilePackages: ["@zxing/browser", "@zxing/library"],
+  transpilePackages: ["@zxing/browser", "@zxing/library", "three", "@react-three/fiber", "@react-three/drei"],
 
   webpack: (config) => {
     /**

@@ -63,14 +63,14 @@ export interface SignoffData {
 export default async function TraineeDetailPage({
   params,
 }: {
-  params: { userId: string }
+  params: Promise<{ userId: string }>
 }) {
   const auth = await requireRole("SUPERVISOR")
   if (!auth.authorized || !auth.facilityId) {
     redirect("/unauthorized")
   }
 
-  const { userId } = params
+  const { userId } = await params
 
   const trainee = await prisma.user.findFirst({
     where: { id: userId, facilityId: auth.facilityId },

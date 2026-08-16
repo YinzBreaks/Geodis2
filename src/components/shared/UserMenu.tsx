@@ -15,7 +15,7 @@
 
 import { useState, useCallback, useRef, useEffect } from "react"
 import { useRouter } from "next/navigation"
-import { createBrowserClient } from "@supabase/ssr"
+import { getBrowserClient } from "@/lib/supabase/client"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // COMPONENT
@@ -53,10 +53,7 @@ export function UserMenu({ roleBadge, email }: UserMenuProps) {
 
   const handleSignOut = useCallback(async () => {
     setSigningOut(true)
-    const supabase = createBrowserClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL ?? "",
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? ""
-    )
+    const supabase = getBrowserClient()
     await supabase.auth.signOut()
     router.push("/login")
   }, [router])

@@ -8,20 +8,28 @@
  */
 "use client"
 
+import { useCallback, useState } from "react"
+import { useRouter } from "next/navigation"
 import { TraineeCard } from "@/components/dashboard/TraineeCard"
 import { ExceptionHeatmap } from "@/components/dashboard/ExceptionHeatmap"
 import { ScoreTrendChart, type ScoreDataPoint } from "@/components/dashboard/ScoreTrendChart"
+import { CoachingFlagQueue } from "@/components/dashboard/CoachingFlagQueue"
 import type { ExceptionStats, FloorReadyGap } from "@/lib/floorReadiness"
-import type { TraineeOverview, CohortTrendPoint } from "./page"
+import type {
+  CohortTraineeOverview,
+  CohortTrendPoint,
+} from "@/services/reporting/cohort-reporting"
+import type { CoachingFlagSummary } from "@/services/reporting/coaching-flag-reporting"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
 // ─────────────────────────────────────────────────────────────────────────────
 
 interface SupervisorDashboardClientProps {
-  trainees: TraineeOverview[]
+  trainees: CohortTraineeOverview[]
   cohortExceptionCoverage: Record<string, ExceptionStats>
   trendData: CohortTrendPoint[]
+  initialCoachingFlags: CoachingFlagSummary[]
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -33,7 +41,43 @@ export function SupervisorDashboardClient({
   trainees,
   cohortExceptionCoverage,
   trendData,
+  initialCoachingFlags,
 }: SupervisorDashboardClientProps) {
+  const router = useRouter()
+  const [coachingState, setCoachingState] = useState<
+    Record<string, "saving" | "saved" | "error">
+  >({})
+
+  const createCoachingFlag = useCallback(
+    async (trainee: CohortTraineeOverview) => {
+      setCoachingState((state) => ({ ...state, [trainee.userId]: "saving" }))
+      const sourceGap = trainee.report.gaps[0]?.criterion
+      try {
+        const response = await fetch("/api/coaching-flags", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            traineeId: trainee.userId,
+            category: "READINESS_GAP",
+            reason:
+              trainee.report.needsAttentionReason ??
+              sourceGap ??
+              "Supervisor coaching review requested",
+            sourceGap,
+          }),
+        })
+        if (!response.ok && response.status !== 409) {
+          throw new Error(`HTTP ${response.status}`)
+        }
+        setCoachingState((state) => ({ ...state, [trainee.userId]: "saved" }))
+        router.refresh()
+      } catch {
+        setCoachingState((state) => ({ ...state, [trainee.userId]: "error" }))
+      }
+    },
+    [router]
+  )
+
   // Needs attention: NEEDS_COACHING trainees sorted by most sessions without improvement
   const needsAttention = trainees
     .filter((t) => t.report.status === "NEEDS_COACHING")
@@ -50,14 +94,22 @@ export function SupervisorDashboardClient({
   return (
     <main className="min-h-screen p-6" style={{ backgroundColor: "var(--color-base)" }}>
       {/* Page Header */}
-      <div className="mb-8">
-        <h1 style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 700 }}>
-          Supervisor Dashboard
-        </h1>
-        <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 13, marginTop: 4 }}>
-          {trainees.length} trainee{trainees.length !== 1 ? "s" : ""} at
-          facility
-        </p>
+      <div className="mb-8 flex items-start justify-between gap-4">
+        <div>
+          <h1 style={{ color: "var(--color-text-primary)", fontFamily: "var(--font-display)", fontSize: "1.5rem", fontWeight: 700 }}>
+            Supervisor Dashboard
+          </h1>
+          <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 13, marginTop: 4 }}>
+            {trainees.length} trainee{trainees.length !== 1 ? "s" : ""} at
+            facility
+          </p>
+        </div>
+        <a
+          href="/api/dashboard/supervisor/export"
+          className="rounded border border-slate-600 px-3 py-2 text-xs font-mono text-slate-200 hover:border-amber-400 hover:text-amber-200"
+        >
+          Export CSV
+        </a>
       </div>
 
       {/* A. COHORT OVERVIEW ROW */}
@@ -115,6 +167,8 @@ export function SupervisorDashboardClient({
         </div>
       </section>
 
+      <CoachingFlagQueue initialFlags={initialCoachingFlags} />
+
       {/* D. NEEDS ATTENTION LIST */}
       <section className="mb-8">
         <h2 style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-display)", fontSize: 12, fontWeight: 700, letterSpacing: "0.08em", textTransform: "uppercase", marginBottom: 12 }}>
@@ -167,6 +221,8 @@ export function SupervisorDashboardClient({
                     {t.sessionsCompleted} sessions
                   </span>
                   <button
+                    onClick={() => void createCoachingFlag(t)}
+                    disabled={coachingState[t.userId] === "saving" || coachingState[t.userId] === "saved"}
                     style={{
                       padding: "6px 12px",
                       backgroundColor: "rgba(240, 165, 0, 0.15)",
@@ -179,7 +235,13 @@ export function SupervisorDashboardClient({
                       cursor: "pointer",
                     }}
                   >
-                    Schedule Coaching
+                    {coachingState[t.userId] === "saving"
+                      ? "Saving..."
+                      : coachingState[t.userId] === "saved"
+                        ? "Coaching Flag Open"
+                        : coachingState[t.userId] === "error"
+                          ? "Retry Coaching Flag"
+                          : "Open Coaching Flag"}
                   </button>
                   <a
                     href={`/dashboard/supervisor/trainee/${t.userId}`}

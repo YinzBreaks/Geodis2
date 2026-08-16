@@ -14,15 +14,23 @@
  */
 "use client"
 
-import { useMemo } from "react"
-import { WorkflowStep, DifficultyLevel, type SimulationSession, type WarehouseItem, type ToteSlot } from "@/types/domain"
+import { WorkflowStep, DifficultyLevel, type SimulationSession } from "@/types/domain"
 import { getAssetContext } from "@/lib/assetContext"
-import { getDecoyItems } from "@/hooks/useSimulation"
 import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
-import { PickCart } from "./assets/PickCart"
-import { PickTote } from "./assets/PickTote"
-import { ShelfLocation } from "./assets/ShelfLocation"
-import { ItemLabel } from "./assets/ItemLabel"
+import { assetLabel, t, type AppLanguage } from "@/lib/i18n"
+import dynamic from "next/dynamic"
+
+const WarehouseScene3D = dynamic(
+  () => import("./3d/WarehouseScene3D").then((mod) => mod.WarehouseScene3D),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full flex items-center justify-center bg-slate-900 text-white font-mono text-xs rounded-xl">
+        ...
+      </div>
+    ),
+  }
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -35,15 +43,20 @@ interface WarehouseFloorProps {
   onScan: (barcode: string) => void
   /** Callback for physical-confirm steps (travel, verify, place) */
   onConfirm: () => void
+  /** Compact chrome for tablet focus mode. */
+  compact?: boolean
+  /** Active UI language. */
+  language?: AppLanguage
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
 // ─────────────────────────────────────────────────────────────────────────────
 
-export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: WarehouseFloorProps) {
+export function WarehouseFloor({ session, difficulty, onScan, onConfirm, compact = false, language = "en" }: WarehouseFloorProps) {
   const step = session.currentStep
   const ctx = getAssetContext(step, session)
+  const pick = session.pickQueue[session.currentPickIndex]
 
   // Difficulty-aware highlighting: ADVANCED never highlights
   const effectiveHighlight = difficulty === DifficultyLevel.ADVANCED
@@ -51,66 +64,254 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm }: Wareh
     : ctx.highlightedBarcode
 
   return (
-    <div id="warehouse-floor" className="bg-slate-100 rounded-xl border border-slate-300 p-4 h-full flex flex-col gap-3 overflow-hidden">
+    <div id="warehouse-floor" className={`bg-slate-100 rounded-xl border border-slate-300 ${compact ? "p-3" : "p-4"} h-full flex flex-col ${compact ? "gap-2" : "gap-3"} ${compact ? "overflow-hidden" : "overflow-y-auto"} overflow-x-hidden`}>
       {/* Inject CSS keyframes for scan beam + asset pulse animations */}
       <BarcodeScanStyles />
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <h2 className="text-slate-700 font-semibold text-sm tracking-wide">
-          WAREHOUSE FLOOR
-        </h2>
-        <span className="text-slate-400 text-[10px] font-mono">
-          Zone {session.cart.zone}
-        </span>
-      </div>
+      {!compact && (
+        <div className="flex items-center justify-between">
+          <h2 className="text-slate-700 font-semibold text-sm tracking-wide">
+            {t(language, "warehouse.header")}
+          </h2>
+          <span className="text-slate-400 text-[10px] font-mono">
+            {t(language, "sim.zone")} {session.cart.zone}
+          </span>
+        </div>
+      )}
 
       {/* Scene — contextual based on current step */}
-      <div className="flex-1 flex items-center justify-center overflow-auto">
-        {ctx.scannableAsset === "zone" && (
-          <ZoneCard
-            zone={session.cart.taskGroup}
-            scannable={true}
-            highlighted={effectiveHighlight === session.cart.taskGroup}
-            difficulty={difficulty}
-            onScan={onScan}
+      <div className="flex-1 min-h-0 w-full relative">
+        {ctx.scannableAsset === "zone" ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <ZoneCard
+              zone={session.cart.taskGroup}
+              scannable={true}
+              highlighted={effectiveHighlight === session.cart.taskGroup}
+              difficulty={difficulty}
+              language={language}
+              onScan={onScan}
+            />
+          </div>
+        ) : (!ctx.showCart && !ctx.showShelf ? (
+          <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
+            <PostRoundOverlay session={session} language={language} />
+          </div>
+        ) : (
+          <WarehouseScene3D 
+            session={session} 
+            difficulty={difficulty} 
+            onScan={onScan} 
+            onConfirm={onConfirm}
+            language={language}
           />
-        )}
-        {ctx.showShelf && (
-          <ShelfScene
+        ))}
+      </div>
+
+      {/* Always-visible scan targets panel — clear fallback if 3D hit targets fail. */}
+      <div className={compact ? "h-[76px] shrink-0" : "min-h-0"}>
+        {(ctx.showCart || ctx.showShelf) && ctx.scannableAsset !== "zone" && (
+          <FallbackScanPanel
             session={session}
-            difficulty={difficulty}
-            ctx={ctx}
-            effectiveHighlight={effectiveHighlight}
+            scannableAsset={ctx.scannableAsset}
+            activeToteSlot={ctx.activeToteSlot ?? null}
             onScan={onScan}
+            pickItemBarcode={pick?.item.upcBarcode ?? null}
+            pickLocationLabel={pick?.location.displayLabel ?? null}
+            showCart={ctx.showCart}
+            showTotes={ctx.showTotes}
+            showShelf={ctx.showShelf}
+            compact={compact}
+            language={language}
           />
-        )}
-        {ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
-          <CartScene
-            session={session}
-            difficulty={difficulty}
-            ctx={ctx}
-            effectiveHighlight={effectiveHighlight}
-            onScan={onScan}
-          />
-        )}
-        {!ctx.showCart && !ctx.showShelf && ctx.scannableAsset !== "zone" && (
-          <PostRoundOverlay session={session} />
         )}
       </div>
 
       {/* Exception overlay — shown on top of the scene during EX_* steps */}
       {step.startsWith("EX_") && (
-        <ExceptionBanner step={step} onConfirm={onConfirm} />
+        <ExceptionBanner step={step} onConfirm={onConfirm} language={language} />
       )}
 
       {/* Confirm action steps — physical actions that need a button press */}
-      {isConfirmPhysicalStep(step) && !step.startsWith("EX_") && (
-        <ConfirmActionBar step={step} session={session} onConfirm={onConfirm} />
-      )}
+      <div className={compact ? "h-[38px] shrink-0" : "min-h-0"}>
+        {isConfirmPhysicalStep(step) && !step.startsWith("EX_") && (
+          <ConfirmActionBar step={step} session={session} onConfirm={onConfirm} compact={compact} language={language} />
+        )}
+      </div>
 
       {/* Footer — instruction hint */}
-      <Footer step={step} difficulty={difficulty} scannableAsset={ctx.scannableAsset} />
+      {!compact && <Footer step={step} difficulty={difficulty} scannableAsset={ctx.scannableAsset} language={language} />}
+    </div>
+  )
+}
+
+function FallbackScanPanel({
+  session,
+  scannableAsset,
+  activeToteSlot,
+  onScan,
+  pickItemBarcode,
+  pickLocationLabel,
+  showCart,
+  showTotes,
+  showShelf,
+  compact,
+  language,
+}: {
+  session: SimulationSession
+  scannableAsset: "cart" | "tote" | "location" | "item" | null
+  activeToteSlot: number | null
+  onScan: (barcode: string) => void
+  pickItemBarcode: string | null
+  pickLocationLabel: string | null
+  showCart: boolean
+  showTotes: boolean
+  showShelf: boolean
+  compact?: boolean
+  language: AppLanguage
+}) {
+  const isCartStep = scannableAsset === "cart"
+  const isItemStep = scannableAsset === "item"
+  const isLocationStep = scannableAsset === "location"
+  const isToteStep = scannableAsset === "tote"
+  const targetSlot = activeToteSlot ?? session.currentToteSlot
+
+  if (compact) {
+    const activeTote = session.cart.totes.find((t) => t.slot === targetSlot)
+    return (
+      <div className="rounded-md border border-slate-500/50 bg-slate-900/75 p-2 flex flex-col gap-2">
+        <div className="text-[10px] font-mono text-slate-300 uppercase tracking-wide">{t(language, "warehouse.active_scan_target")}</div>
+
+        {isCartStep && showCart && (
+          <button
+            onClick={() => onScan(session.cart.cartBarcode)}
+            data-scan-target="active"
+            data-scan-type="cart"
+            className="touch-target w-full rounded-md px-3 py-2 text-xs font-mono font-semibold border border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35 transition-colors"
+          >
+            {t(language, "warehouse.cart")} · {session.cart.cartBarcode}
+          </button>
+        )}
+
+        {isLocationStep && showShelf && pickLocationLabel && (
+          <button
+            onClick={() => onScan(pickLocationLabel)}
+            data-scan-target="active"
+            data-scan-type="location"
+            className="touch-target w-full rounded-md px-3 py-2 text-xs font-mono font-semibold border border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35 transition-colors"
+          >
+            {t(language, "warehouse.location")} · {pickLocationLabel}
+          </button>
+        )}
+
+        {isItemStep && showShelf && pickItemBarcode && (
+          <button
+            onClick={() => onScan(pickItemBarcode)}
+            data-scan-target="active"
+            data-scan-type="item"
+            className="touch-target w-full rounded-md px-3 py-2 text-xs font-mono font-semibold border border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35 transition-colors"
+          >
+            {t(language, "warehouse.item_upc")} · {pickItemBarcode}
+          </button>
+        )}
+
+        {isToteStep && showTotes && activeTote && (
+          <button
+            onClick={() => onScan(activeTote.barcode)}
+            data-scan-target="active"
+            data-scan-type="tote"
+            data-scan-slot={String(activeTote.slot)}
+            className="touch-target w-full rounded-md px-3 py-2 text-xs font-mono font-semibold border border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35 transition-colors"
+          >
+            {t(language, "warehouse.tote")} S{activeTote.slot} · {activeTote.barcode}
+          </button>
+        )}
+
+        {!scannableAsset && (
+          <div className="touch-target w-full rounded-md px-3 py-2 text-xs font-mono border border-slate-600 bg-slate-800 text-slate-300 flex items-center">
+            {t(language, "warehouse.no_scan_required")}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  return (
+    <div className="rounded-md border border-slate-500/50 bg-slate-900/70 p-2 flex flex-col gap-2 max-h-44 overflow-y-auto">
+      <div className="text-[10px] font-mono text-slate-300 uppercase tracking-wide">{t(language, "warehouse.scan_targets")}</div>
+
+      {showCart && (
+        <button
+          onClick={() => isCartStep && onScan(session.cart.cartBarcode)}
+          disabled={!isCartStep}
+          data-scan-target={isCartStep ? "active" : "inactive"}
+          data-scan-type="cart"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isCartStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          {t(language, "warehouse.cart")} · {session.cart.cartBarcode}
+        </button>
+      )}
+
+      {showShelf && pickLocationLabel && (
+        <button
+          onClick={() => isLocationStep && onScan(pickLocationLabel)}
+          disabled={!isLocationStep}
+          data-scan-target={isLocationStep ? "active" : "inactive"}
+          data-scan-type="location"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isLocationStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          {t(language, "warehouse.location")} · {pickLocationLabel}
+        </button>
+      )}
+
+      {showShelf && pickItemBarcode && (
+        <button
+          onClick={() => isItemStep && onScan(pickItemBarcode)}
+          disabled={!isItemStep}
+          data-scan-target={isItemStep ? "active" : "inactive"}
+          data-scan-type="item"
+          className={`w-full rounded-md px-3 py-1.5 text-xs font-mono font-semibold border transition-colors ${
+            isItemStep
+              ? "border-amber-400/70 bg-amber-300/20 text-amber-100 hover:bg-amber-300/30"
+              : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+          }`}
+        >
+          {t(language, "warehouse.item_upc")} · {pickItemBarcode}
+        </button>
+      )}
+
+      {showTotes && (
+        <div className="grid grid-cols-3 gap-1.5">
+          {session.cart.totes.map((tote) => {
+            const isTarget = isToteStep && tote.slot === targetSlot
+            return (
+              <button
+                key={tote.toteId}
+                onClick={() => isTarget && onScan(tote.barcode)}
+                disabled={!isTarget}
+                data-scan-target={isTarget ? "active" : "inactive"}
+                data-scan-type="tote"
+                data-scan-slot={String(tote.slot)}
+                className={`rounded px-2 py-1.5 text-[10px] font-mono border transition-colors ${
+                  isTarget
+                    ? "border-amber-400/80 bg-amber-300/25 text-amber-100 hover:bg-amber-300/35"
+                    : "border-slate-600 bg-slate-800 text-slate-500 cursor-not-allowed"
+                }`}
+              >
+                S{tote.slot} · {tote.barcode.slice(-4)}
+              </button>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }
@@ -144,12 +345,14 @@ function ZoneCard({
   scannable,
   highlighted,
   difficulty,
+  language,
   onScan,
 }: {
   zone: string
   scannable: boolean
   highlighted: boolean
   difficulty: DifficultyLevel
+  language: AppLanguage
   onScan: (barcode: string) => void
 }) {
   const isFex = zone === "FEX"
@@ -215,7 +418,7 @@ function ZoneCard({
             textTransform: "uppercase",
           }}
         >
-          {isFex ? "EXPRESS" : "TASK GROUP"}
+          {isFex ? t(language, "warehouse.express") : t(language, "warehouse.task_group")}
         </div>
 
         {/* Scannable barcode */}
@@ -245,209 +448,9 @@ function ZoneCard({
             whiteSpace: "nowrap",
           }}
         >
-          ← SCAN THIS
+          {t(language, "warehouse.scan_this")}
         </div>
       )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// SHELF SCENE — during pick steps
-// Per BBWD-WI-030 §5.2: Pick procedure
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ShelfScene({
-  session,
-  difficulty,
-  ctx,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  ctx: ReturnType<typeof getAssetContext>
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  const pick = session.pickQueue[session.currentPickIndex]
-
-  // Decoy items for difficulty-aware shelf display.
-  // Hooks must be called unconditionally — getDecoyItems returns [] when pick is null.
-  const decoys = useMemo(
-    () => getDecoyItems(session, difficulty),
-    [session.currentPickIndex, difficulty] // eslint-disable-line react-hooks/exhaustive-deps
-  )
-
-  // Shuffle correct item + decoys deterministically.
-  // Guard against no active pick (returns empty array, component returns null below).
-  const shelfItems = useMemo(() => {
-    if (!pick) return []
-    const items: { item: WarehouseItem; isCorrect: boolean }[] = [
-      { item: pick.item, isCorrect: true },
-      ...decoys.map((d) => ({ item: d, isCorrect: false })),
-    ]
-    const seed = session.currentPickIndex
-    return items.sort((a, b) => {
-      const ha = hashCode(a.item.itemId + seed)
-      const hb = hashCode(b.item.itemId + seed)
-      return ha - hb
-    })
-  }, [pick, decoys, session.currentPickIndex])
-
-  if (!pick) return null
-
-  return (
-    <div className="flex flex-col items-center gap-3 w-full">
-      {/* Shelf with location */}
-      <ShelfLocation
-        aloc={pick.location.displayLabel}
-        itemBarcode={pick.item.upcBarcode}
-        itemName={pick.item.description}
-        quantity={pick.quantityRequired}
-        scannable={ctx.scannableAsset === "location"}
-        highlighted={effectiveHighlight === pick.location.displayLabel}
-        difficulty={difficulty}
-        onScan={onScan}
-      />
-
-      {/* Item labels — shown during PK_SCAN_ITEM_UPC */}
-      {ctx.showItem && ctx.scannableAsset === "item" && (
-        <div className="flex flex-wrap gap-2 justify-center mt-1">
-          {shelfItems.map(({ item, isCorrect }) => (
-            <ItemLabel
-              key={item.itemId}
-              itemBarcode={item.upcBarcode}
-              itemName={item.description}
-              scannable={true}
-              highlighted={isCorrect && effectiveHighlight === item.upcBarcode}
-              difficulty={difficulty}
-              onScan={onScan}
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Pick info */}
-      <div className="text-slate-500 text-[10px] font-mono text-center">
-        Qty: {pick.quantityRequired} × {pick.item.unitOfMeasure} → Tote S{pick.targetSlot}
-      </div>
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// CART SCENE — during build cart + tote scan steps
-// Per BBWD-WI-030 §5.1: Build Cart procedure
-// ─────────────────────────────────────────────────────────────────────────────
-
-function CartScene({
-  session,
-  difficulty,
-  ctx,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  ctx: ReturnType<typeof getAssetContext>
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  const cartHighlighted = ctx.scannableAsset === "cart" &&
-    effectiveHighlight === session.cart.cartBarcode
-
-  return (
-    <div className="flex flex-col items-center gap-3">
-      <PickCart
-        cartBarcode={session.cart.cartBarcode}
-        scannable={ctx.scannableAsset === "cart"}
-        highlighted={cartHighlighted}
-        difficulty={difficulty}
-        onScan={onScan}
-      />
-
-      {/* Tote grid — 3×3 when showTotes is true */}
-      {ctx.showTotes && (
-        <ToteGrid
-          session={session}
-          difficulty={difficulty}
-          scannableAsset={ctx.scannableAsset}
-          activeToteSlot={ctx.activeToteSlot ?? null}
-          effectiveHighlight={effectiveHighlight}
-          onScan={onScan}
-        />
-      )}
-
-      {/* Slot progress indicator */}
-      {ctx.showTotes && (
-        <div className="text-slate-400 text-xs font-mono">
-          {(session.currentStep === WorkflowStep.BC_PRESS_CTRL_E ||
-            session.currentStep.startsWith("PK_")
-              ? 9
-              : Math.min(session.currentToteSlot - 1, 9)
-          )} / 9 totes loaded
-        </div>
-      )}
-    </div>
-  )
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// TOTE GRID — 3×3 grid of tote components
-// ─────────────────────────────────────────────────────────────────────────────
-
-function ToteGrid({
-  session,
-  difficulty,
-  scannableAsset,
-  activeToteSlot,
-  effectiveHighlight,
-  onScan,
-}: {
-  session: SimulationSession
-  difficulty: DifficultyLevel
-  scannableAsset: string | null
-  /** Per-pick target slot from assetContext; null during build-cart steps. */
-  activeToteSlot: ToteSlot | null
-  effectiveHighlight: string | null
-  onScan: (barcode: string) => void
-}) {
-  return (
-    <div className="grid grid-cols-3 gap-1.5" style={{ maxWidth: 280 }}>
-      {session.cart.totes.map((tote, i) => {
-        const slotNum = (i + 1) as ToteSlot
-        // During pick phase, use pick.targetSlot (from activeToteSlot) to
-        // determine which tote is scannable. Fall back to currentToteSlot
-        // during build cart (activeToteSlot is null except at PK_SCAN_TOTE_BARCODE).
-        const activeSlot = activeToteSlot ?? session.currentToteSlot
-        const isCurrent = slotNum === activeSlot
-        const isHighlighted = effectiveHighlight === tote.barcode
-        const canScan = scannableAsset === "tote" && isCurrent
-        // All totes are loaded once we reach BC_PRESS_CTRL_E or pick phase.
-        // During build cart, only slots before the current one are fully loaded.
-        const inPickPhase =
-          session.currentStep.startsWith("PK_") ||
-          session.currentStep.startsWith("PS_")
-        const isLoaded =
-          inPickPhase ||
-          tote.barcode.length > 0 ||
-          session.currentStep === WorkflowStep.BC_PRESS_CTRL_E
-
-        return (
-          <PickTote
-            key={tote.toteId}
-            toteBarcode={tote.barcode}
-            slotNumber={slotNum}
-            itemCount={tote.pickedItems.length}
-            scannable={canScan}
-            highlighted={isHighlighted}
-            isLoaded={isLoaded}
-            difficulty={difficulty}
-            onScan={onScan}
-          />
-        )
-      })}
     </div>
   )
 }
@@ -475,30 +478,47 @@ function ConfirmActionBar({
   step,
   session,
   onConfirm,
+  compact,
+  language,
 }: {
   step: WorkflowStep
   session: SimulationSession
   onConfirm: () => void
+  compact?: boolean
+  language: AppLanguage
 }) {
   const pick = session.pickQueue[session.currentPickIndex]
 
   const labels: Record<string, string> = {
-    [WorkflowStep.PK_READ_PICK_DISPLAY]: "Read pick details → Continue",
-    [WorkflowStep.PK_TRAVEL_TO_LOCATION]: `Travel to ${pick?.location.displayLabel ?? "location"} → Continue`,
-    [WorkflowStep.PK_VERIFY_LOCATION]: `Verify location: ${pick?.location.displayLabel ?? ""} → Continue`,
-    [WorkflowStep.PK_VERIFY_ITEM]: `Verify item: ${pick?.item.description ?? ""} → Continue`,
-    [WorkflowStep.PK_PICK_QUANTITY]: `Pick ${pick?.quantityRequired ?? 1} × ${pick?.item.unitOfMeasure ?? "Unit"} → Continue`,
-    [WorkflowStep.PK_PLACE_IN_TOTE]: `Place in tote S${pick?.targetSlot ?? 1} → Continue`,
-    [WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR]: "Place tote on conveyor → Continue",
-    [WorkflowStep.BC_PLACE_TOTE_IN_SLOT]: `Place tote in slot ${session.currentToteSlot} → Continue`,
+    [WorkflowStep.PK_READ_PICK_DISPLAY]: t(language, "warehouse.confirm.read_pick"),
+    [WorkflowStep.PK_TRAVEL_TO_LOCATION]: t(language, "warehouse.confirm.travel", {
+      location: pick?.location.displayLabel ?? t(language, "warehouse.default_location"),
+    }),
+    [WorkflowStep.PK_VERIFY_LOCATION]: t(language, "warehouse.confirm.verify_location", {
+      location: pick?.location.displayLabel ?? "",
+    }),
+    [WorkflowStep.PK_VERIFY_ITEM]: t(language, "warehouse.confirm.verify_item", {
+      item: pick?.item.description ?? "",
+    }),
+    [WorkflowStep.PK_PICK_QUANTITY]: t(language, "warehouse.confirm.pick_quantity", {
+      qty: pick?.quantityRequired ?? 1,
+      unit: pick?.item.unitOfMeasure ?? t(language, "warehouse.default_unit"),
+    }),
+    [WorkflowStep.PK_PLACE_IN_TOTE]: t(language, "warehouse.confirm.place_tote", {
+      slot: pick?.targetSlot ?? 1,
+    }),
+    [WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR]: t(language, "warehouse.confirm.place_conveyor"),
+    [WorkflowStep.BC_PLACE_TOTE_IN_SLOT]: t(language, "warehouse.confirm.place_slot", {
+      slot: session.currentToteSlot,
+    }),
   }
 
   return (
     <button
       onClick={onConfirm}
-      className="w-full bg-slate-600 hover:bg-slate-500 text-white text-xs font-mono font-medium px-4 py-2 rounded-lg transition-colors"
+      className={`touch-target w-full bg-slate-600 hover:bg-slate-500 text-white text-xs font-mono font-medium px-4 ${compact ? "py-2" : "py-2"} rounded-lg transition-colors`}
     >
-      {labels[step] ?? "Continue"}
+      {labels[step] ?? t(language, "warehouse.continue")}
     </button>
   )
 }
@@ -508,24 +528,36 @@ function ConfirmActionBar({
 // Per BBWD-WI-030 §6: Exception handling overlay
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ExceptionBanner({ step, onConfirm }: { step: WorkflowStep; onConfirm: () => void }) {
+function ExceptionBanner({
+  step,
+  onConfirm,
+  language,
+}: {
+  step: WorkflowStep
+  onConfirm: () => void
+  language: AppLanguage
+}) {
   const configs: Record<string, { title: string; subtitle: string; color: string }> = {
-    [WorkflowStep.EX_TOTE_ALREADY_ALLOCATED]: { title: "Tote Already Allocated", subtitle: "Set aside, contact Lead", color: "#ef4444" },
-    [WorkflowStep.EX_CART_ALREADY_CREATED]: { title: "Cart Already Created", subtitle: "Set aside, contact Lead", color: "#ef4444" },
-    [WorkflowStep.EX_INCORRECT_LOCATION]: { title: "Incorrect Location", subtitle: "Press CTRL+W to go back", color: "#f97316" },
-    [WorkflowStep.EX_PRESS_CTRL_W]: { title: "Go Back", subtitle: "Press CTRL+W on RF Device", color: "#f97316" },
-    [WorkflowStep.EX_INCORRECT_TOTE]: { title: "Incorrect Tote", subtitle: "Press CTRL+W to go back", color: "#f97316" },
-    [WorkflowStep.EX_INVALID_ITEM_LAST]: { title: "Invalid Item (Last)", subtitle: "Notify Lead → CTRL+K → Amnesty Bin", color: "#ef4444" },
-    [WorkflowStep.EX_INVALID_ITEM_NOT_LAST]: { title: "Invalid Item", subtitle: "Notify Lead → Putwall → IC", color: "#ef4444" },
-    [WorkflowStep.EX_SHORT_INVENTORY]: { title: "Short Inventory", subtitle: "Verify → Notify Lead → CTRL+K", color: "#eab308" },
-    [WorkflowStep.EX_DAMAGED_ITEM]: { title: "Damaged Item", subtitle: "Amnesty Bin (ziplock if leaking)", color: "#ef4444" },
-    [WorkflowStep.EX_NOTIFY_LEAD]: { title: "Notify Lead", subtitle: "Confirm when acknowledged", color: "#3b82f6" },
-    [WorkflowStep.EX_PRESS_CTRL_K]: { title: "Skip Pick", subtitle: "Press CTRL+K on RF Device", color: "#f97316" },
-    [WorkflowStep.EX_ITEM_TO_AMNESTY_BIN]: { title: "Item → Amnesty Bin", subtitle: "Confirm when done", color: "#ef4444" },
-    [WorkflowStep.EX_ITEM_TO_IC]: { title: "Item → IC", subtitle: "Confirm when done", color: "#3b82f6" },
+    [WorkflowStep.EX_TOTE_ALREADY_ALLOCATED]: { title: t(language, "warehouse.exception.tote_allocated.title"), subtitle: t(language, "warehouse.exception.tote_allocated.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_CART_ALREADY_CREATED]: { title: t(language, "warehouse.exception.cart_created.title"), subtitle: t(language, "warehouse.exception.cart_created.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_INCORRECT_LOCATION]: { title: t(language, "warehouse.exception.incorrect_location.title"), subtitle: t(language, "warehouse.exception.incorrect_location.subtitle"), color: "#f97316" },
+    [WorkflowStep.EX_PRESS_CTRL_W]: { title: t(language, "warehouse.exception.press_ctrl_w.title"), subtitle: t(language, "warehouse.exception.press_ctrl_w.subtitle"), color: "#f97316" },
+    [WorkflowStep.EX_INCORRECT_TOTE]: { title: t(language, "warehouse.exception.incorrect_tote.title"), subtitle: t(language, "warehouse.exception.incorrect_tote.subtitle"), color: "#f97316" },
+    [WorkflowStep.EX_INVALID_ITEM_LAST]: { title: t(language, "warehouse.exception.invalid_item_last.title"), subtitle: t(language, "warehouse.exception.invalid_item_last.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_INVALID_ITEM_NOT_LAST]: { title: t(language, "warehouse.exception.invalid_item_not_last.title"), subtitle: t(language, "warehouse.exception.invalid_item_not_last.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_SHORT_INVENTORY]: { title: t(language, "warehouse.exception.short_inventory.title"), subtitle: t(language, "warehouse.exception.short_inventory.subtitle"), color: "#eab308" },
+    [WorkflowStep.EX_DAMAGED_ITEM]: { title: t(language, "warehouse.exception.damaged_item.title"), subtitle: t(language, "warehouse.exception.damaged_item.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_NOTIFY_LEAD]: { title: t(language, "warehouse.exception.notify_lead.title"), subtitle: t(language, "warehouse.exception.notify_lead.subtitle"), color: "#3b82f6" },
+    [WorkflowStep.EX_PRESS_CTRL_K]: { title: t(language, "warehouse.exception.press_ctrl_k.title"), subtitle: t(language, "warehouse.exception.press_ctrl_k.subtitle"), color: "#f97316" },
+    [WorkflowStep.EX_ITEM_TO_AMNESTY_BIN]: { title: t(language, "warehouse.exception.item_amnesty.title"), subtitle: t(language, "warehouse.exception.item_amnesty.subtitle"), color: "#ef4444" },
+    [WorkflowStep.EX_ITEM_TO_IC]: { title: t(language, "warehouse.exception.item_ic.title"), subtitle: t(language, "warehouse.exception.item_ic.subtitle"), color: "#3b82f6" },
   }
 
-  const cfg = configs[step] ?? { title: "Exception", subtitle: "Follow RF Device", color: "#6b7280" }
+  const cfg = configs[step] ?? {
+    title: t(language, "warehouse.exception.default_title"),
+    subtitle: t(language, "warehouse.exception.default_subtitle"),
+    color: "#6b7280",
+  }
 
   const confirmSteps = new Set([
     WorkflowStep.EX_NOTIFY_LEAD,
@@ -559,7 +591,7 @@ function ExceptionBanner({ step, onConfirm }: { step: WorkflowStep; onConfirm: (
             backgroundColor: `${cfg.color}10`,
           }}
         >
-          Done
+          {t(language, "warehouse.done")}
         </button>
       )}
     </div>
@@ -570,23 +602,29 @@ function ExceptionBanner({ step, onConfirm }: { step: WorkflowStep; onConfirm: (
 // POST-ROUND OVERLAY
 // ─────────────────────────────────────────────────────────────────────────────
 
-function PostRoundOverlay({ session }: { session: SimulationSession }) {
+function PostRoundOverlay({
+  session,
+  language,
+}: {
+  session: SimulationSession
+  language: AppLanguage
+}) {
   if (session.currentStep === WorkflowStep.PS_ROUND_COMPLETE) {
     return (
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center">
           <span className="text-2xl">🎉</span>
         </div>
-        <div className="text-green-800 text-sm font-bold">Round Complete</div>
+        <div className="text-green-800 text-sm font-bold">{t(language, "warehouse.round_complete")}</div>
         <div className="text-slate-500 text-[10px] font-mono">
-          {session.completedPicks.length} picks completed
+          {t(language, "warehouse.picks_completed", { count: session.completedPicks.length })}
         </div>
       </div>
     )
   }
   return (
     <div className="text-slate-400 text-xs font-mono text-center">
-      Completing round…
+      {t(language, "warehouse.completing_round")}
     </div>
   )
 }
@@ -599,15 +637,19 @@ function Footer({
   step,
   difficulty,
   scannableAsset,
+  language,
 }: {
   step: WorkflowStep
   difficulty: DifficultyLevel
   scannableAsset: string | null
+  language: AppLanguage
 }) {
   let hint = humanizeStep(step)
 
   if (difficulty === DifficultyLevel.BEGINNER && scannableAsset) {
-    hint = `Scan the highlighted ${scannableAsset} to continue`
+    hint = t(language, "warehouse.footer.scan_highlighted", {
+      asset: assetLabel(language, scannableAsset),
+    })
   }
 
   return (
@@ -620,16 +662,6 @@ function Footer({
 // ─────────────────────────────────────────────────────────────────────────────
 // UTILITY
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Simple deterministic hash for shuffling decoy items. */
-function hashCode(str: string): number {
-  let hash = 0
-  for (let i = 0; i < str.length; i++) {
-    hash = (hash << 5) - hash + str.charCodeAt(i)
-    hash |= 0
-  }
-  return hash
-}
 
 /** Human-readable step name for the footer. */
 function humanizeStep(step: WorkflowStep): string {

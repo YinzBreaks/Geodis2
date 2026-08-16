@@ -91,12 +91,29 @@ body {
 .sim-col-center {
   display: flex;
   justify-content: center;
+  min-width: 0;
 }
 
 .sim-col-right {
   width: 320px;
   min-width: 320px;
   min-height: 480px;
+}
+
+/* Combined blueprint + 3D floor band — spans the full page width (/sim).      */
+/* The interactive blueprint map (click a zone to travel) sits beside the 3D   */
+/* warehouse floor as one wide area beneath the device + controls.             */
+.sim-floorplan {
+  width: 100%;
+  max-width: 1200px;
+  display: grid;
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+  gap: 16px;
+  align-items: stretch;
+}
+.sim-floorplan > * {
+  min-width: 0;
+  height: clamp(500px, 58vh, 680px);
 }
 
 /* Below the 3-column breakpoint, stack into one centered column. */
@@ -115,5 +132,20 @@ body {
   .sim-col-left:empty {
     display: none;
   }
+  .sim-floorplan {
+    grid-template-columns: minmax(0, 1fr);
+    max-width: 520px;
+  }
+}
+
+/* Touch hardening utilities for tablet operation. */
+.touch-target {
+  min-height: 56px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-target:active {
+  transform: scale(0.985);
 }
 

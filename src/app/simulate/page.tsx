@@ -19,7 +19,7 @@
  */
 "use client"
 
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { RFDeviceEmulator } from "@/components/rf-device/RFDeviceEmulator"
 import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
 import { ScannerPanel } from "@/components/warehouse/ScannerPanel"
@@ -37,7 +37,7 @@ import { DifficultyLevel, type SessionScore } from "@/types/domain"
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
-  { key: "Z1_9_PICKS", levelLabel: "BEGINNER" },
+  { key: "Z1_10_PICKS", levelLabel: "BEGINNER" },
   { key: "Z1_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "Z2_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "HAZ_10_PICKS", levelLabel: "ADVANCED" },
@@ -49,29 +49,40 @@ const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
 // ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimulatePage() {
-  const { session, scenario, score, result, startSimulation, sendAction, reset } =
-    useSimulation()
+  // Atomic selectors — subscribe only to the slices this page renders.
+  const session = useSimulation((s) => s.session)
+  const scenario = useSimulation((s) => s.scenario)
+  const score = useSimulation((s) => s.score)
+  const result = useSimulation((s) => s.result)
+  const startSimulation = useSimulation((s) => s.startSimulation)
+  const processInput = useSimulation((s) => s.processInput)
+  const reset = useSimulation((s) => s.reset)
   const isComplete = session ? selectIsComplete(session) : false
   const [drawerOpen, setDrawerOpen] = useState(false)
 
   const difficulty = scenario?.difficulty ?? DifficultyLevel.BEGINNER
 
+  // Reset the global simulation store when this page unmounts, so navigating
+  // away (e.g. to /sim) and back doesn't resume a stale session in the
+  // module-level Zustand singleton store.
+  useEffect(() => () => reset(), [reset])
+
   // ── Action handlers (delegate to store) ───────────────────────────
 
   const handleScan = useCallback(
-    (barcode: string) => sendAction({ type: "SCAN", value: barcode }),
-    [sendAction]
+    (barcode: string) => processInput({ type: "SCAN", value: barcode, source: "click" }),
+    [processInput]
   )
 
   const handleType = useCallback(
-    (text: string) => sendAction({ type: "TYPE", text }),
-    [sendAction]
+    (text: string) => processInput({ type: "QUANTITY", value: text, source: "keyboard" }),
+    [processInput]
   )
 
   const handleConfirm = useCallback(() => {
     if (!session) return
-    sendAction({ type: "CONFIRM", step: session.currentStep })
-  }, [session, sendAction])
+    processInput({ type: "CONFIRM", value: "", source: "click" })
+  }, [session, processInput])
 
   // ── Score screen ──────────────────────────────────────────────────
 
@@ -100,7 +111,7 @@ export default function SimulatePage() {
           </div>
           <div className="flex items-center gap-4">
             <span className="text-slate-400 text-xs font-mono">
-              Pick {session.currentPickIndex}/{session.pickQueue.length}
+              Pick {Math.min(session.currentPickIndex + 1, session.pickQueue.length)}/{session.pickQueue.length}
             </span>
             <span className="text-slate-400 text-xs font-mono">
               Errors: {session.errors.length}

@@ -21,7 +21,7 @@
  */
 "use client"
 
-import { useState, useCallback } from "react"
+import { useState, useCallback, useEffect } from "react"
 import { RFDeviceDisplay } from "./RFDeviceDisplay"
 import { SoftKeyBar } from "./SoftKeyBar"
 import { CoachingTooltip } from "./CoachingTooltip"
@@ -134,6 +134,12 @@ const CTRL_KEY_IDS = new Set(KEY_MAP.filter((k) => k.ctrlKey).map((k) => k.id))
 // Keys that have a shift char — lit amber in shiftActive mode
 const SHIFT_KEY_IDS = new Set(KEY_MAP.filter((k) => k.shiftChar).map((k) => k.id))
 
+function expandPct(value: string, deltaPct: number): string {
+  const n = Number.parseFloat(value)
+  if (Number.isNaN(n)) return value
+  return `${Math.max(n + deltaPct, n)}%`
+}
+
 // ─── Props (matches WT4000Shell interface in RFDevice.tsx) ────────────────────
 
 interface WT4000PhotoShellProps {
@@ -181,10 +187,37 @@ export function WT4000PhotoShell({
 }: WT4000PhotoShellProps) {
   const { screen: sc, layout: ly } = device
   const touchTarget = device.minTouchTargetPx ?? 44
+  const [isCoarsePointer, setIsCoarsePointer] = useState(false)
 
   // Modifier key mode state
   const [ctrlActive, setCtrlActive] = useState(false)
   const [shiftActive, setShiftActive] = useState(false)
+
+  useEffect(() => {
+    const mq = window.matchMedia("(pointer: coarse)")
+    const apply = () => setIsCoarsePointer(mq.matches)
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [])
+
+  const triggerFloorScan = useCallback(() => {
+    const floor = document.getElementById("warehouse-floor")
+    if (!floor) return
+
+    const activeTarget = floor.querySelector<HTMLButtonElement>(
+      '[data-scan-target="active"]'
+    )
+
+    if (activeTarget && !activeTarget.disabled) {
+      activeTarget.click()
+      return
+    }
+
+    floor.scrollIntoView({ behavior: "smooth", block: "nearest" })
+    floor.classList.add("floor-flash")
+    setTimeout(() => floor.classList.remove("floor-flash"), 900)
+  }, [])
 
   /** Dispatch the appropriate action for a hotspot click. */
   const handleHotspotClick = useCallback(
@@ -213,12 +246,7 @@ export function WT4000PhotoShell({
         return
       }
       if (key.action === "SCAN_TRIGGER") {
-        const el = document.getElementById("warehouse-floor")
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-          el.classList.add("floor-flash")
-          setTimeout(() => el.classList.remove("floor-flash"), 900)
-        }
+        triggerFloorScan()
         return
       }
       // P1/P2 — no action assigned yet
@@ -261,6 +289,7 @@ export function WT4000PhotoShell({
       handleSubmit,
       handleSoftKey,
       setInputValue,
+      triggerFloorScan,
     ]
   )
 
@@ -376,6 +405,10 @@ export function WT4000PhotoShell({
           const hasAnyAction =
             key.action !== undefined || key.primary !== undefined || key.ctrlKey !== undefined
 
+          const touchDelta = isCoarsePointer && hasAnyAction ? 2.1 : 0
+          const hitW = expandPct(key.w, touchDelta)
+          const hitH = expandPct(key.h, touchDelta)
+
           return (
             <button
               key={key.id}
@@ -384,10 +417,10 @@ export function WT4000PhotoShell({
               onClick={() => handleHotspotClick(key)}
               style={{
                 position:     "absolute",
-                left:         `calc(${key.cx} - ${key.w} / 2)`,
-                top:          `calc(${key.cy} - ${key.h} / 2)`,
-                width:        key.w,
-                height:       key.h,
+                left:         `calc(${key.cx} - ${hitW} / 2)`,
+                top:          `calc(${key.cy} - ${hitH} / 2)`,
+                width:        hitW,
+                height:       hitH,
                 background:   bg,
                 border,
                 color,
@@ -399,6 +432,8 @@ export function WT4000PhotoShell({
                 padding:      0,
                 overflow:     "hidden",
                 transition:   "background 0.1s, border-color 0.1s",
+                touchAction:  "manipulation",
+                WebkitTapHighlightColor: "transparent",
               }}
               // Hover styles applied via CSS class below
               className="wt4000-hotspot"
@@ -545,14 +580,8 @@ export function WT4000PhotoShell({
           return (
             <button
               type="button"
-              onClick={() => {
-                const el = document.getElementById("warehouse-floor")
-                if (!el) return
-                el.scrollIntoView({ behavior: "smooth", block: "nearest" })
-                el.classList.add("floor-flash")
-                setTimeout(() => el.classList.remove("floor-flash"), 900)
-              }}
-              className="text-[10px] font-mono text-center py-2 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
+              onClick={triggerFloorScan}
+              className="touch-target text-[10px] font-mono text-center py-2 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
               style={{
                 backgroundColor: "#18181b",
                 color:           "#fcd34d",
@@ -593,7 +622,7 @@ export function WT4000PhotoShell({
             />
             <button
               onClick={handleSubmit}
-              className="text-xs font-mono px-3 rounded border"
+              className="touch-target text-xs font-mono px-3 rounded border"
               style={{
                 backgroundColor: "#14532d",
                 color:           "#bbf7d0",
@@ -609,7 +638,7 @@ export function WT4000PhotoShell({
           !getExpectedKey(session.currentStep) && (
             <button
               onClick={handleSubmit}
-              className="w-full text-sm font-mono py-2 rounded border"
+              className="touch-target w-full text-sm font-mono py-2 rounded border"
               style={{
                 backgroundColor: "#27272a",
                 color:           sc.textColor,
@@ -623,6 +652,44 @@ export function WT4000PhotoShell({
           )
         )
       })()}
+
+      {isCoarsePointer && !isComplete && (
+        <div className="grid grid-cols-3 gap-2">
+          <button
+            onClick={triggerFloorScan}
+            className="touch-target rounded border text-[10px] font-mono font-semibold"
+            style={{
+              backgroundColor: "#1f2937",
+              color: "#e5e7eb",
+              borderColor: "#374151",
+            }}
+          >
+            SCAN
+          </button>
+          <button
+            onClick={handleSubmit}
+            className="touch-target rounded border text-[10px] font-mono font-semibold"
+            style={{
+              backgroundColor: "#14532d",
+              color: "#bbf7d0",
+              borderColor: "#166534",
+            }}
+          >
+            ENTER
+          </button>
+          <button
+            onClick={() => setInputValue(inputValue.slice(0, -1))}
+            className="touch-target rounded border text-[10px] font-mono font-semibold"
+            style={{
+              backgroundColor: "#3f3f46",
+              color: "#f4f4f5",
+              borderColor: "#52525b",
+            }}
+          >
+            BKSP
+          </button>
+        </div>
+      )}
 
       {/* ── SoftKeyBar — accessibility fallback for CTRL combos ─────────────── */}
       <SoftKeyBar

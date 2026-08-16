@@ -64,6 +64,7 @@ export function getAssetContext(
         showItem: false,
         scannableAsset: "tote",
         highlightedBarcode: currentTote?.barcode ?? null,
+        activeToteSlot: session.currentToteSlot,
       }
 
     // ── Build Cart: place tote in slot (confirm step, tote highlighted) ──
@@ -75,6 +76,7 @@ export function getAssetContext(
         showItem: false,
         scannableAsset: null,
         highlightedBarcode: currentTote?.barcode ?? null,
+        activeToteSlot: session.currentToteSlot,
       }
 
     // ── Build Cart: CTRL+E finalize ──────────────────────────────────────

@@ -17,6 +17,7 @@
 
 import { DifficultyLevel } from "@/types/domain"
 import type { CoachingState } from "@/types/coaching"
+import { t, type AppLanguage } from "@/lib/i18n"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SOP BADGE HELPER
@@ -36,13 +37,14 @@ function extractSopRef(sopContext: string): { badge: string; rest: string } {
 interface CoachingPanelProps {
   coaching: CoachingState
   difficulty: DifficultyLevel
+  language?: AppLanguage
 }
 
 /**
  * Step-by-step coaching panel shown to the left of the RF Device
  * when session.difficulty === BEGINNER and coaching.isVisible === true.
  */
-export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
+export function CoachingPanel({ coaching, difficulty, language = "en" }: CoachingPanelProps) {
   // Guard: only show in BEGINNER mode with active content
   if (difficulty !== DifficultyLevel.BEGINNER) return null
   if (!coaching.isVisible || !coaching.content) return null
@@ -110,7 +112,9 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
             fontFamily: "var(--font-display)",
           }}
         >
-          {isException ? "⚡ EXCEPTION SCENARIO" : "Step Guide"}
+          {isException
+            ? `⚡ ${t(language, "sim.exception_scenario")}`
+            : t(language, "sim.step_guide")}
         </span>
       </div>
 
@@ -148,7 +152,7 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
               fontFamily: "var(--font-display)",
             }}
           >
-            DO THIS NOW
+            {t(language, "sim.do_this_now")}
           </span>
         </div>
         <div
@@ -188,7 +192,7 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
               fontFamily: "var(--font-display)",
             }}
           >
-            Why This Step
+            {t(language, "sim.why_this_step")}
           </span>
           {badge && (
             <span
@@ -238,7 +242,7 @@ export function CoachingPanel({ coaching, difficulty }: CoachingPanelProps) {
               fontFamily: "var(--font-display)",
             }}
           >
-            Field Meaning
+            {t(language, "sim.field_meaning")}
           </div>
           <div
             style={{

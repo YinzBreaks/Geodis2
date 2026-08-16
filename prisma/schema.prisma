@@ -35,6 +35,10 @@ model User {
   sentNotifications     Notification[] @relation("NotificationSender")
   receivedNotifications Notification[] @relation("NotificationReceiver")
   traineeNotifications  Notification[] @relation("NotificationTrainee")
+  coachingFlagsAsTrainee CoachingFlag[] @relation("CoachingFlagTrainee")
+  coachingFlagsCreated   CoachingFlag[] @relation("CoachingFlagCreator")
+  coachingFlagsOwned     CoachingFlag[] @relation("CoachingFlagOwner")
+  coachingFlagsResolved  CoachingFlag[] @relation("CoachingFlagResolver")
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -103,7 +107,7 @@ model ModuleProgress {
 
 model FloorReadySignoff {
   id                String   @id @default(cuid())
-  traineeId         String
+  traineeId         String   @unique
   supervisorId      String
   facilityId        String
   status            String   // "CONFIRMED" only
@@ -141,4 +145,34 @@ model Notification {
 
   @@index([toUserId, read])
   @@index([traineeId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// COACHING FLAG
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CoachingFlag {
+  id           String    @id @default(cuid())
+  traineeId    String
+  facilityId   String
+  createdById  String
+  ownerId      String
+  resolvedById String?
+  category     String
+  reason       String
+  notes        String?
+  sourceGap    String?
+  status       String    @default("OPEN") // "OPEN" | "RESOLVED"
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  resolvedAt   DateTime?
+
+  trainee   User  @relation("CoachingFlagTrainee", fields: [traineeId], references: [id])
+  createdBy User  @relation("CoachingFlagCreator", fields: [createdById], references: [id])
+  owner     User  @relation("CoachingFlagOwner", fields: [ownerId], references: [id])
+  resolvedBy User? @relation("CoachingFlagResolver", fields: [resolvedById], references: [id])
+
+  @@index([facilityId, status])
+  @@index([traineeId, status])
+  @@index([ownerId, status])
 }

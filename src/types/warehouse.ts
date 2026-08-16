@@ -34,11 +34,10 @@ export interface AssetContext {
   /** The barcode value to highlight, or null */
   highlightedBarcode: string | null
   /**
-   * During PK_SCAN_TOTE_BARCODE: the target tote slot for the current pick.
-   * Distinguishes pick-phase tote targeting from build-cart slot counting
-   * (session.currentToteSlot is a build-cart concept and stays at 9 after
-   * cart build — it must not be used to gate pick-phase tote scanning).
-   * Absent (undefined) for all steps except PK_SCAN_TOTE_BARCODE.
+   * Active tote slot for tote-focused steps.
+   * - BC_SCAN_TOTE_BARCODE / BC_PLACE_TOTE_IN_SLOT: session.currentToteSlot
+   * - PK_SCAN_TOTE_BARCODE: current pick targetSlot
+   * Absent (undefined) for all other steps.
    */
   activeToteSlot?: ToteSlot | null
 }

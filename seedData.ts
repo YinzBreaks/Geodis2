@@ -374,10 +374,10 @@ export const SCENARIO_DATA = {
     pickQueue: buildPickQueue(Zone.Z1, 20),
   },
 
-  /** 9-pick Zone 1 session — one full tote, minimal sim */
-  Z1_9_PICKS: {
+  /** 10-pick Zone 1 session — beginner simulation across 9 totes */
+  Z1_10_PICKS: {
     cart:      buildCart("CART_Z1_A", 1),
-    pickQueue: buildPickQueue(Zone.Z1, 9),
+    pickQueue: buildPickQueue(Zone.Z1, 10),
   },
 
   /** 20-pick Zone 2 session */

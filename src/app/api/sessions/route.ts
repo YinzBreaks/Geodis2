@@ -6,8 +6,14 @@
  */
 
 import { NextRequest, NextResponse } from "next/server"
+import { Prisma } from "@prisma/client"
 import { prisma } from "@/lib/prisma"
 import { getRoleFromSession } from "@/lib/auth/roles"
+import {
+  getNextProgressState,
+  parseSessionSubmission,
+  type SessionSubmission,
+} from "@/services/session-persistence"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // GET — best score per moduleId for the current user
@@ -56,39 +62,97 @@ export async function GET() {
 // POST — persist a completed simulation session
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Expected request body for POST /api/sessions */
-interface PostSessionBody {
-  scenarioId: string
-  difficulty: string
-  finalScore: number
-  accuracyScore: number
-  speedScore: number
-  passed: boolean
-  totalPicks: number
-  correctFirstScans: number
-  errorCount: number
-  durationSeconds: number
-  errorsEncountered: string[]
-  exceptionsResolved: number
-  replayEvents: unknown[]
+interface PersistSessionOutcome {
+  sessionId: string
+  created: boolean
 }
 
-function isValidBody(b: unknown): b is PostSessionBody {
-  if (!b || typeof b !== "object") return false
-  const v = b as Record<string, unknown>
-  return (
-    typeof v.scenarioId === "string" &&
-    typeof v.difficulty === "string" &&
-    typeof v.finalScore === "number" &&
-    typeof v.accuracyScore === "number" &&
-    typeof v.speedScore === "number" &&
-    typeof v.passed === "boolean" &&
-    typeof v.totalPicks === "number" &&
-    typeof v.errorCount === "number" &&
-    typeof v.durationSeconds === "number" &&
-    typeof v.exceptionsResolved === "number" &&
-    Array.isArray(v.errorsEncountered) &&
-    Array.isArray(v.replayEvents)
+async function persistCompletedSession(
+  userId: string,
+  body: SessionSubmission
+): Promise<PersistSessionOutcome> {
+  const completedAt = new Date()
+
+  return prisma.$transaction(
+    async (tx) => {
+      const existingSession = await tx.simSession.findUnique({
+        where: { id: body.sessionId },
+        select: { id: true, userId: true },
+      })
+
+      if (existingSession) {
+        if (existingSession.userId !== userId) {
+          throw new Error("SESSION_ID_CONFLICT")
+        }
+        return { sessionId: existingSession.id, created: false }
+      }
+
+      const existingProgress = await tx.moduleProgress.findUnique({
+        where: {
+          userId_moduleId: { userId, moduleId: body.scenarioId },
+        },
+        select: {
+          bestScore: true,
+          completed: true,
+          completedAt: true,
+          timeSpentMs: true,
+        },
+      })
+      const nextProgress = getNextProgressState(
+        existingProgress,
+        body,
+        completedAt
+      )
+
+      const session = await tx.simSession.create({
+        data: {
+          id: body.sessionId,
+          userId,
+          moduleId: body.scenarioId,
+          moduleType: "SIMULATION",
+          difficulty: body.difficulty,
+          status: "COMPLETED",
+          finalScore: body.finalScore,
+          accuracyScore: body.accuracyScore,
+          speedScore: body.speedScore,
+          passed: body.passed,
+          totalPicks: body.totalPicks,
+          errorCount: body.errorCount,
+          totalTimeMs: body.totalTimeMs,
+          completedAt,
+          scanEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+          errors: body.errors as unknown as Prisma.InputJsonValue,
+          replayEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+        },
+      })
+
+      await tx.moduleProgress.upsert({
+        where: {
+          userId_moduleId: { userId, moduleId: body.scenarioId },
+        },
+        update: {
+          attempts: { increment: 1 },
+          bestScore: nextProgress.bestScore,
+          lastAttemptAt: completedAt,
+          completed: nextProgress.completed,
+          completedAt: nextProgress.completedAt,
+          timeSpentMs: nextProgress.timeSpentMs,
+        },
+        create: {
+          userId,
+          moduleId: body.scenarioId,
+          attempts: 1,
+          bestScore: nextProgress.bestScore,
+          lastAttemptAt: completedAt,
+          completed: nextProgress.completed,
+          completedAt: nextProgress.completedAt,
+          timeSpentMs: nextProgress.timeSpentMs,
+        },
+      })
+
+      return { sessionId: session.id, created: true }
+    },
+    { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
   )
 }
 
@@ -106,65 +170,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 })
   }
 
-  if (!isValidBody(body)) {
-    return NextResponse.json({ error: "Missing required fields" }, { status: 400 })
+  const parsed = parseSessionSubmission(body)
+  if (!parsed.success) {
+    return NextResponse.json({ error: parsed.error }, { status: 400 })
   }
 
-  const session = await prisma.simSession.create({
-    data: {
-      userId,
-      moduleId: body.scenarioId,
-      moduleType: "SIMULATION",
-      difficulty: body.difficulty,
-      status: "COMPLETED",
-      finalScore: body.finalScore,
-      accuracyScore: body.accuracyScore,
-      speedScore: body.speedScore,
-      passed: body.passed,
-      totalPicks: body.totalPicks,
-      errorCount: body.errorCount,
-      totalTimeMs: body.durationSeconds * 1000,
-      completedAt: new Date(),
-      // Store replay events for future replay feature
-      replayEvents: body.replayEvents as Parameters<
-        typeof prisma.simSession.create
-      >[0]["data"]["replayEvents"],
-    },
-  })
-
-  // Upsert module progress (best score tracking)
-  await prisma.moduleProgress.upsert({
-    where: { userId_moduleId: { userId, moduleId: body.scenarioId } },
-    update: {
-      attempts: { increment: 1 },
-      bestScore: { set: body.finalScore }, // will be overwritten by logic below
-      lastAttemptAt: new Date(),
-      completed: body.passed ? true : undefined,
-      completedAt: body.passed ? new Date() : undefined,
-    },
-    create: {
-      userId,
-      moduleId: body.scenarioId,
-      attempts: 1,
-      bestScore: body.finalScore,
-      completed: body.passed,
-      completedAt: body.passed ? new Date() : undefined,
-    },
-  })
-
-  // Ensure bestScore is always the maximum — do a conditional update
-  await prisma.moduleProgress.updateMany({
-    where: {
-      userId,
-      moduleId: body.scenarioId,
-      bestScore: { lt: body.finalScore },
-    },
-    data: { bestScore: body.finalScore },
-  })
+  let outcome: PersistSessionOutcome
+  try {
+    outcome = await persistCompletedSession(userId, parsed.data)
+  } catch (error) {
+    if (error instanceof Error && error.message === "SESSION_ID_CONFLICT") {
+      return NextResponse.json({ error: "Session ID conflict" }, { status: 409 })
+    }
+    throw error
+  }
 
   // ── Supervisor notification for ADVANCED pass ─────────────────────────────
   // Per task spec: "triggers a Notification record if supervisor exists"
-  if (body.passed && body.difficulty === "ADVANCED") {
+  if (outcome.created && parsed.data.passed && parsed.data.difficulty === "ADVANCED") {
     try {
       const supervisor = await prisma.user.findFirst({
         where: {
@@ -181,7 +204,7 @@ export async function POST(request: NextRequest) {
             toUserId: supervisor.id,
             traineeId: userId,
             type: "FLAG_FOR_REVIEW",
-            message: `Trainee completed ADVANCED simulation "${body.scenarioId}" with score ${body.finalScore}.`,
+            message: `Trainee completed ADVANCED simulation "${parsed.data.scenarioId}" with score ${parsed.data.finalScore}.`,
           },
         })
       }
@@ -190,5 +213,8 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  return NextResponse.json({ sessionId: session.id }, { status: 201 })
+  return NextResponse.json(
+    { sessionId: outcome.sessionId, duplicate: !outcome.created },
+    { status: outcome.created ? 201 : 200 }
+  )
 }

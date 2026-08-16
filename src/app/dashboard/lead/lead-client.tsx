@@ -2,7 +2,7 @@
  * lead-client.tsx — Client component for Pick Lead dashboard
  *
  * Read-only view of assigned trainees. No floor-ready signoff.
- * Supports flagging trainees for supervisor review via POST /api/notifications.
+ * Supports persistent coaching flags for assigned trainees.
  *
  * Per CLAUDE.md §Architecture: components render and delegate — no business logic.
  */
@@ -13,7 +13,7 @@ import { TraineeCard } from "@/components/dashboard/TraineeCard"
 import { ExceptionHeatmap } from "@/components/dashboard/ExceptionHeatmap"
 import { FLOOR_READY_THRESHOLDS } from "@/config/floorReadyConfig"
 import type { FloorReadyStatus, ExceptionStats } from "@/lib/floorReadiness"
-import type { LeadTraineeOverview } from "./page"
+import type { CohortTraineeOverview } from "@/services/reporting/cohort-reporting"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -21,7 +21,8 @@ import type { LeadTraineeOverview } from "./page"
 
 interface LeadDashboardClientProps {
   leadName: string
-  trainees: LeadTraineeOverview[]
+  trainees: CohortTraineeOverview[]
+  cohortExceptionCoverage: Record<string, ExceptionStats>
 }
 
 interface FlagState {
@@ -40,11 +41,12 @@ interface FlagState {
 export function LeadDashboardClient({
   leadName,
   trainees,
+  cohortExceptionCoverage,
 }: LeadDashboardClientProps) {
   const [flagStates, setFlagStates] = useState<Record<string, FlagState>>({})
   const [expandedTrainee, setExpandedTrainee] = useState<string | null>(null)
 
-  /** Send a flag-for-review notification to the supervisor. */
+  /** Create a persistent coaching flag owned by the facility Supervisor. */
   const flagForReview = useCallback(
     async (traineeId: string, message: string) => {
       setFlagStates((prev) => ({
@@ -53,10 +55,14 @@ export function LeadDashboardClient({
       }))
 
       try {
-        const res = await fetch("/api/notifications", {
+        const res = await fetch("/api/coaching-flags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ traineeId, message }),
+          body: JSON.stringify({
+            traineeId,
+            category: "PERFORMANCE",
+            reason: message,
+          }),
         })
 
         if (!res.ok) {
@@ -90,14 +96,14 @@ export function LeadDashboardClient({
       IN_PROGRESS: 1,
       FLOOR_READY: 2,
     }
-    return (order[a.floorReadyStatus] ?? 1) - (order[b.floorReadyStatus] ?? 1)
+    return (order[a.report.status] ?? 1) - (order[b.report.status] ?? 1)
   })
 
   const needsCoachingCount = trainees.filter(
-    (t) => t.floorReadyStatus === "NEEDS_COACHING"
+    (t) => t.report.status === "NEEDS_COACHING"
   ).length
   const floorReadyCount = trainees.filter(
-    (t) => t.floorReadyStatus === "FLOOR_READY"
+    (t) => t.report.status === "FLOOR_READY"
   ).length
 
   return (
@@ -136,12 +142,12 @@ export function LeadDashboardClient({
                   userId={t.userId}
                   name={t.name}
                   employeeId={t.employeeId}
-                  floorReadyStatus={t.floorReadyStatus as FloorReadyStatus}
-                  bestScore={t.bestScore ?? 0}
-                  sessionsCompleted={t.completedSessions}
+                  floorReadyStatus={t.report.status as FloorReadyStatus}
+                  bestScore={t.bestScore}
+                  sessionsCompleted={t.sessionsCompleted}
                   sessionsRequired={FLOOR_READY_THRESHOLDS.minSimulationsCompleted}
                   lastActive={t.lastActive ? new Date(t.lastActive) : null}
-                  gaps={t.gaps}
+                  gaps={t.report.gaps}
                 />
 
                 {/* Flag for Review */}
@@ -180,9 +186,9 @@ export function LeadDashboardClient({
           Team Exception Rates
         </h2>
         <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4">
-          {trainees.length > 0 && trainees[0].report ? (
+          {trainees.length > 0 ? (
             <ExceptionHeatmap
-              coverage={mergeExceptionCoverage(trainees)}
+              coverage={cohortExceptionCoverage}
               showSopRef={true}
             />
           ) : (
@@ -253,39 +259,3 @@ function FlagForm({
   )
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// HELPERS
-// ─────────────────────────────────────────────────────────────────────────────
-
-/** Merge exception coverage from all trainees into team-level stats. */
-function mergeExceptionCoverage(
-  trainees: LeadTraineeOverview[]
-): Record<string, ExceptionStats> {
-  const merged: Record<
-    string,
-    { encountered: number; resolvedCorrectly: number; commonMistake?: string }
-  > = {}
-
-  for (const t of trainees) {
-    const coverage = t.report.exceptionCoverage
-    for (const [key, stats] of Object.entries(coverage)) {
-      if (!merged[key]) {
-        merged[key] = { encountered: 0, resolvedCorrectly: 0, commonMistake: stats.commonMistake }
-      }
-      merged[key].encountered += stats.encountered
-      merged[key].resolvedCorrectly += stats.resolvedCorrectly
-    }
-  }
-
-  const result: Record<string, ExceptionStats> = {}
-  for (const [key, val] of Object.entries(merged)) {
-    result[key] = {
-      encountered: val.encountered,
-      resolvedCorrectly: val.resolvedCorrectly,
-      resolutionRate: val.encountered > 0 ? val.resolvedCorrectly / val.encountered : 0,
-      commonMistake: val.commonMistake,
-    }
-  }
-
-  return result
-}

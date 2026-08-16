@@ -9,11 +9,14 @@
 
 import { create } from "zustand"
 import {
-  dispatch,
   startSessionWithTasks,
   getCurrentScreen,
   calculateScore,
 } from "@/engine/simulation-engine"
+import {
+  processInput as engineProcessInput,
+  type CanonicalInput,
+} from "@/engine/process-input"
 import { computeSessionResult } from "@/engine/scorer"
 import { EXCEPTION_RESOLUTION } from "@/engine/error-injector"
 import { SCENARIO_DATA, SEED_ITEMS } from "@/data/seedData"
@@ -25,7 +28,6 @@ import {
   ScanResult,
   type SimulationSession,
   type SimulationScenario,
-  type EngineAction,
   type EngineResult,
   type RFDeviceScreen,
   type SessionScore,
@@ -84,29 +86,6 @@ export function getInputMode(
     default:
       return "CONFIRM"
   }
-}
-
-/**
- * Determine the correct EngineAction to fire when the ENTER soft key is pressed
- * (or when the Continue button is clicked on KEYBOARD_SHORTCUT steps).
- *
- * Some steps expect a specific KEY_PRESS rather than a generic CONFIRM.
- * Mapping these here prevents the "Confirmation not expected at step" error.
- *
- * Per BBWD-WI-030:
- *   BC_PRESS_CTRL_T    — §5.1.8: CTRL+T changes Task Group
- *   BC_CONFIRM_TASK_GROUP — §5.1.8: ENTER+ENTER confirms Task Group
- *   PK_END_OF_TOTE_DISPLAY — §5.2.14: CTRL+A confirms End Of Tote
- */
-export function getEnterKeyAction(step: WorkflowStep): EngineAction {
-  const KEY_PRESS_MAP: Partial<Record<WorkflowStep, string>> = {
-    [WorkflowStep.BC_PRESS_CTRL_T]: "CTRL+T",
-    [WorkflowStep.BC_CONFIRM_TASK_GROUP]: "ENTER+ENTER",
-    [WorkflowStep.PK_END_OF_TOTE_DISPLAY]: "CTRL+A",
-  }
-  const keys = KEY_PRESS_MAP[step]
-  if (keys) return { type: "KEY_PRESS", keys }
-  return { type: "CONFIRM", step }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -257,7 +236,7 @@ interface SimulationState {
    * Includes band, feedback, duration, and exception stats.
    */
   sessionResult: SessionResult | null
-  /** The SCENARIO_DATA bundle key (e.g. "Z1_9_PICKS") for the active session. */
+  /** The SCENARIO_DATA bundle key (e.g. "Z1_10_PICKS") for the active session. */
   scenarioKey: string | null
   /** Tracks async DB persistence lifecycle. */
   saveStatus: "idle" | "saving" | "saved" | "failed"
@@ -297,7 +276,11 @@ interface SimulationState {
   lastActionResult: "correct" | "error" | null
 
   startSimulation: (bundleKey: string) => void
-  sendAction: (action: EngineAction) => void
+  /**
+   * Canonical input pipeline — the ONLY way UI sends user interactions.
+   * Routes through the engine's processInput contract.
+   */
+  processInput: (input: CanonicalInput) => void
   /** Persist the completed session to the database. Safe to call multiple times — no-ops if already saving/saved. */
   persistSession: () => Promise<void>
   /** Increment the pulse counter (called by soft key bar on animation start) */
@@ -384,20 +367,29 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     })
   },
 
-  sendAction(action: EngineAction) {
+  processInput(input: CanonicalInput) {
     const { session, scenario } = get()
     if (!session) return
 
-    const { session: newSession, result } = dispatch(
+    const { session: nextSession, result } = engineProcessInput(
       session,
-      action,
+      input,
       scenario ?? undefined
     )
 
     // Calculate final score atomically when the round completes.
     // Per CLAUDE.md §Simulations: (accuracy × 0.6) + (speed × 0.4)
     const isComplete =
-      newSession.currentStep === WorkflowStep.PS_ROUND_COMPLETE
+      nextSession.currentStep === WorkflowStep.PS_ROUND_COMPLETE
+    const completedAt = isComplete ? new Date() : undefined
+    const newSession = completedAt
+      ? {
+          ...nextSession,
+          completedAt,
+          totalTimeMs: completedAt.getTime() - nextSession.startedAt.getTime(),
+          status: "COMPLETED" as const,
+        }
+      : nextSession
     const score =
       isComplete && scenario
         ? calculateScore(newSession, scenario)
@@ -449,6 +441,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: session.sessionId,
           scenarioId: session.moduleId,
           difficulty: sessionResult.difficulty,
           finalScore: sessionResult.finalScore,
@@ -459,9 +452,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
           correctFirstScans: sessionResult.correctFirstScans,
           errorCount: sessionResult.errorCount,
           durationSeconds: sessionResult.durationSeconds,
+          totalTimeMs: session.totalTimeMs,
           errorsEncountered: sessionResult.errorsEncountered,
           exceptionsResolved: sessionResult.exceptionsResolved,
-          replayEvents: session.scanEvents,
+          scanEvents: session.scanEvents,
+          errors: session.errors,
         }),
       })
 

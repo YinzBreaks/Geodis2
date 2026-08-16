@@ -18,7 +18,7 @@ import {
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const auth = await requireRole("SUPERVISOR")
   if (!auth.authorized || !auth.facilityId) {
@@ -28,7 +28,7 @@ export async function GET(
     )
   }
 
-  const { userId } = params
+  const { userId } = await params
 
   // Fetch trainee at supervisor's facility
   const trainee = await prisma.user.findFirst({

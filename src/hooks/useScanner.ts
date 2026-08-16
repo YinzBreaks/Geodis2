@@ -11,13 +11,14 @@
 
 import { useSimulation } from "@/hooks/useSimulation"
 import { getExpectedInputType } from "@/lib/stepKeyMap"
+import type { InputSource } from "@/engine/process-input"
 
 /**
  * Hook return shape — scan function + read-only context.
  */
 export interface UseScannerResult {
   /** Dispatch a barcode scan to the simulation engine. */
-  scan: (barcode: string) => void
+  scan: (barcode: string, source?: InputSource) => void
   /** Whether the current step expects a scan action. */
   expectsScan: boolean
 }
@@ -30,11 +31,12 @@ export interface UseScannerResult {
  *   if (expectsScan) scan(barcodeValue)
  */
 export function useScanner(): UseScannerResult {
-  const sendAction = useSimulation((s) => s.sendAction)
+  const processInput = useSimulation((s) => s.processInput)
   const currentStep = useSimulation((s) => s.session?.currentStep ?? null)
 
   return {
-    scan: (barcode: string) => sendAction({ type: "SCAN", value: barcode }),
+    scan: (barcode: string, source: InputSource = "scanner") =>
+      processInput({ type: "SCAN", value: barcode, source }),
     expectsScan: currentStep !== null && getExpectedInputType(currentStep) === "scan",
   }
 }

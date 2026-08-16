@@ -9,6 +9,9 @@ All content is authored in JSON and validated against TypeScript interfaces at b
 Content is versioned — changes require a version bump and `lastUpdated` update.
 Every piece of content must reference at least one `WorkflowStep` and one SOP document.
 
+Runtime validation command: `npm run content:validate`.
+The command fails when any required content directory has no authored files. This is intentional: placeholder or fabricated SOP content must not pass the production gate.
+
 ---
 
 ## Lab Module Schema (`/content/labs/*.json`)
