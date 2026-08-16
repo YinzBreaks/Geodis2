@@ -1,0 +1,124 @@
+"use client"
+
+import { WorkflowStep, type SimulationSession } from "@/types/domain"
+import type { AssetContext } from "@/types/warehouse"
+import { t, type AppLanguage } from "@/lib/i18n"
+
+interface WarehouseSceneFallbackProps {
+  session: SimulationSession
+  ctx: AssetContext
+  onScan: (barcode: string) => void
+  onConfirm: () => void
+  language: AppLanguage
+}
+
+/** CSS fallback for Cart/Tote/Shelf interactions when WebGL is unavailable. */
+export function WarehouseSceneFallback({
+  session,
+  ctx,
+  onScan,
+  onConfirm,
+  language,
+}: WarehouseSceneFallbackProps) {
+  const pick = session.pickQueue[session.currentPickIndex]
+  const targetSlot = ctx.activeToteSlot ?? session.currentToteSlot
+  const isCartStep = ctx.scannableAsset === "cart"
+  const isToteStep = ctx.scannableAsset === "tote"
+  const isItemStep = ctx.scannableAsset === "item"
+  const isLocationStep = session.currentStep === WorkflowStep.PK_VERIFY_LOCATION
+
+  if (ctx.showShelf && pick) {
+    return (
+      <div className="h-full rounded-xl border border-slate-700 bg-slate-900 p-5 text-slate-100">
+        <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
+          <span className="font-display text-sm font-bold tracking-wide">PICK FRONT</span>
+          <span className="font-mono text-xs text-amber-300">{pick.location.displayLabel}</span>
+        </div>
+        <div className="grid h-[70%] grid-rows-3 gap-3 rounded border-4 border-orange-700/70 bg-slate-800 p-4">
+          {["C", "B", "A"].map((level) => (
+            <div key={level} className="grid grid-cols-3 items-center gap-3 border-b-4 border-slate-600/80 px-3 last:border-b-0">
+              {[0, 1, 2].map((index) => (
+                <button
+                  key={index}
+                  onClick={() => isItemStep && index === 1 && onScan(pick.item.upcBarcode)}
+                  disabled={!isItemStep || index !== 1}
+                  className={`h-12 rounded border text-[10px] font-mono transition-colors ${
+                    isItemStep && index === 1
+                      ? "border-amber-300 bg-amber-300/25 text-amber-100 hover:bg-amber-300/40"
+                      : "border-slate-700 bg-slate-700/50 text-slate-500"
+                  }`}
+                >
+                  {index === 1 ? pick.item.description : `ITEM ${level}-${index + 1}`}
+                </button>
+              ))}
+            </div>
+          ))}
+        </div>
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            onClick={() => isLocationStep && onScan(pick.location.displayLabel)}
+            disabled={!isLocationStep}
+            className="touch-target flex-1 rounded border border-amber-400/60 bg-amber-300/15 px-3 text-xs font-mono text-amber-100 disabled:border-slate-700 disabled:bg-slate-800 disabled:text-slate-500"
+          >
+            {t(language, "warehouse.location")} · {pick.location.displayLabel}
+          </button>
+          <button
+            onClick={onConfirm}
+            className="touch-target rounded border border-slate-500 bg-slate-700 px-4 text-xs font-mono text-white"
+          >
+            {t(language, "warehouse.continue")}
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  const activeTote = session.cart.totes.find((tote) => tote.slot === targetSlot)
+  return (
+    <div className="h-full rounded-xl border border-slate-700 bg-slate-900 p-5 text-slate-100">
+      <div className="mb-4 flex items-center justify-between border-b border-slate-700 pb-3">
+        <span className="font-display text-sm font-bold tracking-wide">PICK CART</span>
+        <span className="font-mono text-xs text-amber-300">{session.cart.cartBarcode}</span>
+      </div>
+      <button
+        onClick={() => isCartStep && onScan(session.cart.cartBarcode)}
+        disabled={!isCartStep}
+        className={`mb-4 w-full rounded border-2 p-4 text-left transition-colors ${
+          isCartStep
+            ? "border-amber-300 bg-amber-300/20 hover:bg-amber-300/35"
+            : "border-slate-700 bg-slate-800 text-slate-500"
+        }`}
+      >
+        <div className="text-[10px] font-mono uppercase tracking-wider">{t(language, "warehouse.cart")}</div>
+        <div className="mt-1 font-mono text-lg font-bold">{session.cart.cartBarcode}</div>
+        <div className="mt-2 text-xs text-slate-300">{isCartStep ? "Tap to scan Cart" : "Cart registered"}</div>
+      </button>
+      <div className="grid grid-cols-3 gap-2">
+        {session.cart.totes.map((tote) => {
+          const active = isToteStep && tote.slot === targetSlot
+          return (
+            <button
+              key={tote.toteId}
+              onClick={() => active && onScan(tote.barcode)}
+              disabled={!active}
+              className={`min-h-20 rounded border p-2 text-left ${
+                active
+                  ? "border-amber-300 bg-amber-300/25 text-amber-100"
+                  : "border-slate-700 bg-slate-800 text-slate-500"
+              }`}
+            >
+              <div className="text-[10px] font-mono">S{tote.slot}</div>
+              <div className="mt-1 break-all text-[9px] font-mono">{tote.barcode}</div>
+              {active && <div className="mt-1 text-[9px] font-semibold">TAP TO SCAN</div>}
+            </button>
+          )
+        })}
+      </div>
+      {activeTote && isToteStep && (
+        <div className="mt-4 rounded border border-amber-400/40 bg-amber-300/10 p-3 text-xs font-mono text-amber-100">
+          Active Tote: S{activeTote.slot}
+        </div>
+      )}
+    </div>
+  )
+}
