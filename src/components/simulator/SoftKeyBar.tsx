@@ -78,6 +78,7 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", high
           onClick={() => isKeyEnabled && onKey(key.keys)}
           disabled={disabled}
           className={`
+            touch-target
             text-xs font-mono py-2 px-0 rounded border
             flex flex-col items-center gap-0.5
             transition-colors
@@ -118,6 +119,8 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", high
                   cursor: "not-allowed",
                   pointerEvents: "none" as const,
                 }),
+            touchAction: "manipulation",
+            WebkitTapHighlightColor: "transparent",
           }}
           title={key.keys}
         >

@@ -302,7 +302,7 @@ warehouse data in tests or components — import from here.
 Warehouse Locations:  30 locations across Z1, Z2, Z3, Z4, HAZ
 Warehouse Items:      14 items (standard + HAZ + multi-qty examples)
 Cart Templates:       7 carts (Z1×2, Z2, Z3, Z4, HAZ, FEX)
-Pre-built Scenarios:  Z1_20_PICKS, Z1_9_PICKS, Z2_20_PICKS, HAZ_10_PICKS, FEX_15_PICKS
+Pre-built Scenarios:  Z1_20_PICKS, Z1_10_PICKS, Z2_20_PICKS, HAZ_10_PICKS, FEX_15_PICKS
 
 Barcode formats (from SOP screenshots — confirm exact values with GEODIS IT):
   Cart:     C + 9 digits   →  C000000083

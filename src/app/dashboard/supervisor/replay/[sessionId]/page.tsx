@@ -9,6 +9,8 @@
  */
 
 import { prisma } from "@/lib/prisma"
+import { requireRole } from "@/lib/auth/roles"
+import { redirect } from "next/navigation"
 import { ReplayPageClient } from "./replay-client"
 import type { ReplayEvent } from "@/components/dashboard/ReplayTimeline"
 
@@ -39,10 +41,18 @@ interface ReplayPageProps {
 }
 
 export default async function ReplayPage({ params }: ReplayPageProps) {
+  const auth = await requireRole("SUPERVISOR")
+  if (!auth.authorized || !auth.facilityId) {
+    redirect("/unauthorized")
+  }
+
   const { sessionId } = await params
 
-  const session = await prisma.simSession.findUnique({
-    where: { id: sessionId },
+  const session = await prisma.simSession.findFirst({
+    where: {
+      id: sessionId,
+      user: { facilityId: auth.facilityId, role: "TRAINEE" },
+    },
     select: {
       id: true,
       moduleId: true,

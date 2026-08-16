@@ -18,9 +18,12 @@ import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
 import { BlueprintMap } from "@/components/warehouse/BlueprintMap"
 import { ExceptionInjector } from "@/components/simulator/ExceptionInjector"
 import { useSimulation } from "@/hooks/useSimulation"
-import { DifficultyLevel } from "@/types/domain"
+import { DifficultyLevel, WorkflowStep } from "@/types/domain"
 import { getExpectedInputType } from "@/lib/stepKeyMap"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
+import { COACHING_CONTENT } from "@/data/coachingContent"
+import { COACHING_CONTENT_ES } from "@/data/coachingContent.es"
+import { t, type AppLanguage } from "@/lib/i18n"
 import type { SessionResult } from "@/types/domain"
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -28,12 +31,57 @@ import type { SessionResult } from "@/types/domain"
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
-  { key: "Z1_9_PICKS", levelLabel: "BEGINNER" },
+  { key: "Z1_10_PICKS", levelLabel: "BEGINNER" },
   { key: "Z1_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "Z2_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "HAZ_10_PICKS", levelLabel: "ADVANCED" },
   { key: "FEX_15_PICKS", levelLabel: "INTERMEDIATE" },
 ]
+
+type TabletFocusMode = "scanner" | "environment"
+type EnvironmentPanel = "map" | "floor"
+
+const COMPACT_LAYOUT_QUERY = "(max-width: 1080px)"
+
+function isTravelStep(step: WorkflowStep): boolean {
+  return (
+    step === WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER ||
+    step === WorkflowStep.PK_TRAVEL_TO_LOCATION
+  )
+}
+
+function getTabletFocusMode(step: WorkflowStep): TabletFocusMode {
+  switch (step) {
+    case WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER:
+    case WorkflowStep.BC_SCAN_ZONE_TASK_GROUP:
+    case WorkflowStep.BC_SCAN_CART_BARCODE:
+    case WorkflowStep.BC_SCAN_TOTE_BARCODE:
+    case WorkflowStep.BC_PLACE_TOTE_IN_SLOT:
+    case WorkflowStep.PK_TRAVEL_TO_LOCATION:
+    case WorkflowStep.PK_VERIFY_LOCATION:
+    case WorkflowStep.PK_SCAN_ITEM_UPC:
+    case WorkflowStep.PK_PLACE_IN_TOTE:
+    case WorkflowStep.PK_SCAN_TOTE_BARCODE:
+    case WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR:
+    case WorkflowStep.EX_INCORRECT_LOCATION:
+    case WorkflowStep.EX_INCORRECT_TOTE:
+    case WorkflowStep.EX_INVALID_ITEM_LAST:
+    case WorkflowStep.EX_INVALID_ITEM_NOT_LAST:
+    case WorkflowStep.EX_SHORT_INVENTORY:
+    case WorkflowStep.EX_DAMAGED_ITEM:
+    case WorkflowStep.EX_ITEM_TO_AMNESTY_BIN:
+    case WorkflowStep.EX_ITEM_TO_IC:
+      return "environment"
+    default:
+      return "scanner"
+  }
+}
+
+function extractSopRef(sopContext: string): { badge: string; rest: string } {
+  const match = sopContext.match(/^(§[\d.]+)(?:\s+—\s+)?([\s\S]*)$/)
+  if (!match) return { badge: "", rest: sopContext }
+  return { badge: match[1], rest: match[2] }
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PAGE
@@ -54,6 +102,28 @@ export default function SimPage() {
     estimatedTotalSteps,
     processInput,
   } = useSimulation()
+  const [isCompactLayout, setIsCompactLayout] = useState(false)
+  const [showIntermediateGuide, setShowIntermediateGuide] = useState(false)
+  const [language, setLanguage] = useState<AppLanguage>("en")
+
+  useEffect(() => {
+    const stored = window.localStorage.getItem("warehousepro.lang")
+    if (stored === "en" || stored === "es") {
+      setLanguage(stored)
+    }
+  }, [])
+
+  useEffect(() => {
+    window.localStorage.setItem("warehousepro.lang", language)
+  }, [language])
+
+  useEffect(() => {
+    const mq = window.matchMedia(COMPACT_LAYOUT_QUERY)
+    const apply = () => setIsCompactLayout(mq.matches)
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [])
 
   // Trigger DB persistence as soon as the result is ready (fire-and-forget)
   useEffect(() => {
@@ -84,113 +154,257 @@ export default function SimPage() {
   // Active simulation
   if (session) {
     const isBeginner = session.difficulty === DifficultyLevel.BEGINNER
+    const activeTabletFocus = getTabletFocusMode(session.currentStep)
+    const activeEnvironmentPanel: EnvironmentPanel = isTravelStep(session.currentStep)
+      ? "map"
+      : "floor"
+    const baseGuide = COACHING_CONTENT[session.currentStep] ?? null
+    const spanishGuide = COACHING_CONTENT_ES[session.currentStep]
+    const stepGuide = baseGuide
+      ? {
+          ...baseGuide,
+          ...(language === "es" && spanishGuide ? spanishGuide : {}),
+        }
+      : null
+    const localizedCoaching = stepGuide
+      ? { ...coaching, content: stepGuide }
+      : coaching
+    const sopMeta = stepGuide ? extractSopRef(stepGuide.sopContext) : null
+    const shouldShowCompactGuide = Boolean(
+      isCompactLayout &&
+      stepGuide &&
+      (session.difficulty === DifficultyLevel.BEGINNER ||
+        (session.difficulty === DifficultyLevel.INTERMEDIATE && showIntermediateGuide))
+    )
     // Cap display at estimatedTotalSteps to avoid overshoot from error-injected extra steps.
     const displayStep = Math.min(actionCount, estimatedTotalSteps)
     const displayTotal = estimatedTotalSteps > 0 ? estimatedTotalSteps : 1
 
     return (
       <div
-        className="min-h-screen flex flex-col items-center gap-6 p-4 py-8"
+        className={
+          isCompactLayout
+            ? "h-[100dvh] overflow-hidden flex flex-col items-center gap-2 p-2"
+            : "min-h-screen flex flex-col items-center gap-6 p-4 py-8"
+        }
         style={{ backgroundColor: "var(--color-base)" }}
       >
-        {/* Device selector + step progress bar + stats row */}
-        <div className="flex flex-col items-center gap-3" style={{ width: "100%", maxWidth: 600 }}>
-          {/* Device selector — inline above the progress bar, right-aligned */}
-          <div style={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
-            <DeviceSelector />
+        {!isCompactLayout ? (
+          <div className="flex flex-col items-center gap-3 shrink-0" style={{ width: "100%", maxWidth: 600 }}>
+            <div style={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
+              <DeviceSelector />
+            </div>
+            <StepProgressBar
+              totalSteps={displayTotal}
+              currentStep={displayStep}
+              label={`Step ${displayStep + 1} of ${displayTotal}`}
+            />
+            <GameStatsBar session={session} />
+            <div
+              className="flex gap-4"
+              style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                color: "var(--color-text-secondary)",
+              }}
+            >
+              <span>
+                {t(language, "sim.pick")} {session.currentPickIndex} / {session.pickQueue.length}
+              </span>
+              <span>
+                {t(language, "sim.errors")}: <span style={{ color: session.errors.length > 0 ? "var(--color-danger)" : "inherit" }}>{session.errors.length}</span>
+              </span>
+              <span>
+                {t(language, "sim.zone")}: <span style={{ color: "var(--color-amber)" }}>{session.cart.zone}</span>
+              </span>
+              {isBeginner && (
+                <span style={{ color: "var(--color-amber)", fontWeight: 600 }}>{t(language, "sim.beginner_badge")}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "en" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
+              >
+                {t(language, "lang.en")}
+              </button>
+              <button
+                onClick={() => setLanguage("es")}
+                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "es" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
+              >
+                {t(language, "lang.es")}
+              </button>
+            </div>
           </div>
-          <StepProgressBar
-            totalSteps={displayTotal}
-            currentStep={displayStep}
-            label={`Step ${displayStep + 1} of ${displayTotal}`}
-          />
-          {/* Live gamification HUD — score / streak / accuracy / pace (Overhaul 3C) */}
-          <GameStatsBar session={session} />
-          <div
-            className="flex gap-4"
+        ) : (
+          <div className="w-full max-w-[700px] shrink-0 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2">
+            <div className="text-[10px] font-mono text-slate-300">
+              {t(language, "sim.step")} {displayStep + 1}/{displayTotal} · {t(language, "sim.pick")} {session.currentPickIndex}/{session.pickQueue.length} · {t(language, "sim.zone")} {session.cart.zone}
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setLanguage("en")}
+                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "en" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
+              >
+                {t(language, "lang.en")}
+              </button>
+              <button
+                onClick={() => setLanguage("es")}
+                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "es" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
+              >
+                {t(language, "lang.es")}
+              </button>
+              {session.difficulty === DifficultyLevel.BEGINNER && stepGuide && (
+                <button
+                  className="text-[10px] font-mono text-amber-200"
+                >
+                  {t(language, "sim.guide_on")}
+                </button>
+              )}
+              {session.difficulty === DifficultyLevel.INTERMEDIATE && stepGuide && (
+                <button
+                  onClick={() => setShowIntermediateGuide((v) => !v)}
+                  className="text-[10px] font-mono text-amber-200 underline hover:text-amber-100"
+                >
+                  {showIntermediateGuide ? t(language, "sim.hide_guide") : t(language, "sim.show_guide")}
+                </button>
+              )}
+              <button
+                onClick={reset}
+                className="text-[10px] font-mono text-slate-300 underline hover:text-slate-100"
+              >
+                {t(language, "sim.exit")}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {shouldShowCompactGuide && stepGuide && sopMeta && (
+          <div className="w-full max-w-[700px] shrink-0 rounded-lg border border-amber-500/35 bg-amber-400/10 px-3 py-2 flex items-start justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.beginner_guide")}</div>
+              <div className="text-[11px] font-medium text-amber-50 leading-relaxed">{stepGuide.action}</div>
+
+              <div className="mt-2 flex items-center gap-2">
+                <div className="text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.why_this_step")}</div>
+                {sopMeta.badge && (
+                  <span className="text-[9px] font-mono rounded px-1.5 py-0.5 border border-amber-300/40 text-amber-200 bg-amber-400/10">
+                    {sopMeta.badge}
+                  </span>
+                )}
+              </div>
+              <div className="text-[10px] text-amber-100/90 leading-relaxed">{sopMeta.rest}</div>
+
+              {stepGuide.fieldDef && (
+                <>
+                  <div className="mt-2 text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.field_meaning")}</div>
+                  <div className="text-[10px] text-amber-100/90 leading-relaxed">{stepGuide.fieldDef}</div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!isCompactLayout ? (
+          <>
+            {/*
+              Top row (stable 3-column grid — the RF Device column never moves):
+                col 1 (300px) → Step Guide (CoachingPanel, BEGINNER only).
+                col 2 (auto)  → RF Device (scanner) with its Continue + soft keys.
+                col 3 (320px) → Trainer Exception Injector.
+
+              Fixed side-column widths keep the device from shifting when the
+              coaching panel toggles. Collapses to one column on narrow screens.
+            */}
+            <div className="sim-stage">
+              <div className="sim-col-left">
+                {isBeginner && (
+                  <CoachingPanel coaching={localizedCoaching} difficulty={session.difficulty} language={language} />
+                )}
+              </div>
+              <div className="sim-col-center">
+                <RFDevice />
+              </div>
+              <div className="sim-col-right">
+                {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
+                <ExceptionInjector />
+              </div>
+            </div>
+
+            {/*
+              Combined floor-plan band — spans the full page width.
+                left  → interactive blueprint map (click a zone to travel)
+                right → 3D warehouse floor (scan assets)
+              Travel steps are driven by clicking the correct zone on the blueprint,
+              which fires the same CONFIRM action the floor's Continue bar uses.
+            */}
+            <div className="sim-floorplan">
+              <BlueprintMap
+                session={session}
+                difficulty={session.difficulty}
+                onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
+              />
+              <div className="sim-floorplan-3d">
+                <WarehouseFloor
+                  session={session}
+                  difficulty={session.difficulty}
+                  onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
+                  onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
+                  language={language}
+                />
+              </div>
+            </div>
+          </>
+        ) : (
+          <div className="w-full max-w-[700px] flex-1 min-h-0 relative">
+            <div className="h-full">
+              {activeTabletFocus === "scanner" ? (
+                <div className="h-full flex items-start justify-center overflow-hidden pt-2">
+                  <RFDevice />
+                </div>
+              ) : activeEnvironmentPanel === "map" ? (
+                <div className="h-full">
+                  <BlueprintMap
+                    session={session}
+                    difficulty={session.difficulty}
+                    onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
+                  />
+                </div>
+              ) : (
+                <div className="h-full">
+                  <WarehouseFloor
+                    session={session}
+                    difficulty={session.difficulty}
+                    onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
+                    onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
+                    compact={true}
+                    language={language}
+                  />
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {!isCompactLayout && (
+          <button
+            onClick={reset}
+            className="shrink-0"
             style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 11,
+              background: "none",
+              border: "none",
               color: "var(--color-text-secondary)",
+              fontFamily: "var(--font-mono)",
+              fontSize: 12,
+              cursor: "pointer",
+              textDecoration: "underline",
+              opacity: 0.7,
             }}
           >
-            <span>
-              Pick {session.currentPickIndex} / {session.pickQueue.length}
-            </span>
-            <span>
-              Errors: <span style={{ color: session.errors.length > 0 ? "var(--color-danger)" : "inherit" }}>{session.errors.length}</span>
-            </span>
-            <span>
-              Zone: <span style={{ color: "var(--color-amber)" }}>{session.cart.zone}</span>
-            </span>
-            {isBeginner && (
-              <span style={{ color: "var(--color-amber)", fontWeight: 600 }}>BEGINNER</span>
-            )}
-          </div>
-        </div>
+            &larr; {t(language, "sim.back_to_scenario")}
+          </button>
+        )}
 
-        {/*
-          Top row (stable 3-column grid — the RF Device column never moves):
-            col 1 (300px) → Step Guide (CoachingPanel, BEGINNER only).
-            col 2 (auto)  → RF Device (scanner) with its Continue + soft keys.
-            col 3 (320px) → Trainer Exception Injector.
-
-          Fixed side-column widths keep the device from shifting when the
-          coaching panel toggles. Collapses to one column on narrow screens.
-        */}
-        <div className="sim-stage">
-          <div className="sim-col-left">
-            {isBeginner && (
-              <CoachingPanel coaching={coaching} difficulty={session.difficulty} />
-            )}
-          </div>
-          <div className="sim-col-center">
-            <RFDevice />
-          </div>
-          <div className="sim-col-right">
-            {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
-            <ExceptionInjector />
-          </div>
-        </div>
-
-        {/*
-          Combined floor-plan band — spans the full page width.
-            left  → interactive blueprint map (click a zone to travel)
-            right → 3D warehouse floor (scan assets)
-          Travel steps are driven by clicking the correct zone on the blueprint,
-          which fires the same CONFIRM action the floor's Continue bar uses.
-        */}
-        <div className="sim-floorplan">
-          <BlueprintMap
-            session={session}
-            difficulty={session.difficulty}
-            onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-          />
-          <div className="sim-floorplan-3d">
-            <WarehouseFloor
-              session={session}
-              difficulty={session.difficulty}
-              onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
-              onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-            />
-          </div>
-        </div>
-
-        <button
-          onClick={reset}
-          style={{
-            background: "none",
-            border: "none",
-            color: "var(--color-text-secondary)",
-            fontFamily: "var(--font-mono)",
-            fontSize: 12,
-            cursor: "pointer",
-            textDecoration: "underline",
-            opacity: 0.7,
-          }}
-        >
-          &larr; Back to scenario select
-        </button>
       </div>
     )
   }
@@ -384,7 +598,7 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
 
 /** Scenario to suggest after a PASS at the current level. */
 const NEXT_SCENARIO_MAP: Record<string, string | undefined> = {
-  Z1_9_PICKS: "Z1_20_PICKS",
+  Z1_10_PICKS: "Z1_20_PICKS",
   Z1_20_PICKS: "HAZ_10_PICKS",
   Z2_20_PICKS: "HAZ_10_PICKS",
   FEX_15_PICKS: "HAZ_10_PICKS",
@@ -393,16 +607,16 @@ const NEXT_SCENARIO_MAP: Record<string, string | undefined> = {
 
 /** Scenario to suggest stepping down to after a FAIL. */
 const LOWER_SCENARIO_MAP: Record<string, string | undefined> = {
-  Z1_9_PICKS: undefined,
-  Z1_20_PICKS: "Z1_9_PICKS",
-  Z2_20_PICKS: "Z1_9_PICKS",
-  FEX_15_PICKS: "Z1_9_PICKS",
+  Z1_10_PICKS: undefined,
+  Z1_20_PICKS: "Z1_10_PICKS",
+  Z2_20_PICKS: "Z1_10_PICKS",
+  FEX_15_PICKS: "Z1_10_PICKS",
   HAZ_10_PICKS: "Z1_20_PICKS",
 }
 
 /** User-facing label for a scenario key. */
 const SCENARIO_LABEL: Record<string, string> = {
-  Z1_9_PICKS: "Beginner",
+  Z1_10_PICKS: "Beginner",
   Z1_20_PICKS: "Intermediate",
   Z2_20_PICKS: "Intermediate",
   FEX_15_PICKS: "Intermediate",

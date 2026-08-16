@@ -51,8 +51,8 @@ export const ROUTE_ROLES: Record<string, UserRole[]> = {
  * Create a Supabase server client that reads auth cookies.
  * Must be called inside a Server Component or Route Handler (uses next/headers).
  */
-export function createSupabaseServerClient() {
-  const cookieStore = cookies()
+export async function createSupabaseServerClient() {
+  const cookieStore = await cookies()
 
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     throw new Error("SUPABASE_NOT_CONFIGURED")
@@ -99,7 +99,7 @@ export async function getRoleFromSession(): Promise<{
 }> {
   let supabase
   try {
-    supabase = createSupabaseServerClient()
+    supabase = await createSupabaseServerClient()
   } catch {
     // Supabase not configured — return unauthenticated
     return { role: null, userId: null, email: null, facilityId: null, assignedTrainees: [] }

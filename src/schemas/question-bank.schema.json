@@ -1,0 +1,1 @@
+{"$schema":"https://json-schema.org/draft/2020-12/schema","title":"WarehousePro Question Bank","type":"object","required":["bankId","title","sopDocuments","version","lastUpdated","questions"],"properties":{"sopDocuments":{"type":"array","minItems":1},"questions":{"type":"array","minItems":10}}}

@@ -5,6 +5,7 @@ import { Html, DragControls } from "@react-three/drei"
 import { DifficultyLevel, WorkflowStep, type SimulationSession } from "@/types/domain"
 import type { AssetContext } from "@/types/warehouse"
 import { getDecoyItems } from "@/hooks/useSimulation"
+import { t, type AppLanguage } from "@/lib/i18n"
 import { parseShelfLevel } from "../assets/ShelfLocation"
 
 interface Shelf3DProps {
@@ -14,6 +15,7 @@ interface Shelf3DProps {
   effectiveHighlight: string | null
   onScan: (barcode: string) => void
   onConfirm: () => void
+  language: AppLanguage
   /** Toggle parent OrbitControls off while an item is being dragged. */
   setDragging?: (dragging: boolean) => void
 }
@@ -27,9 +29,9 @@ function hashCode(str: string): number {
   return hash
 }
 
-export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, onConfirm, setDragging }: Shelf3DProps) {
+export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, onConfirm, language, setDragging }: Shelf3DProps) {
   const pick = session.pickQueue[session.currentPickIndex]
-  const decoys = useMemo(() => getDecoyItems(session, difficulty), [session.currentPickIndex, difficulty])
+  const decoys = useMemo(() => getDecoyItems(session, difficulty), [session, difficulty])
 
   const shelfItems = useMemo(() => {
     if (!pick) return []
@@ -51,6 +53,14 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
   const shelfY = level === "C" ? 2.5 : level === "B" ? 1.5 : 0.5
   const isLocHighlighted = effectiveHighlight === pick.location.displayLabel
   const isPlaceStep = session.currentStep === WorkflowStep.PK_PLACE_IN_TOTE
+  const isLocationScanStep = ctx.scannableAsset === "location"
+  const isItemScanStep = ctx.scannableAsset === "item"
+
+  const locationLabelPos: [number, number, number] = isItemScanStep
+    ? [0, 2.9, -0.25]
+    : [0, shelfY - 0.1, 0.4]
+
+  const locationLabelScale = isItemScanStep ? 0.82 : 1
 
   return (
     <group position={[0, 0, -1]}>
@@ -73,12 +83,13 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
       ))}
 
       {/* Location Label on the Shelf */}
-      <Html position={[0, shelfY - 0.1, 0.4]} center transform>
+      <Html position={locationLabelPos} center transform scale={locationLabelScale}>
         <div 
-          className={`px-2 py-1 rounded cursor-pointer transition-transform hover:scale-105 ${isLocHighlighted && difficulty === DifficultyLevel.BEGINNER ? "bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse" : "bg-slate-800 text-white border border-slate-600"}`}
-          onClick={() => ctx.scannableAsset === "location" && onScan(pick.location.displayLabel)}
+          className={`px-2 py-1 rounded transition-transform ${isLocationScanStep ? "cursor-pointer hover:scale-105" : "cursor-default"} ${isLocHighlighted && difficulty === DifficultyLevel.BEGINNER ? "bg-amber-400 text-black shadow-[0_0_15px_rgba(251,191,36,0.8)] animate-pulse" : "bg-slate-800 text-white border border-slate-600"}`}
+          onClick={() => isLocationScanStep && onScan(pick.location.displayLabel)}
+          style={{ opacity: isItemScanStep ? 0.86 : 1 }}
         >
-          <div className="text-[8px] opacity-70">LOCATION</div>
+          <div className="text-[8px] opacity-70">{t(language, "warehouse.location_tag")}</div>
           <div className="font-mono text-xs font-bold">{pick.location.displayLabel}</div>
         </div>
       </Html>
@@ -115,9 +126,20 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
             
             {/* Drag Hint */}
             {isDraggable && !dragPosition && (
-              <Html position={[0, 0.5, 0]} center transform scale={0.095}>
-                <div className="bg-blue-600 text-white font-bold text-[8px] px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none whitespace-nowrap">
-                  DRAG TO TOTE
+              <Html position={[0, 0.56, 0]} center transform scale={0.095}>
+                <div className="flex flex-col items-center gap-1">
+                  <div className="bg-blue-600 text-white font-bold text-[8px] px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none whitespace-nowrap">
+                    {t(language, "warehouse.drag_to_tote")}
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      onConfirm()
+                    }}
+                    className="touch-target bg-amber-400 hover:bg-amber-300 text-black font-mono font-bold text-[8px] px-2 py-1 rounded border border-amber-200 shadow-lg whitespace-nowrap"
+                  >
+                    {t(language, "warehouse.tap_to_place")}
+                  </button>
                 </div>
               </Html>
             )}

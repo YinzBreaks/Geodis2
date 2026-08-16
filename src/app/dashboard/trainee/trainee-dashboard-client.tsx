@@ -106,7 +106,7 @@ const SCENARIO_TITLE_MAP: Record<string, string> = {
   "sim-02-intermediate": "Zone 1 — Intermediate",
   "sim-03-advanced": "Zone 1 — Advanced",
   "Z1_20_PICKS": "Zone 1 — 20 Picks",
-  "Z1_9_PICKS": "Zone 1 — 9 Picks",
+  "Z1_10_PICKS": "Zone 1 — 10 Picks",
   "Z2_20_PICKS": "Zone 2 — 20 Picks",
   "HAZ_10_PICKS": "HAZ — 10 Picks",
   "FEX_15_PICKS": "Express — 15 Picks",
@@ -267,7 +267,7 @@ function getNextAction(
 
   if (completed.length === 0) {
     return {
-      headline: "Start Here: Zone 1 Beginner (9 picks)",
+      headline: "Start Here: Zone 1 Beginner (10 Picks)",
       body: "Begin with the basics. This simulation walks you through a standard Zone 1 pick round step by step.",
       buttonLabel: "Start Training →",
       href: "/sim",

@@ -37,7 +37,7 @@ import { DifficultyLevel, type SessionScore } from "@/types/domain"
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
-  { key: "Z1_9_PICKS", levelLabel: "BEGINNER" },
+  { key: "Z1_10_PICKS", levelLabel: "BEGINNER" },
   { key: "Z1_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "Z2_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "HAZ_10_PICKS", levelLabel: "ADVANCED" },

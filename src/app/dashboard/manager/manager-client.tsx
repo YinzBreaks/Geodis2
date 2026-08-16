@@ -22,7 +22,7 @@ import type {
   ManagerKPIs,
   WeeklySignoff,
   ExceptionFailureRate,
-} from "./page"
+} from "@/services/reporting/manager-reporting"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TYPES
@@ -150,7 +150,7 @@ export function ManagerDashboardClient({
           />
           <KPICard
             label="Floor Ready Rate"
-            value={`${Math.round(kpis.floorReadyRate * 100)}`}
+            value={`${kpis.floorReadyRate}`}
             suffix="%"
             description="Signed-off / total trainees"
           />

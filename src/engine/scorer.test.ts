@@ -46,7 +46,7 @@ function makeBase(
     passThreshold: 75,
     difficulty: DifficultyLevel.BEGINNER,
     zone: Zone.Z1,
-    scenarioTitle: "Zone 1 - 9 Picks",
+    scenarioTitle: "Zone 1 - 10 Picks",
     ...overrides,
   }
 }
@@ -253,7 +253,7 @@ describe("generateFeedback — always returns ≥1 strength and ≥1 improvement
 
 describe("computeSessionResult", () => {
   function buildMinimalSession() {
-    const bundle = SCENARIO_DATA["Z1_9_PICKS"]
+    const bundle = SCENARIO_DATA["Z1_10_PICKS"]
     const session = startSessionWithTasks(
       "test-user",
       bundle.scenario,
@@ -311,7 +311,7 @@ describe("computeSessionResult", () => {
 
   it("uses dispatch to complete picks and then produces PASS or EXCELLENT result", () => {
     // Build a real session and drive it through enough scans to complete some picks
-    const bundle = SCENARIO_DATA["Z1_9_PICKS"]
+    const bundle = SCENARIO_DATA["Z1_10_PICKS"]
     let session = startSessionWithTasks(
       "test-user",
       bundle.scenario,

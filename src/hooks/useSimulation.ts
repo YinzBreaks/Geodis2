@@ -236,7 +236,7 @@ interface SimulationState {
    * Includes band, feedback, duration, and exception stats.
    */
   sessionResult: SessionResult | null
-  /** The SCENARIO_DATA bundle key (e.g. "Z1_9_PICKS") for the active session. */
+  /** The SCENARIO_DATA bundle key (e.g. "Z1_10_PICKS") for the active session. */
   scenarioKey: string | null
   /** Tracks async DB persistence lifecycle. */
   saveStatus: "idle" | "saving" | "saved" | "failed"
@@ -371,7 +371,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     const { session, scenario } = get()
     if (!session) return
 
-    const { session: newSession, result } = engineProcessInput(
+    const { session: nextSession, result } = engineProcessInput(
       session,
       input,
       scenario ?? undefined
@@ -380,7 +380,16 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     // Calculate final score atomically when the round completes.
     // Per CLAUDE.md §Simulations: (accuracy × 0.6) + (speed × 0.4)
     const isComplete =
-      newSession.currentStep === WorkflowStep.PS_ROUND_COMPLETE
+      nextSession.currentStep === WorkflowStep.PS_ROUND_COMPLETE
+    const completedAt = isComplete ? new Date() : undefined
+    const newSession = completedAt
+      ? {
+          ...nextSession,
+          completedAt,
+          totalTimeMs: completedAt.getTime() - nextSession.startedAt.getTime(),
+          status: "COMPLETED" as const,
+        }
+      : nextSession
     const score =
       isComplete && scenario
         ? calculateScore(newSession, scenario)
@@ -432,6 +441,7 @@ export const useSimulation = create<SimulationState>((set, get) => ({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          sessionId: session.sessionId,
           scenarioId: session.moduleId,
           difficulty: sessionResult.difficulty,
           finalScore: sessionResult.finalScore,
@@ -442,9 +452,11 @@ export const useSimulation = create<SimulationState>((set, get) => ({
           correctFirstScans: sessionResult.correctFirstScans,
           errorCount: sessionResult.errorCount,
           durationSeconds: sessionResult.durationSeconds,
+          totalTimeMs: session.totalTimeMs,
           errorsEncountered: sessionResult.errorsEncountered,
           exceptionsResolved: sessionResult.exceptionsResolved,
-          replayEvents: session.scanEvents,
+          scanEvents: session.scanEvents,
+          errors: session.errors,
         }),
       })
 

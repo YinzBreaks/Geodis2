@@ -15,7 +15,7 @@ import { ScanResult } from "@/types/domain"
 describe("injectException (store action)", () => {
   beforeEach(() => {
     useSimulation.getState().reset()
-    useSimulation.getState().startSimulation("Z1_9_PICKS")
+    useSimulation.getState().startSimulation("Z1_10_PICKS")
   })
 
   it("appends an ErrorScenario at the current pick index", () => {

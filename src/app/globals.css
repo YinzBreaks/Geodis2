@@ -113,7 +113,7 @@ body {
 }
 .sim-floorplan > * {
   min-width: 0;
-  height: 420px;
+  height: clamp(500px, 58vh, 680px);
 }
 
 /* Below the 3-column breakpoint, stack into one centered column. */
@@ -136,5 +136,16 @@ body {
     grid-template-columns: minmax(0, 1fr);
     max-width: 520px;
   }
+}
+
+/* Touch hardening utilities for tablet operation. */
+.touch-target {
+  min-height: 56px;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.touch-target:active {
+  transform: scale(0.985);
 }
 

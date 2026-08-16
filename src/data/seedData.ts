@@ -324,48 +324,49 @@ const z1Scenario20: SimulationScenario = {
   lastUpdated: "2026-03-03",
 }
 
-// ── Z1_9_PICKS ───────────────────────────────────────────────────────────────
+// ── Z1_10_PICKS ──────────────────────────────────────────────────────────────
 
 const z1Cart2 = SEED_CARTS["cart-z1-002"]
 
-const z1PickQueue9: PickTask[] = Array.from({ length: 9 }, (_, i) => ({
-  pickTaskId: `z1-9-pick-${String(i).padStart(3, "0")}`,
+const z1PickQueue10: PickTask[] = Array.from({ length: 10 }, (_, i) => ({
+  pickTaskId: `z1-10-pick-${String(i).padStart(3, "0")}`,
   orderNumber: `ORD-Z1B-${String(i + 1).padStart(4, "0")}`,
   item: items[`item-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_ITEMS],
   location: locs[`loc-z1-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_LOCATIONS],
   quantityRequired: 1,
-  targetToteId: z1Cart2.totes[i].toteId,
-  targetSlot: (i + 1) as ToteSlot,
+  targetToteId: z1Cart2.totes[i % 9].toteId,
+  targetSlot: ((i % 9) + 1) as ToteSlot,
   isExpress: false,
 }))
 
-const z1Scenario9: SimulationScenario = {
-  moduleId: "sim-z1-9picks",
-  title: "Zone 1 — 9 Pick Simulation",
-  description: "One pick per tote, beginner-level",
+const z1Scenario10: SimulationScenario = {
+  moduleId: "sim-z1-10picks",
+  title: "Zone 1 — 10 Pick Simulation",
+  description: "Beginner Round across all 9 totes with guided exceptions",
   contentType: ContentType.SIMULATION,
   difficulty: DifficultyLevel.BEGINNER,
   estimatedMinutes: 8,
   zone: Zone.Z1,
-  pickCount: 9,
+  pickCount: 10,
   toteCount: 9,
   steps: [],
   errorScenarios: [
     {
       scenarioId: "z1b-err-001",
-      injectAtPickIndex: 99,
+      injectAtPickIndex: 3,
       errorType: ScanResult.WRONG_ITEM,
-      description: "No injection (index out of range)",
-      expectedResolution: [],
-      sopReference: "BBWD-WI-030 §6",
+      isLastItemAtLocation: true,
+      description: "Invalid item, last at Pick Front",
+      expectedResolution: [WorkflowStep.EX_INVALID_ITEM_LAST, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K, WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR, WorkflowStep.EX_ITEM_TO_AMNESTY_BIN],
+      sopReference: "BBWD-WI-030 §6.5.1",
     },
     {
       scenarioId: "z1b-err-002",
-      injectAtPickIndex: 98,
+      injectAtPickIndex: 7,
       errorType: ScanResult.ITEM_NOT_FOUND,
-      description: "No injection (index out of range)",
-      expectedResolution: [],
-      sopReference: "BBWD-WI-030 §6",
+      description: "Short Inventory at assigned Pick Front",
+      expectedResolution: [WorkflowStep.EX_SHORT_INVENTORY, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K],
+      sopReference: "BBWD-WI-030 §6.6",
     },
   ],
   passCriteria: { minScore: 70, maxErrors: 3 },
@@ -407,8 +408,8 @@ const z2Scenario20: SimulationScenario = {
   toteCount: 9,
   steps: [],
   errorScenarios: [
-    { scenarioId: "z2-err-001", injectAtPickIndex: 99, errorType: ScanResult.WRONG_ITEM, description: "No injection", expectedResolution: [], sopReference: "BBWD-WI-030 §6" },
-    { scenarioId: "z2-err-002", injectAtPickIndex: 98, errorType: ScanResult.ITEM_NOT_FOUND, description: "No injection", expectedResolution: [], sopReference: "BBWD-WI-030 §6" },
+    { scenarioId: "z2-err-001", injectAtPickIndex: 5, errorType: ScanResult.WRONG_ITEM, isLastItemAtLocation: true, description: "Invalid item, last at Pick Front", expectedResolution: [WorkflowStep.EX_INVALID_ITEM_LAST, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K, WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR, WorkflowStep.EX_ITEM_TO_AMNESTY_BIN], sopReference: "BBWD-WI-030 §6.5.1" },
+    { scenarioId: "z2-err-002", injectAtPickIndex: 14, errorType: ScanResult.ITEM_NOT_FOUND, description: "Short Inventory", expectedResolution: [WorkflowStep.EX_SHORT_INVENTORY, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K], sopReference: "BBWD-WI-030 §6.6" },
   ],
   passCriteria: { minScore: 75, maxErrors: 5 },
   scoringWeights: { accuracy: 0.6, speed: 0.4 },
@@ -449,7 +450,7 @@ const hazScenario10: SimulationScenario = {
   steps: [],
   errorScenarios: [
     { scenarioId: "haz-err-001", injectAtPickIndex: 4, errorType: ScanResult.ITEM_DAMAGED, description: "Damaged HAZ item", expectedResolution: [WorkflowStep.EX_DAMAGED_ITEM, WorkflowStep.EX_ITEM_TO_AMNESTY_BIN], sopReference: "BBWD-WI-030 §6.8" },
-    { scenarioId: "haz-err-002", injectAtPickIndex: 99, errorType: ScanResult.WRONG_ITEM, description: "No injection", expectedResolution: [], sopReference: "BBWD-WI-030 §6" },
+    { scenarioId: "haz-err-002", injectAtPickIndex: 8, errorType: ScanResult.WRONG_ITEM, isLastItemAtLocation: true, description: "Invalid HAZ item, last at Pick Front", expectedResolution: [WorkflowStep.EX_INVALID_ITEM_LAST, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K, WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR, WorkflowStep.EX_ITEM_TO_AMNESTY_BIN], sopReference: "BBWD-WI-030 §6.5.1" },
   ],
   passCriteria: { minScore: 80, maxErrors: 2 },
   scoringWeights: { accuracy: 0.7, speed: 0.3 },
@@ -490,8 +491,8 @@ const fexScenario15: SimulationScenario = {
   toteCount: 9,
   steps: [],
   errorScenarios: [
-    { scenarioId: "fex-err-001", injectAtPickIndex: 99, errorType: ScanResult.WRONG_ITEM, description: "No injection", expectedResolution: [], sopReference: "BBWD-WI-030 §6" },
-    { scenarioId: "fex-err-002", injectAtPickIndex: 98, errorType: ScanResult.ITEM_NOT_FOUND, description: "No injection", expectedResolution: [], sopReference: "BBWD-WI-030 §6" },
+    { scenarioId: "fex-err-001", injectAtPickIndex: 4, errorType: ScanResult.WRONG_ITEM, isLastItemAtLocation: true, description: "Invalid Express item, last at Pick Front", expectedResolution: [WorkflowStep.EX_INVALID_ITEM_LAST, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K, WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR, WorkflowStep.EX_ITEM_TO_AMNESTY_BIN], sopReference: "BBWD-WI-030 §6.5.1" },
+    { scenarioId: "fex-err-002", injectAtPickIndex: 11, errorType: ScanResult.ITEM_NOT_FOUND, description: "Short Inventory on Express Pick", expectedResolution: [WorkflowStep.EX_SHORT_INVENTORY, WorkflowStep.EX_NOTIFY_LEAD, WorkflowStep.EX_PRESS_CTRL_K], sopReference: "BBWD-WI-030 §6.6" },
   ],
   passCriteria: { minScore: 80, maxErrors: 3 },
   scoringWeights: { accuracy: 0.6, speed: 0.4 },
@@ -511,9 +512,9 @@ export const SCENARIO_DATA: Readonly<Record<string, ScenarioBundle>> = {
     pickQueue: z1PickQueue,
     cart: { ...SEED_CARTS["cart-z1-001"], isBuilt: true },
   },
-  Z1_9_PICKS: {
-    scenario: z1Scenario9,
-    pickQueue: z1PickQueue9,
+  Z1_10_PICKS: {
+    scenario: z1Scenario10,
+    pickQueue: z1PickQueue10,
     cart: { ...SEED_CARTS["cart-z1-002"], isBuilt: true },
   },
   Z2_20_PICKS: {

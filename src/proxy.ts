@@ -1,20 +1,13 @@
 /**
- * middleware.ts — Next.js middleware for WarehousePro
+ * Next.js proxy for WarehousePro route protection.
  *
- * Role-based route protection for dashboard routes.
- * Redirect to /unauthorized if the user lacks the required role.
- *
- * Per CLAUDE.md §Tech Stack: Supabase Auth
- * Route protection rules:
- *   /dashboard/supervisor/*  → SUPERVISOR only
- *   /dashboard/lead/*        → PICK_LEAD only
- *   /dashboard/manager/*     → WAREHOUSE_MGR only
+ * Role checks are repeated server-side in pages and API routes; this proxy
+ * provides early navigation redirects for protected dashboard paths.
  */
 
 import { NextResponse, type NextRequest } from "next/server"
 import { createServerClient } from "@supabase/ssr"
 
-/** Route prefix → allowed role(s). */
 const ROUTE_ROLE_MAP: Record<string, string[]> = {
   "/dashboard/supervisor": ["SUPERVISOR"],
   "/dashboard/lead": ["PICK_LEAD"],
@@ -22,15 +15,13 @@ const ROUTE_ROLE_MAP: Record<string, string[]> = {
   "/dashboard/trainee": ["TRAINEE", "SUPERVISOR", "PICK_LEAD", "WAREHOUSE_MGR"],
 }
 
-export async function middleware(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
-  // Only protect /dashboard/* routes
   if (!pathname.startsWith("/dashboard")) {
     return NextResponse.next()
   }
 
-  // Find the matching role restriction
   let requiredRoles: string[] | null = null
   for (const [prefix, roles] of Object.entries(ROUTE_ROLE_MAP)) {
     if (pathname.startsWith(prefix)) {
@@ -43,8 +34,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next()
   }
 
-  // Fail closed: if Supabase env vars are not configured, a protected route
-  // must NOT be served. Redirect to /login instead of allowing access through.
   if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
@@ -52,7 +41,6 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Create Supabase client from request cookies
   let response = NextResponse.next({
     request: { headers: request.headers },
   })
@@ -84,7 +72,6 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  // Not authenticated → redirect to login
   if (!user) {
     const url = request.nextUrl.clone()
     url.pathname = "/login"
@@ -92,11 +79,7 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
-  // Check user role via user_metadata (set during signup / by admin)
-  // In production, this should be validated against the DB User.role
-  // For middleware (edge runtime), we use user_metadata as the role source
   const userRole = (user.user_metadata?.role as string) ?? ""
-
   if (!requiredRoles.includes(userRole)) {
     const url = request.nextUrl.clone()
     url.pathname = "/unauthorized"

@@ -602,7 +602,7 @@ describe("Wrong item scan returns WRONG_ITEM and does not advance state", () => 
 })
 
 describe("Tote scan validation at PK_SCAN_TOTE_BARCODE and BC_SCAN_TOTE_BARCODE", () => {
-  it("non-empty tote barcode at PK_SCAN_TOTE_BARCODE → SUCCESS (sim accepts any scan)", () => {
+  it("wrong tote barcode at PK_SCAN_TOTE_BARCODE → WRONG_TOTE (strict target tote)", () => {
     const task = makePickTask()
     let s = makePickPhaseSession([task])
     s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.PK_READ_PICK_DISPLAY }).session
@@ -621,10 +621,10 @@ describe("Tote scan validation at PK_SCAN_TOTE_BARCODE and BC_SCAN_TOTE_BARCODE"
       value: "WRONG-TOTE-BARCODE",
     })
 
-    // Sim accepts any non-empty tote scan — training teaches scanning motion, not barcode memorisation
-    expect(result.success).toBe(true)
-    expect(result.scanResult).toBe(ScanResult.SUCCESS)
-    expect(afterError.errors).toHaveLength(0)
+    // Per BBWD-WI-030 §5.2.13, scan must match the tote shown on RF Device.
+    expect(result.success).toBe(false)
+    expect(result.scanResult).toBe(ScanResult.WRONG_TOTE)
+    expect(afterError.errors).toHaveLength(1)
   })
 
   it("empty tote scan value at PK_SCAN_TOTE_BARCODE → WRONG_TOTE", () => {
@@ -990,9 +990,14 @@ describe("Error injection: re-injection guard", () => {
   })
 
   it("session with all error scenarios out-of-range passes through without injection", () => {
-    // Z1_9_PICKS errorScenarios have injectAtPickIndex 99 and 98 — never reached
-    // in a 9-pick simulation. Every scan at pick 0 must succeed normally.
-    const { scenario: noInjectScenario, pickQueue, cart } = SCENARIO_DATA.Z1_9_PICKS
+    const { scenario, pickQueue, cart } = SCENARIO_DATA.Z1_10_PICKS
+    const noInjectScenario = {
+      ...scenario,
+      errorScenarios: scenario.errorScenarios.map((error, index) => ({
+        ...error,
+        injectAtPickIndex: 98 + index,
+      })),
+    }
     const base = startSessionWithTasks("user-test", noInjectScenario, pickQueue, {
       ...cart,
       isBuilt: true,
