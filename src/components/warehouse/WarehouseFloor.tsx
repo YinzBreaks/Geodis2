@@ -19,6 +19,7 @@ import { getAssetContext } from "@/lib/assetContext"
 import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
 import { assetLabel, t, type AppLanguage } from "@/lib/i18n"
 import { WarehouseSceneErrorBoundary } from "./WarehouseSceneErrorBoundary"
+import { WarehouseSceneFallback } from "./WarehouseSceneFallback"
 import dynamic from "next/dynamic"
 
 const WarehouseScene3D = dynamic(
@@ -101,12 +102,13 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm, compact
         ) : (
           <WarehouseSceneErrorBoundary
             fallback={
-              <div className="h-full flex items-center justify-center rounded-xl border border-amber-500/40 bg-slate-900 p-4 text-center text-xs font-mono text-amber-100">
-                <div>
-                  <p className="font-semibold">3D warehouse view unavailable</p>
-                  <p className="mt-1 text-slate-300">Use the active scan target below to continue.</p>
-                </div>
-              </div>
+              <WarehouseSceneFallback
+                session={session}
+                ctx={ctx}
+                onScan={onScan}
+                onConfirm={onConfirm}
+                language={language}
+              />
             }
           >
             <WarehouseScene3D
