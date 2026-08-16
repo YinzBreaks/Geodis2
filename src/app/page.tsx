@@ -10,16 +10,10 @@ const FEATURES: { title: string; description: string; href: string; active: bool
     active: true,
   },
   {
-    title: "Labs",
-    description: "Step-by-step guided lessons",
-    href: "/labs",
+    title: "Floor Readiness",
+    description: "Track performance, exceptions, coaching, and signoff",
+    href: "/dashboard/trainee",
     active: true,
-  },
-  {
-    title: "Quiz Bank",
-    description: "Test your SOP knowledge",
-    href: "#",
-    active: false,
   },
 ]
 
