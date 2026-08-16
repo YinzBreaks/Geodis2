@@ -18,6 +18,7 @@ import { WorkflowStep, DifficultyLevel, type SimulationSession } from "@/types/d
 import { getAssetContext } from "@/lib/assetContext"
 import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
 import { assetLabel, t, type AppLanguage } from "@/lib/i18n"
+import { WarehouseSceneErrorBoundary } from "./WarehouseSceneErrorBoundary"
 import dynamic from "next/dynamic"
 
 const WarehouseScene3D = dynamic(
@@ -98,13 +99,24 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm, compact
             <PostRoundOverlay session={session} language={language} />
           </div>
         ) : (
-          <WarehouseScene3D 
-            session={session} 
-            difficulty={difficulty} 
-            onScan={onScan} 
-            onConfirm={onConfirm}
-            language={language}
-          />
+          <WarehouseSceneErrorBoundary
+            fallback={
+              <div className="h-full flex items-center justify-center rounded-xl border border-amber-500/40 bg-slate-900 p-4 text-center text-xs font-mono text-amber-100">
+                <div>
+                  <p className="font-semibold">3D warehouse view unavailable</p>
+                  <p className="mt-1 text-slate-300">Use the active scan target below to continue.</p>
+                </div>
+              </div>
+            }
+          >
+            <WarehouseScene3D
+              session={session}
+              difficulty={difficulty}
+              onScan={onScan}
+              onConfirm={onConfirm}
+              language={language}
+            />
+          </WarehouseSceneErrorBoundary>
         ))}
       </div>
 

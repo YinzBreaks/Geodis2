@@ -28,6 +28,20 @@ Focused on the reported failure during Simulator Cart scanning and Tote assignme
 - Fix: `npm run dev` now uses `next dev --webpack -p 3005`.
 - Verification: Local dev server starts successfully; `/sim` returns HTTP 200.
 
+## Issue 003: Warehouse 3D scene can crash when Cart scanning begins
+
+- Severity: High for the visual path; workflow continuity risk.
+- Area: Dynamic `WarehouseScene3D` mount at `BC_SCAN_CART_BARCODE`.
+- Reproduction:
+  1. Open `/sim` on the Vercel preview.
+  2. Start a Beginner scenario.
+  3. Progress through the RF Device menu to `1 Make Tote Cart BB`.
+  4. Submit `1`.
+  5. The page can show a generic "This page couldn't load" failure when the warehouse 3D chunk/scene mounts.
+- Root cause: the 3D warehouse surface was a single uncaught runtime boundary. A WebGL, dynamic chunk, or scene initialization failure could take down the Simulator view.
+- Fix: wrapped the dynamic scene in `WarehouseSceneErrorBoundary`. If 3D fails, the active fallback scan target remains available so Cart/Tote workflow can continue.
+- Verification: production build and all engine/asset tests pass. Live Vercel browser verification remains required.
+
 ## Cart/Tote Functionality Check
 
 - Cart scan asset mapping: passed.
