@@ -23,7 +23,9 @@ export async function GET() {
   const { userId } = await getRoleFromSession()
 
   if (!userId) {
-    return NextResponse.json({ error: "Not authenticated" }, { status: 401 })
+    // Scenario selection may be visited before login; best-score badges are
+    // optional and should not surface an expected auth miss as a failed request.
+    return NextResponse.json({})
   }
 
   const sessions = await prisma.simSession.findMany({
