@@ -52,6 +52,54 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
   switch (step) {
     // ── Build Cart screens ──────────────────────────────────────────────
 
+    case WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "BBWD Logistics" },
+          { value: "Command Center" },
+          { label: "STATUS:", value: "Ready to Login" },
+          { label: "ENTER:", value: "Continue" },
+        ],
+      }
+
+    case WorkflowStep.BC_RECEIVE_TOTE_COUNT:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "BBWD Outbound" },
+          { label: "TOTE COUNT:", value: "9 Totes" },
+          { label: "STATUS:", value: "Assigned" },
+          { label: "ENTER:", value: "Continue" },
+        ],
+      }
+
+    case WorkflowStep.BC_OBTAIN_CART:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "Pick Cart Setup" },
+          { label: "CART TYPE:", value: "3-Tier Aluminum" },
+          { label: "SLOTS:", value: "9 White Labels" },
+          { label: "ENTER:", value: "Cart Staged" },
+        ],
+      }
+
+    case WorkflowStep.BC_LOAD_TOTES:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "Load 9 Gray Totes" },
+          { label: "SLOTS 1-9:", value: "3 per tier" },
+          { label: "STATUS:", value: "Loaded" },
+          { label: "ENTER:", value: "Continue" },
+        ],
+      }
+
     case WorkflowStep.BC_LOGIN_RF:
       return {
         screenId: `screen-${step}`,
@@ -205,6 +253,18 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
       }
 
     // ── Pick screens ────────────────────────────────────────────────────
+
+    case WorkflowStep.PK_PICKUP_CART:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "Pick Cart Ready" },
+          { label: "Cart #:", value: session.cart.cartBarcode },
+          { label: "Totes:", value: "9 Staged" },
+          { label: "ENTER:", value: "Start Picking" },
+        ],
+      }
 
     // ✓ validated against real device photos 2026-04-15
     // Per SIMULATION.md §RF Device Screen Generator (§5.2 pick display)

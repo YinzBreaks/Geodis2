@@ -17,10 +17,26 @@
 import { WorkflowStep, DifficultyLevel, type SimulationSession } from "@/types/domain"
 import { getAssetContext } from "@/lib/assetContext"
 import { BarcodeLabel, BarcodeScanStyles } from "./assets/BarcodeLabel"
+import { useState } from "react"
 import { assetLabel, t, type AppLanguage } from "@/lib/i18n"
 import { WarehouseSceneErrorBoundary } from "./WarehouseSceneErrorBoundary"
 import { WarehouseSceneFallback } from "./WarehouseSceneFallback"
 import dynamic from "next/dynamic"
+
+const PhaserWarehouseCanvas = dynamic(
+  () => import("./phaser/PhaserWarehouseCanvas").then((mod) => mod.PhaserWarehouseCanvas),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-full min-h-[300px] flex items-center justify-center bg-slate-950 text-amber-400 font-mono text-xs rounded-xl">
+        <div className="flex flex-col items-center gap-2">
+          <div className="w-6 h-6 border-2 border-amber-500 border-t-transparent rounded-full animate-spin" />
+          <span>Loading 2.5D Environment...</span>
+        </div>
+      </div>
+    ),
+  }
+)
 
 const WarehouseScene3D = dynamic(
   () => import("./3d/WarehouseScene3D").then((mod) => mod.WarehouseScene3D),
@@ -56,6 +72,7 @@ interface WarehouseFloorProps {
 // ─────────────────────────────────────────────────────────────────────────────
 
 export function WarehouseFloor({ session, difficulty, onScan, onConfirm, compact = false, language = "en" }: WarehouseFloorProps) {
+  const [sceneMode, setSceneMode] = useState<"2.5d" | "3d" | "schematic">("2.5d")
   const step = session.currentStep
   const ctx = getAssetContext(step, session)
   const pick = session.pickQueue[session.currentPickIndex]
@@ -70,21 +87,67 @@ export function WarehouseFloor({ session, difficulty, onScan, onConfirm, compact
       {/* Inject CSS keyframes for scan beam + asset pulse animations */}
       <BarcodeScanStyles />
 
-      {/* Header */}
+      {/* Header with Mode Switcher */}
       {!compact && (
         <div className="flex items-center justify-between">
-          <h2 className="text-slate-700 font-semibold text-sm tracking-wide">
-            {t(language, "warehouse.header")}
-          </h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-slate-700 font-semibold text-sm tracking-wide">
+              {t(language, "warehouse.header")}
+            </h2>
+            <div className="flex items-center bg-slate-200 p-0.5 rounded-lg border border-slate-300 text-[10px] font-mono">
+              <button
+                type="button"
+                onClick={() => setSceneMode("2.5d")}
+                className={`px-2 py-0.5 rounded ${
+                  sceneMode === "2.5d" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                2.5D Keyframe
+              </button>
+              <button
+                type="button"
+                onClick={() => setSceneMode("3d")}
+                className={`px-2 py-0.5 rounded ${
+                  sceneMode === "3d" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                3D Scene
+              </button>
+              <button
+                type="button"
+                onClick={() => setSceneMode("schematic")}
+                className={`px-2 py-0.5 rounded ${
+                  sceneMode === "schematic" ? "bg-amber-500 text-slate-950 font-bold" : "text-slate-600 hover:text-slate-900"
+                }`}
+              >
+                Schematic
+              </button>
+            </div>
+          </div>
           <span className="text-slate-400 text-[10px] font-mono">
             {t(language, "sim.zone")} {session.cart.zone}
           </span>
         </div>
       )}
 
-      {/* Scene — contextual based on current step */}
+      {/* Scene — contextual based on current step & mode */}
       <div className="flex-1 min-h-0 w-full relative">
-        {ctx.scannableAsset === "zone" ? (
+        {sceneMode === "2.5d" ? (
+          <PhaserWarehouseCanvas
+            difficulty={difficulty}
+            onScanOverride={onScan}
+            onConfirmOverride={onConfirm}
+            className="w-full h-full"
+          />
+        ) : sceneMode === "schematic" ? (
+          <WarehouseSceneFallback
+            session={session}
+            ctx={ctx}
+            onScan={onScan}
+            onConfirm={onConfirm}
+            language={language}
+          />
+        ) : ctx.scannableAsset === "zone" ? (
           <div className="absolute inset-0 flex items-center justify-center bg-slate-100 z-10">
             <ZoneCard
               zone={session.cart.taskGroup}

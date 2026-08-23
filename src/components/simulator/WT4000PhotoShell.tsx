@@ -86,7 +86,12 @@ interface KeyHotspot {
 const KEY_MAP: KeyHotspot[] = [
   // ── Left modifier column (cx ≈ 7.9%, measured from scanner.png) ────────────
   { id: "ESC",      label: "ESC",      cx: "16.4%", cy: "24.1%", w: "4.7%", h: "4.1%", ctrlKey: "CTRL+W" },
-  { id: "BACK_FWD", label: "← →",      cx: "16.4%", cy: "32.5%", w: "4.7%", h: "3.7%" },
+  // NOTE: a previous "BACK_FWD" hotspot was calibrated to nearly the same cy as
+  // MENU_TAB (32.5% vs 32.7%, same cx/width) and had no action wired to it. The
+  // two hitboxes overlapped almost entirely, so taps in this area were captured
+  // by whichever button rendered last (MENU_TAB), silently inserting a stray
+  // tab character into the input. Removed the dead duplicate — MENU_TAB is the
+  // only real key in this position.
   { id: "MENU_TAB", label: "MENU/TAB", cx: "16.4%", cy: "32.7%", w: "4.7%", h: "4.1%", action: "TAB" },
   { id: "ALT_CTRL", label: "ALT/CTRL", cx: "16.4%", cy: "40.5%", w: "4.7%", h: "4.6%", action: "CTRL_TOGGLE" },
   { id: "SHIFT",    label: "SHIFT",    cx: "16.4%", cy: "49.5%", w: "4.7%", h: "4.6%", action: "SHIFT_TOGGLE" },
@@ -107,19 +112,23 @@ const KEY_MAP: KeyHotspot[] = [
   { id: "K8", label: "8/OP", cx: "74.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "8", shiftChar: "O" },
   { id: "K9", label: "9/QR", cx: "82.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "9", shiftChar: "Q" },
 
-  // ── Keyboard row 4: S/T — U/V — W/X ────────────────────────────────────────
-  { id: "KST", label: "S/T", cx: "67.0%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "S", shiftChar: "T", ctrlKey: "CTRL+T" },
-  { id: "KUV", label: "U/V", cx: "74.8%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "U", shiftChar: "V" },
-  { id: "KWX", label: "W/X", cx: "83.3%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "W", shiftChar: "X", ctrlKey: "CTRL+W" },
+  // ── Keyboard row 4: BK5P/S,T — 0/U,V — </^ /W,X ─────────────────────────────
+  // cy follows the same ~8% row spacing as rows 1-3 (K7 row 41.8% + 8% = 49.5%).
+  // This row was previously calibrated at 53.5%, well past the real keycaps and
+  // into the dead space above the thumb-oval row — that's what put the "BK5P"
+  // hotspot and its shiftChar overlays visibly off the real key photo.
+  { id: "KBSP", label: "BK5P", cx: "67.0%", cy: "49.5%", w: "5.5%", h: "5.0%", action: "BACKSPACE", shiftChar: "S", ctrlKey: "CTRL+T" },
+  { id: "K0",   label: "0",    cx: "74.8%", cy: "49.5%", w: "5.5%", h: "5.0%", primary: "0", shiftChar: "U" },
+  { id: "KARR", label: "< ^",  cx: "83.3%", cy: "49.5%", w: "5.5%", h: "5.0%", shiftChar: "W", ctrlKey: "CTRL+W" },
 
-  // ── Keyboard row 5: BK5P — 0 — </^ ─────────────────────────────────────────
-  { id: "KBSP", label: "BK5P", cx: "67.0%", cy: "53.5%", w: "5.5%", h: "5.0%", action: "BACKSPACE" },
-  { id: "K0",   label: "0",    cx: "74.8%", cy: "53.5%", w: "5.5%", h: "5.0%", primary: "0" },
-  { id: "KARR", label: "< ^",  cx: "83.3%", cy: "53.5%", w: "5.5%", h: "5.0%" },
 
-
-  // ── Large thumb buttons + Y/Z ────────────────────────────────────────────────
-  { id: "THUMB_L", label: "Thumb L", cx: "67.7%", cy: "58.0%", w: "6.8%", h: "5.9%" },
+  // ── ALPHA toggle (orange oval) + unused function oval + Y/Z ─────────────────
+  // The orange oval key sits directly beneath the keypad in the real photo and
+  // is the dedicated ALPHA-lock key on the physical device — the "correct
+  // function key" for switching the numeric keypad into letter-entry mode.
+  // It fires the same SHIFT_TOGGLE action as the far-left SHIFT key so either
+  // one reliably toggles alpha mode (amber highlight on all shift-capable keys).
+  { id: "THUMB_L", label: "ALPHA", cx: "67.7%", cy: "58.0%", w: "6.8%", h: "5.9%", action: "SHIFT_TOGGLE" },
   { id: "THUMB_R", label: "Thumb R", cx: "75.9%", cy: "58.0%", w: "6.8%", h: "5.9%" },
   { id: "KYZ",     label: "Y/Z",     cx: "83.3%", cy: "57.5%", w: "5.5%", h: "5.0%", primary: "Y", shiftChar: "Z" },
 
@@ -233,6 +242,29 @@ export function WT4000PhotoShell({
         setShiftActive((prev) => !prev)
         return
       }
+      // ── ESC (no action field) — always fires CTRL+W, even outside CTRL mode ──
+      if (key.id === "ESC" && key.ctrlKey) {
+        handleSoftKey(key.ctrlKey)
+        return
+      }
+
+      // ── CTRL / SHIFT combos take priority over a key's plain named action ───
+      // (e.g. the real BK5P key doubles as "S" in alpha mode — checked here so
+      // it doesn't fall through to the unconditional BACKSPACE handling below.)
+      if (ctrlActive && key.ctrlKey) {
+        const isEnabled = softKeyEnabled[key.ctrlKey] ?? false
+        if (isEnabled) {
+          handleSoftKey(key.ctrlKey)
+        }
+        setCtrlActive(false)
+        return
+      }
+      if (shiftActive && key.shiftChar) {
+        setInputValue(inputValue + key.shiftChar)
+        setShiftActive(false)
+        return
+      }
+
       if (key.action === "ENTER") {
         handleSubmit()
         return
@@ -251,29 +283,6 @@ export function WT4000PhotoShell({
       }
       // P1/P2 — no action assigned yet
       if (key.action === "P1" || key.action === "P2") return
-
-      // ── ESC (no action field) — fires CTRL+W ─────────────────────────────────
-      if (key.id === "ESC" && key.ctrlKey) {
-        handleSoftKey(key.ctrlKey)
-        return
-      }
-
-      // ── CTRL mode ────────────────────────────────────────────────────────────
-      if (ctrlActive && key.ctrlKey) {
-        const isEnabled = softKeyEnabled[key.ctrlKey] ?? false
-        if (isEnabled) {
-          handleSoftKey(key.ctrlKey)
-        }
-        setCtrlActive(false)
-        return
-      }
-
-      // ── SHIFT mode ───────────────────────────────────────────────────────────
-      if (shiftActive && key.shiftChar) {
-        setInputValue(inputValue + key.shiftChar)
-        setShiftActive(false)
-        return
-      }
 
       // ── Normal character key ─────────────────────────────────────────────────
       if (key.primary) {
@@ -310,38 +319,33 @@ export function WT4000PhotoShell({
 
         {/* ── Screen overlay — positioned over the LCD glass in the photo ─────── */}
         <div
+          className="text-left p-2 overflow-hidden"
           style={{
             position:        "absolute",
             left:            SCREEN.left,
             top:             SCREEN.top,
             width:           SCREEN.width,
             height:          SCREEN.height,
-            overflow:        "hidden",
             backgroundColor: "#000000",
             display:         "flex",
             flexDirection:   "column",
             outline:         DEBUG_OVERLAY ? "2px solid lime" : undefined,
           }}
         >
-          {/*
-            Font scales with the overlay so 20 chars always fill the width.
-            Formula: at 640px container → 3.4vw ≈ 21.8px; 20ch × 0.6 ≈ 262px = overlay width.
-            emulatorWidthPx={9999} forces width:maxWidth:100% instead of width:20ch.
-          */}
           <RFDeviceDisplay
             screen={rfScreen}
             inputValue={inputValue}
             screenConfig={{
               bgColor:        "#000000",
-              textColor:      "#00FF00",
-              fontFamily:     "'Courier New', Courier, monospace",
-              highlightColor: "#00FF00",
-              cursorColor:    "#00FF00",
-              labelColor:     "#00FF00",
-              fontSize:       "clamp(7px, 3.4vw, 22px)",
+              textColor:      "#e5e7eb",
+              fontFamily:     "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
+              highlightColor: "#93c5fd",
+              cursorColor:    "#f3f4f6",
+              labelColor:     "#9ca3af",
+              fontSize:       "11px",
               lineHeight:     "1.3",
             }}
-            padding="4px 6px"
+            padding="2px 4px"
             emulatorWidthPx={9999}
             highlightLine={coaching.content?.highlightLine}
             renderMode="terminal"
