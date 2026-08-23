@@ -18,16 +18,16 @@
 import type { RFDeviceScreen, RFScreenLine } from "@/types/domain"
 import type { RFDeviceScreenConfig } from "@/types/devices"
 
-/** Fallback terminal-green defaults when no screenConfig is supplied. */
+/** Fallback realistic off-white defaults when no screenConfig is supplied. */
 const TERMINAL_DEFAULTS: RFDeviceScreenConfig = {
   bgColor: "#0a0a0a",
-  textColor: "#e8e8e8",
-  fontFamily: "'Courier New', 'Lucida Console', monospace",
-  highlightColor: "#00ff41",
-  cursorColor: "#00ff41",
-  labelColor: "#e8e8e8",
-  fontSize: "13px",
-  lineHeight: "1.4",
+  textColor: "#e5e7eb",
+  fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
+  highlightColor: "#93c5fd",
+  cursorColor: "#f3f4f6",
+  labelColor: "#9ca3af",
+  fontSize: "11px",
+  lineHeight: "1.3",
 }
 
 /** Characters wide for the terminal grid — matches all device displayColumns. */
@@ -98,13 +98,13 @@ export function RFDeviceDisplay({
   // Terminal rendering path (original)
   return (
     <div
-      className="retro-lcd-screen retro-lcd-text"
+      className="retro-lcd-screen retro-lcd-text font-mono text-xs text-[11px] text-gray-200 text-left p-2 leading-tight"
       style={{
         backgroundColor: cfg.bgColor,
         fontFamily: cfg.fontFamily,
-        fontSize: cfg.fontSize ?? "13px",
-        lineHeight: cfg.lineHeight ?? "1.4",
-        padding: padding ?? "8px 10px",
+        fontSize: cfg.fontSize ?? "11px",
+        lineHeight: cfg.lineHeight ?? "1.3",
+        padding: padding ?? "4px 6px",
         width: emulatorWidthPx ? `${emulatorWidthPx}px` : `${TERMINAL_COLS}ch`,
         maxWidth: "100%",
         overflowX: "hidden",

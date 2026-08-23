@@ -12,19 +12,25 @@ import { useEffect, useState } from "react"
 import { RFDevice } from "@/components/simulator/RFDevice"
 import { DeviceSelector } from "@/components/simulator/DeviceSelector"
 import { CoachingPanel } from "@/components/simulator/CoachingPanel"
-import { StepProgressBar } from "@/components/simulator/StepProgressBar"
-import { GameStatsBar } from "@/components/simulator/GameStatsBar"
-import { WarehouseFloor } from "@/components/warehouse/WarehouseFloor"
-import { BlueprintMap } from "@/components/warehouse/BlueprintMap"
-import { ExceptionInjector } from "@/components/simulator/ExceptionInjector"
 import { useSimulation } from "@/hooks/useSimulation"
-import { DifficultyLevel, WorkflowStep } from "@/types/domain"
-import { getExpectedInputType } from "@/lib/stepKeyMap"
+import { DifficultyLevel, WorkflowStep, type SessionResult } from "@/types/domain"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
 import { COACHING_CONTENT } from "@/data/coachingContent"
 import { COACHING_CONTENT_ES } from "@/data/coachingContent.es"
 import { t, type AppLanguage } from "@/lib/i18n"
-import type { SessionResult } from "@/types/domain"
+import dynamic from "next/dynamic"
+
+const PhaserSimulationShell = dynamic(
+  () => import("@/components/warehouse/phaser/PhaserSimulationShell").then((m) => m.PhaserSimulationShell),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="w-full h-[100dvh] flex items-center justify-center bg-slate-950 text-amber-400 font-mono text-xs">
+        Loading 2.5D Warehouse Simulator...
+      </div>
+    ),
+  }
+)
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SCENARIO CATALOG — matches SCENARIO_DATA keys in seedData.ts
@@ -151,261 +157,13 @@ export default function SimPage() {
     )
   }
 
-  // Active simulation
+  // Active simulation — Immersive 2.5D Tablet-First Experience
   if (session) {
-    const isBeginner = session.difficulty === DifficultyLevel.BEGINNER
-    const activeTabletFocus = getTabletFocusMode(session.currentStep)
-    const activeEnvironmentPanel: EnvironmentPanel = isTravelStep(session.currentStep)
-      ? "map"
-      : "floor"
-    const baseGuide = COACHING_CONTENT[session.currentStep] ?? null
-    const spanishGuide = COACHING_CONTENT_ES[session.currentStep]
-    const stepGuide = baseGuide
-      ? {
-          ...baseGuide,
-          ...(language === "es" && spanishGuide ? spanishGuide : {}),
-        }
-      : null
-    const localizedCoaching = stepGuide
-      ? { ...coaching, content: stepGuide }
-      : coaching
-    const sopMeta = stepGuide ? extractSopRef(stepGuide.sopContext) : null
-    const shouldShowCompactGuide = Boolean(
-      isCompactLayout &&
-      stepGuide &&
-      (session.difficulty === DifficultyLevel.BEGINNER ||
-        (session.difficulty === DifficultyLevel.INTERMEDIATE && showIntermediateGuide))
-    )
-    // Cap display at estimatedTotalSteps to avoid overshoot from error-injected extra steps.
-    const displayStep = Math.min(actionCount, estimatedTotalSteps)
-    const displayTotal = estimatedTotalSteps > 0 ? estimatedTotalSteps : 1
-
     return (
-      <div
-        className={
-          isCompactLayout
-            ? "h-[100dvh] overflow-hidden flex flex-col items-center gap-2 p-2"
-            : "min-h-screen flex flex-col items-center gap-6 p-4 py-8"
-        }
-        style={{ backgroundColor: "var(--color-base)" }}
-      >
-        {!isCompactLayout ? (
-          <div className="flex flex-col items-center gap-3 shrink-0" style={{ width: "100%", maxWidth: 600 }}>
-            <div style={{ width: "100%", display: "flex", justifyContent: "flex-end" }}>
-              <DeviceSelector />
-            </div>
-            <StepProgressBar
-              totalSteps={displayTotal}
-              currentStep={displayStep}
-              label={`Step ${displayStep + 1} of ${displayTotal}`}
-            />
-            <GameStatsBar session={session} />
-            <div
-              className="flex gap-4"
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                color: "var(--color-text-secondary)",
-              }}
-            >
-              <span>
-                {t(language, "sim.pick")} {session.currentPickIndex} / {session.pickQueue.length}
-              </span>
-              <span>
-                {t(language, "sim.errors")}: <span style={{ color: session.errors.length > 0 ? "var(--color-danger)" : "inherit" }}>{session.errors.length}</span>
-              </span>
-              <span>
-                {t(language, "sim.zone")}: <span style={{ color: "var(--color-amber)" }}>{session.cart.zone}</span>
-              </span>
-              {isBeginner && (
-                <span style={{ color: "var(--color-amber)", fontWeight: 600 }}>{t(language, "sim.beginner_badge")}</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => setLanguage("en")}
-                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "en" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
-              >
-                {t(language, "lang.en")}
-              </button>
-              <button
-                onClick={() => setLanguage("es")}
-                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "es" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
-              >
-                {t(language, "lang.es")}
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="w-full max-w-[700px] shrink-0 flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/80 px-3 py-2">
-            <div className="text-[10px] font-mono text-slate-300">
-              {t(language, "sim.step")} {displayStep + 1}/{displayTotal} · {t(language, "sim.pick")} {session.currentPickIndex}/{session.pickQueue.length} · {t(language, "sim.zone")} {session.cart.zone}
-            </div>
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setLanguage("en")}
-                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "en" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
-              >
-                {t(language, "lang.en")}
-              </button>
-              <button
-                onClick={() => setLanguage("es")}
-                className={`rounded border px-2 py-0.5 text-[10px] font-mono ${language === "es" ? "border-amber-400 text-amber-200" : "border-slate-600 text-slate-300"}`}
-              >
-                {t(language, "lang.es")}
-              </button>
-              {session.difficulty === DifficultyLevel.BEGINNER && stepGuide && (
-                <button
-                  className="text-[10px] font-mono text-amber-200"
-                >
-                  {t(language, "sim.guide_on")}
-                </button>
-              )}
-              {session.difficulty === DifficultyLevel.INTERMEDIATE && stepGuide && (
-                <button
-                  onClick={() => setShowIntermediateGuide((v) => !v)}
-                  className="text-[10px] font-mono text-amber-200 underline hover:text-amber-100"
-                >
-                  {showIntermediateGuide ? t(language, "sim.hide_guide") : t(language, "sim.show_guide")}
-                </button>
-              )}
-              <button
-                onClick={reset}
-                className="text-[10px] font-mono text-slate-300 underline hover:text-slate-100"
-              >
-                {t(language, "sim.exit")}
-              </button>
-            </div>
-          </div>
-        )}
-
-        {shouldShowCompactGuide && stepGuide && sopMeta && (
-          <div className="w-full max-w-[700px] shrink-0 rounded-lg border border-amber-500/35 bg-amber-400/10 px-3 py-2 flex items-start justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.beginner_guide")}</div>
-              <div className="text-[11px] font-medium text-amber-50 leading-relaxed">{stepGuide.action}</div>
-
-              <div className="mt-2 flex items-center gap-2">
-                <div className="text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.why_this_step")}</div>
-                {sopMeta.badge && (
-                  <span className="text-[9px] font-mono rounded px-1.5 py-0.5 border border-amber-300/40 text-amber-200 bg-amber-400/10">
-                    {sopMeta.badge}
-                  </span>
-                )}
-              </div>
-              <div className="text-[10px] text-amber-100/90 leading-relaxed">{sopMeta.rest}</div>
-
-              {stepGuide.fieldDef && (
-                <>
-                  <div className="mt-2 text-[9px] font-mono uppercase tracking-wide text-amber-200">{t(language, "sim.field_meaning")}</div>
-                  <div className="text-[10px] text-amber-100/90 leading-relaxed">{stepGuide.fieldDef}</div>
-                </>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!isCompactLayout ? (
-          <>
-            {/*
-              Top row (stable 3-column grid — the RF Device column never moves):
-                col 1 (300px) → Step Guide (CoachingPanel, BEGINNER only).
-                col 2 (auto)  → RF Device (scanner) with its Continue + soft keys.
-                col 3 (320px) → Trainer Exception Injector.
-
-              Fixed side-column widths keep the device from shifting when the
-              coaching panel toggles. Collapses to one column on narrow screens.
-            */}
-            <div className="sim-stage">
-              <div className="sim-col-left">
-                {isBeginner && (
-                  <CoachingPanel coaching={localizedCoaching} difficulty={session.difficulty} language={language} />
-                )}
-              </div>
-              <div className="sim-col-center">
-                <RFDevice />
-              </div>
-              <div className="sim-col-right">
-                {/* Trainer exception injection (Overhaul 4 / Phase 11) */}
-                <ExceptionInjector />
-              </div>
-            </div>
-
-            {/*
-              Combined floor-plan band — spans the full page width.
-                left  → interactive blueprint map (click a zone to travel)
-                right → 3D warehouse floor (scan assets)
-              Travel steps are driven by clicking the correct zone on the blueprint,
-              which fires the same CONFIRM action the floor's Continue bar uses.
-            */}
-            <div className="sim-floorplan">
-              <BlueprintMap
-                session={session}
-                difficulty={session.difficulty}
-                onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-              />
-              <div className="sim-floorplan-3d">
-                <WarehouseFloor
-                  session={session}
-                  difficulty={session.difficulty}
-                  onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
-                  onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-                  language={language}
-                />
-              </div>
-            </div>
-          </>
-        ) : (
-          <div className="w-full max-w-[700px] flex-1 min-h-0 relative">
-            <div className="h-full">
-              {activeTabletFocus === "scanner" ? (
-                <div className="h-full flex items-start justify-center overflow-hidden pt-2">
-                  <RFDevice />
-                </div>
-              ) : activeEnvironmentPanel === "map" ? (
-                <div className="h-full">
-                  <BlueprintMap
-                    session={session}
-                    difficulty={session.difficulty}
-                    onArrive={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-                  />
-                </div>
-              ) : (
-                <div className="h-full">
-                  <WarehouseFloor
-                    session={session}
-                    difficulty={session.difficulty}
-                    onScan={(barcode) => processInput({ type: "SCAN", value: barcode, source: "click" })}
-                    onConfirm={() => processInput({ type: "CONFIRM", value: "", source: "click" })}
-                    compact={true}
-                    language={language}
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {!isCompactLayout && (
-          <button
-            onClick={reset}
-            className="shrink-0"
-            style={{
-              background: "none",
-              border: "none",
-              color: "var(--color-text-secondary)",
-              fontFamily: "var(--font-mono)",
-              fontSize: 12,
-              cursor: "pointer",
-              textDecoration: "underline",
-              opacity: 0.7,
-            }}
-          >
-            &larr; {t(language, "sim.back_to_scenario")}
-          </button>
-        )}
-
-      </div>
+      <PhaserSimulationShell
+        difficulty={session.difficulty}
+        language={language}
+      />
     )
   }
 
