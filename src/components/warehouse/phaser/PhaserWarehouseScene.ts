@@ -40,6 +40,10 @@ export interface SceneBridgeCallbacks {
 }
 
 export class PhaserWarehouseScene extends Phaser.Scene {
+  // World container — holds the background plates & all environmental hotspots
+  // so cover-scaling can be applied once, locking hotspots to the plate.
+  private worldContainer!: Phaser.GameObjects.Container
+
   // Plates
   private aislePlate!: Phaser.GameObjects.Image
   private conveyorPlate!: Phaser.GameObjects.Image
@@ -110,6 +114,7 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     const { width, height } = this.scale
 
     // Early container initializations to prevent undefined lifecycle access
+    this.worldContainer = this.add.container(0, 0)
     this.shelfHotspotContainer = this.add.container(0, 0).setVisible(false)
     this.conveyorHotspotContainer = this.add.container(0, 0).setVisible(false)
     this.cartContainer = this.add.container(0, 0)
@@ -119,17 +124,18 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     this.toteSprites = this.cartTotes
 
     // ── 1. BACKGROUND PLATES LAYER ──────────────────────────────────────────
-    this.conveyorPlate = this.add
-      .image(width / 2, height / 2, "conveyor_plate")
-      .setAlpha(0)
-      .setDepth(1)
+    // Positioned at native image center (not viewport center) so the plate's
+    // pixel coordinate frame stays fixed — resize() scales worldContainer instead.
+    this.conveyorPlate = this.add.image(0, 0, "conveyor_plate").setAlpha(0).setDepth(1)
+    this.conveyorPlate.setPosition(this.conveyorPlate.width / 2, this.conveyorPlate.height / 2)
 
-    this.aislePlate = this.add
-      .image(width / 2, height / 2, "aisle_plate")
-      .setAlpha(1)
-      .setDepth(2)
+    this.aislePlate = this.add.image(0, 0, "aisle_plate").setAlpha(1).setDepth(2)
+    this.aislePlate.setPosition(this.aislePlate.width / 2, this.aislePlate.height / 2)
 
-    // Ambient warehouse lighting gradient
+    this.worldContainer.add([this.conveyorPlate, this.aislePlate])
+
+    // Ambient warehouse lighting gradient — screen-space overlay, stays outside
+    // worldContainer so it always covers the full viewport.
     this.ambientGlow = this.add.graphics().setDepth(3)
     this.drawAmbientLighting(width, height)
 
@@ -143,7 +149,17 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     // Create Conveyor Belt drop hotspot container
     this.createConveyorHotspot()
 
+    // Lock all environmental hotspots to the same coordinate frame as the
+    // background plates so they scale/pan together and never drift.
+    this.worldContainer.add([
+      ...this.zonePlacardHotspots,
+      this.shelfHotspotContainer,
+      this.conveyorHotspotContainer,
+    ])
+
     // ── 3. PICK CART & 9-TOTE GRID SETUP ────────────────────────────────────
+    // Cart stays outside worldContainer — it is anchored to the viewport
+    // bottom independently in resize().
     this.createPickCartAndTotes(width, height)
 
     // ── 4. LASER SCAN BEAM & RETICLE FX ─────────────────────────────────────
@@ -169,20 +185,25 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     const width = gameSize.width
     const height = gameSize.height
 
-    if (this.aislePlate && this.aislePlate.width > 0) {
-      const maxScaleAisle = Math.max(width / this.aislePlate.width, height / this.aislePlate.height)
-      this.aislePlate.setScale(maxScaleAisle).setPosition(width / 2, height / 2)
-    }
-
-    if (this.conveyorPlate && this.conveyorPlate.width > 0) {
-      const maxScaleConveyor = Math.max(width / this.conveyorPlate.width, height / this.conveyorPlate.height)
-      this.conveyorPlate.setScale(maxScaleConveyor).setPosition(width / 2, height / 2)
+    // CSS "cover" scaling applied to the whole worldContainer (background
+    // plate + every hotspot) instead of each image individually — this
+    // mathematically locks hotspot X/Y to the scaled background plate.
+    if (this.worldContainer && this.aislePlate && this.aislePlate.width > 0) {
+      const plateW = this.aislePlate.width
+      const plateH = this.aislePlate.height
+      const coverScale = Math.max(width / plateW, height / plateH)
+      const offsetX = (width - plateW * coverScale) / 2
+      const offsetY = (height - plateH * coverScale) / 2
+      this.worldContainer.setScale(coverScale).setPosition(offsetX, offsetY)
     }
 
     if (this.ambientGlow) {
       this.drawAmbientLighting(width, height)
     }
 
+    // Cart is anchored independently to the bottom of the viewport, separate
+    // from worldContainer, so it always rests on the floor regardless of
+    // background plate scaling.
     if (this.cartContainer) {
       this.cartContainer.setPosition(width / 2, height - 250)
     }
@@ -439,9 +460,13 @@ export class PhaserWarehouseScene extends Phaser.Scene {
       if (this.session?.currentStep !== WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR) {
         return
       }
+      // Disable immediately so a second tap can't re-trigger the slide/confirm.
+      this.conveyorDropZone.disableInteractive()
       this.triggerScanBeam(760, 420, 380, 130)
-      this.animateToteToConveyor()
-      this.callbacks.onConfirm()
+      // Confirm (which advances the step and can swap the camera/background)
+      // only after the tote finishes sliding onto the conveyor — otherwise the
+      // scene changes out from under the animation before it's visible.
+      this.animateToteToConveyor(() => this.callbacks.onConfirm())
     })
   }
 
@@ -776,12 +801,17 @@ export class PhaserWarehouseScene extends Phaser.Scene {
   }
 
   /**
-   * Animate completed tote sliding onto conveyor line
+   * Animate completed tote sliding onto conveyor line, then invoke onComplete
+   * once the tote is actually off-screen — callers must not advance the
+   * workflow step until the slide is visually finished.
    */
-  private animateToteToConveyor() {
+  private animateToteToConveyor(onComplete?: () => void) {
     const activeSlot = this.session?.pickQueue[this.session.currentPickIndex]?.targetSlot || 1
     const tote = this.toteSprites[activeSlot - 1]
-    if (!tote) return
+    if (!tote) {
+      onComplete?.()
+      return
+    }
 
     // Clone a visual tote sprite in world coords for conveyor slide
     const worldPos = tote.getWorldTransformMatrix()
@@ -808,6 +838,7 @@ export class PhaserWarehouseScene extends Phaser.Scene {
           ease: "Linear",
           onComplete: () => {
             tempTote.destroy()
+            onComplete?.()
           },
         })
       },

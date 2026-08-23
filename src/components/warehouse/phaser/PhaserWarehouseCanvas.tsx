@@ -22,7 +22,6 @@ export function PhaserWarehouseCanvas({
   const sceneRef = useRef<PhaserWarehouseScene | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
-  const [activeViewLabel, setActiveViewLabel] = useState<string>("Overview")
 
   // Zustand simulation hooks
   const session = useSimulation((s) => s.session)
@@ -69,13 +68,6 @@ export function PhaserWarehouseCanvas({
       const bridgeCallbacks: SceneBridgeCallbacks = {
         onScan: (barcode) => handleScan(barcode),
         onConfirm: () => handleConfirm(),
-        onCameraChange: (zoom, target) => {
-          if (zoom > 1.2) {
-            setActiveViewLabel(`Zoom: ${target}`)
-          } else {
-            setActiveViewLabel("Overview")
-          }
-        },
       }
 
       sceneInstance.setBridgeCallbacks(bridgeCallbacks)
@@ -130,25 +122,6 @@ export function PhaserWarehouseCanvas({
     }
   }, [session, difficulty])
 
-  // Camera toolbar triggers
-  const handleZoomShelf = () => {
-    const pick = session?.pickQueue[session?.currentPickIndex]
-    const loc = pick?.location.displayLabel || "316-001-A1"
-    sceneRef.current?.zoomToShelf(loc, 700)
-  }
-
-  const handleResetCamera = () => {
-    sceneRef.current?.resetToOverview(600)
-  }
-
-  const handleToggleConveyor = () => {
-    sceneRef.current?.transitionToConveyor(800)
-  }
-
-  const handleToggleAisle = () => {
-    sceneRef.current?.transitionToAisle(800)
-  }
-
   return (
     <div
       id="phaser-simulation-viewport"
@@ -163,46 +136,6 @@ export function PhaserWarehouseCanvas({
           </span>
         </div>
       )}
-
-      {/* Floating Canvas Camera HUD (isolated at bottom-left) */}
-      <div className="absolute bottom-6 left-6 z-20 flex items-center gap-2 bg-slate-900/85 backdrop-blur-md px-3 py-2 rounded-xl border border-slate-700/80 shadow-2xl pointer-events-auto">
-        <span className="inline-block w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse mr-1" />
-        <span className="text-amber-400 font-bold text-xs font-mono">2.5D:</span>
-        <span className="text-slate-300 font-mono text-xs mr-2">{activeViewLabel}</span>
-
-        <button
-          type="button"
-          onClick={handleResetCamera}
-          className="min-h-[36px] px-3 py-1 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-lg border border-slate-600 transition-colors text-xs font-bold text-slate-100"
-          title="Reset Camera Overview"
-        >
-          Reset
-        </button>
-        <button
-          type="button"
-          onClick={handleZoomShelf}
-          className="min-h-[36px] px-3 py-1 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-lg border border-slate-600 transition-colors text-xs font-bold text-slate-100"
-          title="Zoom to Pick Shelf"
-        >
-          Shelf
-        </button>
-        <button
-          type="button"
-          onClick={handleToggleConveyor}
-          className="min-h-[36px] px-3 py-1 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-lg border border-slate-600 transition-colors text-xs font-bold text-slate-100"
-          title="View Conveyor Area"
-        >
-          Conveyor
-        </button>
-        <button
-          type="button"
-          onClick={handleToggleAisle}
-          className="min-h-[36px] px-3 py-1 bg-slate-800 hover:bg-slate-700 active:bg-amber-600 rounded-lg border border-slate-600 transition-colors text-xs font-bold text-slate-100"
-          title="View Aisle Area"
-        >
-          Aisle
-        </button>
-      </div>
 
       {/* Phaser Canvas Container */}
       <div
