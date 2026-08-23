@@ -149,3 +149,43 @@ body {
   transform: scale(0.985);
 }
 
+/* ─── Accessibility: motion, dyslexia font, high contrast ─────────────────── */
+
+/* Respect the OS-level reduced-motion setting everywhere, no opt-in required. */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Manual override — same effect as prefers-reduced-motion, toggled in-app. */
+.reduced-motion, .reduced-motion *, .reduced-motion *::before, .reduced-motion *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+}
+
+/* Dyslexia-friendly reading mode — rounded, high-legibility body font + wider spacing. */
+.dyslexia-mode {
+  --font-ui: 'Atkinson Hyperlegible', 'Comic Sans MS', var(--font-body);
+  --font-body: 'Atkinson Hyperlegible', 'Comic Sans MS', sans-serif;
+  letter-spacing: 0.01em;
+  line-height: 1.6;
+}
+
+/* High-contrast mode — near-black/white pairing, thicker borders, no translucency. */
+.high-contrast {
+  --color-base: #000000;
+  --color-surface: #000000;
+  --color-surface-2: #111111;
+  --color-border: #ffffff;
+  --color-text-primary: #ffffff;
+  --color-text-secondary: #ffffff;
+}
+.high-contrast * {
+  border-color: #ffffff !important;
+}
+
