@@ -73,7 +73,7 @@ function validSubmission(): Record<string, unknown> {
           expectedValue: itemUpcs[index],
           scannedValue: itemUpcs[index],
           result: ScanResult.SUCCESS,
-          timestamp: `2026-08-16T12:00:${String(index + 11).padStart(2, "0")}.000Z`,
+          timestamp: `2026-08-16T12:00:${String(index * 2 + 11).padStart(2, "0")}.000Z`,
           responseTimeMs: 250,
         },
         {
@@ -83,7 +83,7 @@ function validSubmission(): Record<string, unknown> {
           expectedValue: `T${String(11701 + (index % 9)).padStart(14, "0")}`,
           scannedValue: `T${String(11701 + (index % 9)).padStart(14, "0")}`,
           result: ScanResult.SUCCESS,
-          timestamp: `2026-08-16T12:01:${String(index).padStart(2, "0")}.000Z`,
+          timestamp: `2026-08-16T12:00:${String(index * 2 + 12).padStart(2, "0")}.000Z`,
           responseTimeMs: 250,
         },
       ]).flat(),
@@ -156,6 +156,33 @@ describe("parseSessionSubmission", () => {
     expect(parseSessionSubmission(submission)).toEqual({
       success: false,
       error: "Error count does not match session errors",
+    })
+  })
+
+  it("rejects scan events with non-chronological timestamps", () => {
+    const submission = validSubmission()
+    const events = submission.scanEvents as Array<Record<string, unknown>>
+    events[1] = { ...events[1], timestamp: "2026-08-16T11:59:00.000Z" }
+
+    expect(parseSessionSubmission(submission)).toEqual({
+      success: false,
+      error: "Scan event timestamps are not in chronological order",
+    })
+  })
+
+  it("rejects a spoofed session duration shorter than the event span", () => {
+    const submission = validSubmission()
+    // Claim a 10-second session while the recorded events span 30 seconds.
+    // The other metrics are adjusted to stay internally consistent so the
+    // timing check is the one that fires (10s for 10 picks → speed 100).
+    submission.totalTimeMs = 10_000
+    submission.durationSeconds = 10
+    submission.speedScore = 100
+    submission.finalScore = 100
+
+    expect(parseSessionSubmission(submission)).toEqual({
+      success: false,
+      error: "Session duration is shorter than the recorded scan events",
     })
   })
 })

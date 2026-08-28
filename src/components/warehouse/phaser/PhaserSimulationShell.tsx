@@ -42,6 +42,7 @@ export function PhaserSimulationShell({
   const coaching = useSimulation((s) => s.coaching)
   const actionCount = useSimulation((s) => s.actionCount)
   const estimatedTotalSteps = useSimulation((s) => s.estimatedTotalSteps)
+  const result = useSimulation((s) => s.result)
   const reset = useSimulation((s) => s.reset)
   const { prefs, toggle } = useAccessibilityPrefs()
   const [a11yMenuOpen, setA11yMenuOpen] = useState(false)
@@ -50,6 +51,8 @@ export function PhaserSimulationShell({
 
   const step = session.currentStep
   const pick = session.pickQueue[session.currentPickIndex]
+  const guidanceText = getStepGuidanceText(step, pick?.location.displayLabel)
+  const errorText = result && !result.success ? result.feedback ?? "Incorrect action. Check the RF Device screen." : ""
   const displayStep = Math.min(actionCount, estimatedTotalSteps)
   const displayTotal = estimatedTotalSteps > 0 ? estimatedTotalSteps : 1
 
@@ -117,15 +120,27 @@ export function PhaserSimulationShell({
           Step action
         </span>
         <p className="flex-1 min-w-[200px] text-sm text-slate-100 leading-snug">
-          {getStepGuidanceText(step, pick?.location.displayLabel)}
+          {guidanceText}
         </p>
+      </div>
+
+      {/* ── SCREEN READER LIVE REGIONS ─────────────────────────────────────
+          The canvas is a single opaque image to assistive tech, so step
+          guidance is announced politely on every step change, and engine
+          rejections (wrong scan, invalid key — §6 exception alerts) are
+          announced assertively. Both are visually hidden. */}
+      <div aria-live="polite" className="sr-only">
+        {guidanceText}
+      </div>
+      <div aria-live="assertive" role="alert" className="sr-only">
+        {errorText}
       </div>
 
       {/* ── MAIN ROW — canvas + RF panel are side-by-side siblings, so the RF
           panel can never sit on top of the warehouse floor, cart, or totes ── */}
       <div className="flex-1 min-h-0 flex flex-col lg:flex-row">
         <div className="relative flex-1 min-w-0 min-h-[240px] bg-slate-950">
-          <PhaserWarehouseCanvas difficulty={difficulty} />
+          <PhaserWarehouseCanvas difficulty={difficulty} reducedMotion={prefs.reducedMotion} />
         </div>
 
         <aside
