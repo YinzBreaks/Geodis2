@@ -20,6 +20,39 @@
 
 let audioCtx: AudioContext | null = null;
 
+// ─────────────────────────────────────────────────────────────────────────────
+// GLOBAL MUTE
+// The flag is seeded from the persisted accessibility prefs blob so pages that
+// never mount useAccessibilityPrefs (e.g. /drill) still honor the setting.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const A11Y_STORAGE_KEY = "warehousepro.a11y";
+
+let muted: boolean | null = null;
+
+function isMutedNow(): boolean {
+  if (muted === null) {
+    muted = false;
+    try {
+      const raw = window.localStorage.getItem(A11Y_STORAGE_KEY);
+      if (raw) muted = Boolean(JSON.parse(raw).muteAudio);
+    } catch {
+      // Storage unavailable or malformed — default to unmuted.
+    }
+  }
+  return muted;
+}
+
+/** Instantly silence (or restore) every synthesized sound. */
+export function setAudioMuted(flag: boolean): void {
+  muted = flag;
+}
+
+/** Current mute state (lazily seeded from persisted accessibility prefs). */
+export function isAudioMuted(): boolean {
+  return typeof window === "undefined" ? true : isMutedNow();
+}
+
 /** Lazily create (and resume) the shared AudioContext. SSR-safe. */
 function getAudioContext(): AudioContext | null {
   if (typeof window === "undefined") return null;
@@ -53,6 +86,8 @@ export function playTone(
   when = 0,
   peakGain = 0.12
 ): void {
+  if (isAudioMuted()) return;
+
   const ctx = getAudioContext();
   if (!ctx) return;
 

@@ -30,6 +30,11 @@ const TOGGLES: Array<{ key: keyof AccessibilityPrefs; label: string; description
     label: "High contrast",
     description: "Uses pure black and white for maximum contrast.",
   },
+  {
+    key: "muteAudio",
+    label: "Mute sounds",
+    description: "Silences scan beeps, error buzzes, and completion chimes.",
+  },
 ]
 
 export function AccessibilityMenu({ prefs, onToggle, onClose }: AccessibilityMenuProps) {

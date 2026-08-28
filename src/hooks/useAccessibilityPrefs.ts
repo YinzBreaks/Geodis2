@@ -10,11 +10,13 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { setAudioMuted } from "@/lib/audio"
 
 export interface AccessibilityPrefs {
   dyslexiaFont: boolean
   reducedMotion: boolean
   highContrast: boolean
+  muteAudio: boolean
 }
 
 const STORAGE_KEY = "warehousepro.a11y"
@@ -23,6 +25,7 @@ const DEFAULT_PREFS: AccessibilityPrefs = {
   dyslexiaFont: false,
   reducedMotion: false,
   highContrast: false,
+  muteAudio: false,
 }
 
 function readStoredPrefs(): AccessibilityPrefs {
@@ -34,6 +37,7 @@ function readStoredPrefs(): AccessibilityPrefs {
       dyslexiaFont: Boolean(parsed.dyslexiaFont),
       reducedMotion: Boolean(parsed.reducedMotion),
       highContrast: Boolean(parsed.highContrast),
+      muteAudio: Boolean(parsed.muteAudio),
     }
   } catch {
     return DEFAULT_PREFS
@@ -49,6 +53,9 @@ export function useAccessibilityPrefs() {
 
   useEffect(() => {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+    // Keep the shared audio module's mute flag in sync so every synthesized
+    // sound (scan beeps, chords, fanfare) silences instantly.
+    setAudioMuted(prefs.muteAudio)
   }, [prefs])
 
   const toggle = (key: keyof AccessibilityPrefs) => {

@@ -1,7 +1,8 @@
 "use client"
 
-import { useMemo, useState } from "react"
+import { useMemo, useRef, useState } from "react"
 import { Html, DragControls } from "@react-three/drei"
+import * as THREE from "three"
 import { DifficultyLevel, WorkflowStep, type SimulationSession } from "@/types/domain"
 import type { AssetContext } from "@/types/warehouse"
 import { getDecoyItems } from "@/hooks/useSimulation"
@@ -43,8 +44,12 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
     return items.sort((a, b) => hashCode(a.item.itemId + seed) - hashCode(b.item.itemId + seed))
   }, [pick, decoys, session.currentPickIndex])
 
-  // Track dragged state — declared before any early return to satisfy the Rules of Hooks.
-  const [dragPosition, setDragPosition] = useState<[number, number, number] | null>(null)
+  // Drag state — declared before any early return to satisfy the Rules of Hooks.
+  // The DragControls matrix is owned here so an off-target drop can snap the
+  // item back to the shelf (identity reset) instead of confirming the place.
+  const [activeDrag, setActiveDrag] = useState(false)
+  const dragMatrix = useMemo(() => new THREE.Matrix4(), [])
+  const dragWorldPos = useRef(new THREE.Vector3())
 
   if (!pick) return null
 
@@ -101,7 +106,9 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
         const isDraggable = isPlaceStep && sItem.isCorrect
 
         const boxContent = (
-          <group position={dragPosition && isDraggable ? undefined : [xPos, shelfY + 0.15, 0]}>
+          // Position stays fixed — DragControls applies its own delta matrix on
+          // top, so the item no longer teleports to the group origin on grab.
+          <group position={[xPos, shelfY + 0.15, 0]}>
             {/* 3D Box */}
             <mesh castShadow receiveShadow>
               <boxGeometry args={[0.6, 0.5, 0.6]} />
@@ -125,7 +132,7 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
             )}
             
             {/* Drag Hint */}
-            {isDraggable && !dragPosition && (
+            {isDraggable && !activeDrag && (
               <Html position={[0, 0.56, 0]} center transform scale={0.095}>
                 <div className="flex flex-col items-center gap-1">
                   <div className="bg-blue-600 text-white font-bold text-[8px] px-2 py-1 rounded shadow-lg animate-bounce pointer-events-none whitespace-nowrap">
@@ -149,17 +156,31 @@ export function Shelf3D({ session, difficulty, ctx, effectiveHighlight, onScan, 
         return (
           <group key={sItem.item.itemId}>
             {isDraggable ? (
-              <DragControls 
-                axisLock="y" 
+              <DragControls
+                axisLock="y"
+                matrix={dragMatrix}
+                autoTransform
                 onDragStart={() => {
                   // Disable camera orbit so dragging the item doesn't rotate the view
                   setDragging?.(true)
-                  setDragPosition([xPos, shelfY + 0.15, 0])
+                  setActiveDrag(true)
+                }}
+                onDrag={(_localMatrix, _deltaMatrix, worldMatrix) => {
+                  dragWorldPos.current.setFromMatrixPosition(worldMatrix)
                 }}
                 onDragEnd={() => {
-                  // Re-enable camera orbit, then confirm the place step on drop
                   setDragging?.(false)
-                  onConfirm()
+                  setActiveDrag(false)
+                  // Validate the drop: the cart (with its tote grid) sits at
+                  // world z ≈ 3 during PK_PLACE_IN_TOTE. Confirm only when the
+                  // item was released over the cart area; otherwise snap the
+                  // item back to its shelf position.
+                  const p = dragWorldPos.current
+                  const droppedOnCart = p.z > 1.4 && Math.abs(p.x) < 2.4
+                  dragMatrix.identity()
+                  if (droppedOnCart) {
+                    onConfirm()
+                  }
                 }}
               >
                 {boxContent}

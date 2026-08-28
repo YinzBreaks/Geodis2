@@ -95,7 +95,13 @@ export function RFDevice() {
     } else if (mode === "TYPE") {
       processInput({ type: "QUANTITY", value: inputValue, source: "keyboard" })
     } else {
-      processInput({ type: "CONFIRM", value: "", source: "keyboard" })
+      // Route through SOFTKEY ENTER, not bare CONFIRM: the engine's
+      // ENTER_KEY_OVERRIDES map (process-input.ts) turns it into the key combo
+      // the step expects (e.g. ENTER+ENTER at BC_CONFIRM_TASK_GROUP), falling
+      // back to CONFIRM everywhere else. A bare CONFIRM was rejected on those
+      // steps, logging an error against the trainee for pressing the physical
+      // ENTER key the SOP told them to press.
+      processInput({ type: "SOFTKEY", value: "ENTER", source: "keyboard" })
     }
     setInputValue("")
   }, [session, inputValue, processInput])

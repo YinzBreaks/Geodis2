@@ -7,6 +7,8 @@ import type { PhaserWarehouseScene, SceneBridgeCallbacks } from "./PhaserWarehou
 
 interface PhaserWarehouseCanvasProps {
   difficulty?: DifficultyLevel
+  /** User-level reduced-motion preference (combined with the OS media query). */
+  reducedMotion?: boolean
   onScanOverride?: (barcode: string) => void
   onConfirmOverride?: () => void
   className?: string
@@ -14,6 +16,7 @@ interface PhaserWarehouseCanvasProps {
 
 export function PhaserWarehouseCanvas({
   difficulty = DifficultyLevel.BEGINNER,
+  reducedMotion = false,
   onScanOverride,
   onConfirmOverride,
   className = "",
@@ -22,6 +25,7 @@ export function PhaserWarehouseCanvas({
   const sceneRef = useRef<PhaserWarehouseScene | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const [isReady, setIsReady] = useState(false)
+  const [osReducedMotion, setOsReducedMotion] = useState(false)
 
   // Zustand simulation hooks
   const session = useSimulation((s) => s.session)
@@ -48,6 +52,24 @@ export function PhaserWarehouseCanvas({
     }
   }, [onConfirmOverride, processInput])
 
+  // The scene bridge is registered once at game creation; route it through
+  // refs so late prop changes (e.g. a new onScanOverride) are never stale.
+  const handleScanRef = useRef(handleScan)
+  const handleConfirmRef = useRef(handleConfirm)
+  useEffect(() => {
+    handleScanRef.current = handleScan
+    handleConfirmRef.current = handleConfirm
+  }, [handleScan, handleConfirm])
+
+  // Track the OS-level prefers-reduced-motion setting.
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)")
+    setOsReducedMotion(media.matches)
+    const onChange = (e: MediaQueryListEvent) => setOsReducedMotion(e.matches)
+    media.addEventListener("change", onChange)
+    return () => media.removeEventListener("change", onChange)
+  }, [])
+
   // Initialize Phaser
   useEffect(() => {
     if (typeof window === "undefined" || !containerRef.current || gameRef.current) {
@@ -66,8 +88,8 @@ export function PhaserWarehouseCanvas({
       sceneRef.current = sceneInstance
 
       const bridgeCallbacks: SceneBridgeCallbacks = {
-        onScan: (barcode) => handleScan(barcode),
-        onConfirm: () => handleConfirm(),
+        onScan: (barcode) => handleScanRef.current(barcode),
+        onConfirm: () => handleConfirmRef.current(),
       }
 
       sceneInstance.setBridgeCallbacks(bridgeCallbacks)
@@ -122,6 +144,14 @@ export function PhaserWarehouseCanvas({
     }
   }, [session, difficulty])
 
+  // Propagate reduced-motion (user toggle OR OS setting) into the scene.
+  const effectiveReducedMotion = reducedMotion || osReducedMotion
+  useEffect(() => {
+    if (isReady && sceneRef.current) {
+      sceneRef.current.setReducedMotion(effectiveReducedMotion)
+    }
+  }, [isReady, effectiveReducedMotion])
+
   return (
     <div
       id="phaser-simulation-viewport"
@@ -137,9 +167,13 @@ export function PhaserWarehouseCanvas({
         </div>
       )}
 
-      {/* Phaser Canvas Container */}
+      {/* Phaser Canvas Container. Announced as a single image to assistive
+          tech — screen-reader users act through the RF Device panel and the
+          live-region announcements in PhaserSimulationShell instead. */}
       <div
         ref={containerRef}
+        role="img"
+        aria-label="2.5D warehouse view: pick cart with nine tote slots, shelf aisle, and conveyor line. All actions can be performed from the RF Device panel."
         className="absolute inset-0 w-full h-full z-0 bg-gray-900 flex items-center justify-center"
       />
     </div>

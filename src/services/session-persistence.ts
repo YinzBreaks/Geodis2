@@ -258,6 +258,36 @@ function validateCanonicalScanEvents(
   return null
 }
 
+/**
+ * Anti-tamper timing check. The speed score divides totalPicks by
+ * totalTimeMs, so a spoofed (shrunken) totalTimeMs inflates the score.
+ * Event timestamps must be non-decreasing, and the claimed session duration
+ * must cover at least the span of the recorded scan events.
+ */
+const TIMING_TOLERANCE_MS = 5_000
+
+function validateEventTiming(
+  events: PersistedScanEvent[],
+  totalTimeMs: number
+): string | null {
+  if (events.length === 0) return null
+
+  let prev = Date.parse(events[0].timestamp)
+  for (const event of events.slice(1)) {
+    const current = Date.parse(event.timestamp)
+    if (current < prev) {
+      return "Scan event timestamps are not in chronological order"
+    }
+    prev = current
+  }
+
+  const span = prev - Date.parse(events[0].timestamp)
+  if (span > totalTimeMs + TIMING_TOLERANCE_MS) {
+    return "Session duration is shorter than the recorded scan events"
+  }
+  return null
+}
+
 /** Validate a completed session submission against server-owned scenario data. */
 export function parseSessionSubmission(
   value: unknown
@@ -392,6 +422,14 @@ export function parseSessionSubmission(
   )
   if (canonicalEventError) {
     return { success: false, error: canonicalEventError }
+  }
+
+  const timingError = validateEventTiming(
+    scanEvents as PersistedScanEvent[],
+    value.totalTimeMs
+  )
+  if (timingError) {
+    return { success: false, error: timingError }
   }
 
   return {

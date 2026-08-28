@@ -22,6 +22,9 @@ import {
 } from "react"
 import { WorkflowStep, ScanResult, type SimulationSession, type ScanEvent } from "@/types/domain"
 import { selectScreen, getInputMode } from "@/hooks/useSimulation"
+// Shared synthesized sound set — routing through lib/audio keeps this panel
+// covered by the global mute toggle (a private AudioContext here would not be).
+import { sounds } from "@/lib/audio"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // PROPS
@@ -42,40 +45,11 @@ interface ScannerPanelProps {
 
 // ─────────────────────────────────────────────────────────────────────────────
 // AUDIO FEEDBACK
-// Per task spec: success beep 880hz 80ms via Web Audio API
+// Per task spec: success beep 880hz 80ms via Web Audio API (see lib/audio.ts)
 // ─────────────────────────────────────────────────────────────────────────────
 
-let audioCtx: AudioContext | null = null
-
-/** Play a short beep sound. */
-function playBeep(frequency: number, durationMs: number) {
-  try {
-    if (!audioCtx) {
-      audioCtx = new AudioContext()
-    }
-    const osc = audioCtx.createOscillator()
-    const gain = audioCtx.createGain()
-    osc.connect(gain)
-    gain.connect(audioCtx.destination)
-    osc.frequency.value = frequency
-    osc.type = "square"
-    gain.gain.value = 0.1
-    osc.start()
-    osc.stop(audioCtx.currentTime + durationMs / 1000)
-  } catch {
-    // Web Audio not available — silent fallback
-  }
-}
-
-/** Success beep: 880 Hz for 80ms */
-function playSuccessBeep() {
-  playBeep(880, 80)
-}
-
-/** Error beep: 220 Hz for 200ms */
-function playErrorBeep() {
-  playBeep(220, 200)
-}
+const playSuccessBeep = sounds.scanSuccess
+const playErrorBeep = sounds.scanError
 
 // ─────────────────────────────────────────────────────────────────────────────
 // MAIN COMPONENT
