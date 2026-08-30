@@ -31,6 +31,17 @@ const NON_PLURALIZING_UNITS = new Set([
  * for units that are grammatically invariant (e.g. "EACH" stays "EACH").
  * Per BBWD-WI-030 §5.2 RF Device display conventions.
  */
+/**
+ * Format a Zone as the RF Device's Task Group code.
+ *
+ * The real "Update Task Group" screen (BBWD-VJA-030) renders numbered zones
+ * zero-padded — Z1 displays as "Z01" — while HAZ and FEX display verbatim.
+ */
+function formatTaskGroup(zone: string): string {
+  const numbered = /^Z(\d)$/.exec(zone)
+  return numbered ? `Z0${numbered[1]}` : zone
+}
+
 function formatPickUnit(qty: number, unit: string): string {
   if (NON_PLURALIZING_UNITS.has(unit.toUpperCase())) return unit
   return qty === 1 ? unit : unit + "s"
@@ -152,10 +163,13 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
+        // ✓ validated against BBWD-VJA-030 device capture:
+        //   Update Task Group / Task Group:Z01 / Locn:_ / INT:*___ (*=ALL)
         lines: [
           { value: "Update Task Group" },
-          { label: "Task Group:", value: `#${session.cart.taskGroup}` },
+          { label: "Task Group:", value: formatTaskGroup(session.cart.taskGroup) },
           { label: "Locn:", isCursorField: true },
+          { label: "INT:", value: "*___ (*=ALL)" },
         ],
         activeField: "Locn",
         inputType: "TEXT",
@@ -344,15 +358,26 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         inputType: "NUMERIC",
       }
 
+    // ✓ validated against BBWD-VJA-030 device capture:
+    //   Pick Tote Cart BB / Pick Cart:C000000083 / Slot:1 / Item:024505572 /
+    //   Tote: / T00000000011692 / Tote: / _
+    // The screen names the expected tote, then asks the picker to scan the
+    // physical tote back — confirming the item landed in the slot the RF chose
+    // (BBWD-WI-030 §5.2.9.2, §5.2.10).
     case WorkflowStep.PK_SCAN_TOTE_BARCODE:
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
         lines: [
-          { label: "SCAN TOTE:", isCursorField: true },
+          { value: "Pick Tote Cart BB" },
+          { label: "Pick Cart:", value: session.cart.cartBarcode },
+          { label: "Slot:", value: pick ? String(pick.targetSlot) : undefined },
+          { label: "Item:", value: pick?.item.sku },
+          { label: "Tote:" },
           { value: tote?.barcode ?? tote?.toteId },
+          { label: "Tote:", isCursorField: true },
         ],
-        activeField: "Scan Tote",
+        activeField: "Tote",
         inputType: "BARCODE",
       }
 

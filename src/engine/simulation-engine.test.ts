@@ -168,6 +168,11 @@ function makePickPhaseSession(
   const base = startSessionWithTasks("user-test", scenario, pickQueue, cart)
   return {
     ...base,
+    // These fixtures represent a session that has already finished Build Cart:
+    // every slot holds the tote scanned into it and the stack is empty. A fresh
+    // session starts with blank slots, so the built cart is restored here.
+    cart: { ...cart, isBuilt: true },
+    toteStack: [],
     currentStep: WorkflowStep.PK_READ_PICK_DISPLAY,
     ...sessionOverrides,
   }
@@ -276,12 +281,14 @@ describe("Build Cart happy path", () => {
       s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_PLACE_TOTE_IN_SLOT }).session
       expect(s.currentStep).toBe(WorkflowStep.BC_SCAN_TOTE_BARCODE)
 
-      // Scan the tote barcode for this slot (use session state — never hardcode)
+      // Grab the next tote off the stack and scan it into the slot the RF
+      // Device named (§5.1.13). Slots start empty and are filled by scanning.
       const { session: next, result } = dispatch(s, {
         type: "SCAN",
-        value: s.cart.totes[slot - 1].barcode,
+        value: s.toteStack[0],
       })
       expect(result.success).toBe(true)
+      expect(next.cart.totes[slot - 1].barcode).toBe(s.toteStack[0])
       s = next
 
       if (slot < 9) {
@@ -473,11 +480,14 @@ describe("Sequence enforcement", () => {
 
       for (let slot = 1; slot <= 9; slot++) {
         s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_PLACE_TOTE_IN_SLOT }).session
-        s = dispatch(s, { type: "SCAN", value: s.cart.totes[slot - 1].barcode }).session
+        s = dispatch(s, { type: "SCAN", value: s.toteStack[0] }).session
       }
 
-      const { result } = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+E" })
+      const { session: built, result } = dispatch(s, { type: "KEY_PRESS", keys: "CTRL+E" })
       expect(result.success).toBe(true)
+      // Per §5.1.15 CTRL+E is the moment the cart becomes active.
+      expect(built.cart.isBuilt).toBe(true)
+      expect(built.toteStack).toHaveLength(0)
     })
   })
 
@@ -651,7 +661,7 @@ describe("Tote scan validation at PK_SCAN_TOTE_BARCODE and BC_SCAN_TOTE_BARCODE"
     expect(afterEmpty.currentStep).toBe(WorkflowStep.EX_INCORRECT_TOTE)
   })
 
-  it("non-empty tote barcode at BC_SCAN_TOTE_BARCODE → SUCCESS (sim accepts any scan)", () => {
+  it("a tote that is not on the stack at BC_SCAN_TOTE_BARCODE → WRONG_TOTE", () => {
     const session = startSessionWithTasks("user-test", makeScenario(), [], makeCart())
     let s = advanceThroughBuildCartMenus(session)
     s = dispatch(s, { type: "SCAN", value: s.cart.cartBarcode }).session
@@ -659,10 +669,54 @@ describe("Tote scan validation at PK_SCAN_TOTE_BARCODE and BC_SCAN_TOTE_BARCODE"
 
     expect(s.currentStep).toBe(WorkflowStep.BC_SCAN_TOTE_BARCODE)
 
-    // Any non-empty tote barcode is accepted at BC_SCAN_TOTE_BARCODE — sim teaches the scanning motion
+    // Only totes the picker actually obtained (§5.1.4) can be scanned into a slot.
     const { result } = dispatch(s, { type: "SCAN", value: "WRONG-TOTE-000" })
+    expect(result.success).toBe(false)
+    expect(result.scanResult).toBe(ScanResult.WRONG_TOTE)
+  })
+
+  it("re-scanning an already-assigned tote → TOTE_ALLOCATED (§6.1)", () => {
+    const session = startSessionWithTasks("user-test", makeScenario(), [], makeCart())
+    let s = advanceThroughBuildCartMenus(session)
+    s = dispatch(s, { type: "SCAN", value: s.cart.cartBarcode }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_PLACE_TOTE_IN_SLOT }).session
+
+    const firstTote = s.toteStack[0]
+    s = dispatch(s, { type: "SCAN", value: firstTote }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_PLACE_TOTE_IN_SLOT }).session
+
+    // Slot 1 already holds this tote — scanning it again is the §6.1 exception.
+    const { result } = dispatch(s, { type: "SCAN", value: firstTote })
+    expect(result.success).toBe(false)
+    expect(result.scanResult).toBe(ScanResult.TOTE_ALLOCATED)
+  })
+
+  it("a cart barcode that is not the assigned cart → WRONG_ITEM", () => {
+    const session = startSessionWithTasks("user-test", makeScenario(), [], makeCart())
+    let s = advanceThroughBuildCartMenus(session)
+
+    expect(s.currentStep).toBe(WorkflowStep.BC_SCAN_CART_BARCODE)
+
+    const { result } = dispatch(s, { type: "SCAN", value: "C999999999" })
+    expect(result.success).toBe(false)
+    expect(result.scanResult).toBe(ScanResult.WRONG_ITEM)
+  })
+
+  it("scanning any tote off the stack fills the slot the RF Device named", () => {
+    const session = startSessionWithTasks("user-test", makeScenario(), [], makeCart())
+    let s = advanceThroughBuildCartMenus(session)
+    s = dispatch(s, { type: "SCAN", value: s.cart.cartBarcode }).session
+    s = dispatch(s, { type: "CONFIRM", step: WorkflowStep.BC_PLACE_TOTE_IN_SLOT }).session
+
+    // Per §5.1.13 the RF names the SLOT and the picker scans whichever tote
+    // they grabbed — so a tote from the middle of the stack is equally valid.
+    const grabbed = s.toteStack[4]
+    const { session: after, result } = dispatch(s, { type: "SCAN", value: grabbed })
+
     expect(result.success).toBe(true)
-    expect(result.scanResult).toBe(ScanResult.SUCCESS)
+    expect(after.cart.totes[0].barcode).toBe(grabbed)
+    expect(after.toteStack).not.toContain(grabbed)
+    expect(after.toteStack).toHaveLength(8)
   })
 })
 

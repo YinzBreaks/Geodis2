@@ -663,13 +663,14 @@ export class PhaserWarehouseScene extends Phaser.Scene {
         .setStrokeStyle(1, 0x0f172a, 0.9)
 
       const toteBarcodeText = this.add
-        .text(0, 8, `T00${cfg.slot}`, {
+        .text(0, 8, "", {
           fontFamily: "monospace",
           fontSize: "5.5px",
           color: "#0f172a",
           fontStyle: "bold",
         })
         .setOrigin(0.5)
+        .setName("toteBarcodeText")
 
       // Highlight ring for active pick target tote
       const highlightRing = this.add
@@ -692,17 +693,34 @@ export class PhaserWarehouseScene extends Phaser.Scene {
 
       // Click handler on tote
       toteImg.on("pointerdown", () => {
-        const toteBarcode = this.session?.cart.totes[cfg.slot - 1]?.barcode || `T0000000001169${cfg.slot}`
-        if (!this.emitScan(toteBarcode)) return
+        const toteBarcode = this.barcodeForSlot(cfg.slot)
+        if (!toteBarcode || !this.emitScan(toteBarcode)) return
         this.beamOnObject(toteContainer, 36, 36)
       })
 
       labelBg.on("pointerdown", () => {
-        const toteBarcode = this.session?.cart.totes[cfg.slot - 1]?.barcode || `T0000000001169${cfg.slot}`
-        if (!this.emitScan(toteBarcode)) return
+        const toteBarcode = this.barcodeForSlot(cfg.slot)
+        if (!toteBarcode || !this.emitScan(toteBarcode)) return
         this.beamOnObject(labelContainer, 38, 14)
       })
     })
+  }
+
+  /**
+   * Resolve the barcode a click on a cart slot should scan.
+   *
+   * During Build Cart the slot is still empty and the picker is grabbing a tote
+   * off the stack (§5.1.13), so the top stack tote is scanned. Once a slot holds
+   * a tote, that tote's own barcode is used — which is what the Pick phase
+   * confirms against. Returns null when there is nothing legitimate to scan;
+   * synthesizing a plausible-looking barcode here silently produced scans that
+   * belonged to no real tote.
+   */
+  private barcodeForSlot(slot: number): string | null {
+    if (!this.session) return null
+    const assigned = this.session.cart.totes[slot - 1]?.barcode
+    if (assigned && assigned.length > 0) return assigned
+    return this.session.toteStack[0] ?? null
   }
 
   /**
@@ -956,16 +974,19 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     this.cartTotes.forEach((toteSprite, idx) => {
       const slot = idx + 1
       const tote = session.cart.totes.find((t) => t.slot === slot) || session.cart.totes[idx]
-      const isAssigned = Boolean(
-        (tote && tote.barcode && tote.barcode.length > 0) ||
-        (step === WorkflowStep.BC_SCAN_TOTE_BARCODE && session.currentToteSlot > slot) ||
-        step === WorkflowStep.BC_PRESS_CTRL_E ||
-        step.startsWith("PK_") ||
-        step.startsWith("PS_")
-      )
+      // A slot holds a tote exactly when one has been scanned into it. Totes now
+      // appear on the cart one at a time as the picker builds it, instead of all
+      // nine being present from the start.
+      const isAssigned = Boolean(tote?.barcode && tote.barcode.length > 0)
 
       if (toteSprite) {
         toteSprite.setVisible(isAssigned)
+
+        // Show the tote's real barcode tail rather than a synthetic slot label.
+        const bcText = toteSprite.getByName("toteBarcodeText") as Phaser.GameObjects.Text
+        if (bcText && tote?.barcode) {
+          bcText.setText(tote.barcode.slice(-6))
+        }
 
         // Highlight ring on active pick target tote
         const currentPick = session.pickQueue[session.currentPickIndex]

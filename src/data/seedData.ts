@@ -111,6 +111,31 @@ function toteBc(n: number): string {
   return `T${String(n).padStart(14, "0")}`
 }
 
+/**
+ * Build a contiguous tote-slot plan for a pick queue.
+ *
+ * Per BBWD-WI-030 §5.2.11 the picker repeats picks into the SAME tote until it
+ * is full and "End Of Tote" is displayed, then starts the next tote — a tote is
+ * never returned to once it has been closed and railed to the conveyor.
+ * Slots therefore come out as contiguous runs (1,1,1,2,2,3,3…), never
+ * interleaved, and every tote receives more than one pick.
+ *
+ * @param pickCount Total picks in the round.
+ * @param toteCount How many totes of the cart the round consumes (max 9).
+ */
+function buildSlotPlan(pickCount: number, toteCount: number): ToteSlot[] {
+  const plan: ToteSlot[] = []
+  const base = Math.floor(pickCount / toteCount)
+  let remainder = pickCount % toteCount
+
+  for (let slot = 1; slot <= toteCount; slot++) {
+    const count = base + (remainder > 0 ? 1 : 0)
+    if (remainder > 0) remainder--
+    for (let k = 0; k < count; k++) plan.push(slot as ToteSlot)
+  }
+  return plan
+}
+
 /** Build 9 Tote objects for a cart, using sequential barcodes from baseNum. */
 function buildNineTotes(cartId: string, baseNum: number): Tote[] {
   return Array.from({ length: 9 }, (_, i) => ({
@@ -328,21 +353,22 @@ const z1Scenario20: SimulationScenario = {
 
 const z1Cart2 = SEED_CARTS["cart-z1-002"]
 
-const z1PickQueue10: PickTask[] = Array.from({ length: 10 }, (_, i) => ({
+// 10 picks across 3 totes: slot 1 ×4, slot 2 ×3, slot 3 ×3.
+const z1PickQueue10: PickTask[] = buildSlotPlan(10, 3).map((slot, i) => ({
   pickTaskId: `z1-10-pick-${String(i).padStart(3, "0")}`,
   orderNumber: `ORD-Z1B-${String(i + 1).padStart(4, "0")}`,
   item: items[`item-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_ITEMS],
   location: locs[`loc-z1-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_LOCATIONS],
   quantityRequired: 1,
-  targetToteId: z1Cart2.totes[i % 9].toteId,
-  targetSlot: ((i % 9) + 1) as ToteSlot,
+  targetToteId: z1Cart2.totes[slot - 1].toteId,
+  targetSlot: slot,
   isExpress: false,
 }))
 
 const z1Scenario10: SimulationScenario = {
   moduleId: "sim-z1-10picks",
   title: "Zone 1 — 10 Pick Simulation",
-  description: "Beginner Round across all 9 totes with guided exceptions",
+  description: "Beginner round: 10 picks filling 3 totes, with guided exceptions",
   contentType: ContentType.SIMULATION,
   difficulty: DifficultyLevel.BEGINNER,
   estimatedMinutes: 8,
@@ -380,8 +406,12 @@ const z1Scenario10: SimulationScenario = {
 
 const z2Cart = SEED_CARTS["cart-z2-001"]
 
+// 20 picks across 7 totes — the old `% 9` wrapped past slot 9 and sent the
+// final picks back into slot 1, a tote already closed and railed to the conveyor.
+const z2SlotPlan = buildSlotPlan(20, 7)
+
 const z2PickQueue: PickTask[] = Array.from({ length: 20 }, (_, i) => {
-  const slot = (Math.floor(i / 2) % 9) + 1 as ToteSlot
+  const slot = z2SlotPlan[i]
   const locKey = `loc-z2-${String((i % 7) + 1).padStart(3, "0")}` as keyof typeof SEED_LOCATIONS
   const itemKey = `item-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_ITEMS
   return {
@@ -422,8 +452,11 @@ const z2Scenario20: SimulationScenario = {
 
 const hazCart = SEED_CARTS["cart-haz-001"]
 
+// 10 picks across 5 totes.
+const hazSlotPlan = buildSlotPlan(10, 5)
+
 const hazPickQueue: PickTask[] = Array.from({ length: 10 }, (_, i) => {
-  const slot = (Math.floor(i / 2) % 9 + 1) as ToteSlot
+  const slot = hazSlotPlan[i]
   const locKey = `loc-haz-${String((i % 3) + 1).padStart(3, "0")}` as keyof typeof SEED_LOCATIONS
   return {
     pickTaskId: `haz-pick-${String(i).padStart(3, "0")}`,
@@ -463,8 +496,12 @@ const hazScenario10: SimulationScenario = {
 
 const fexCart = SEED_CARTS["cart-fex-001"]
 
+// 15 picks across 5 totes — the old plan left slot 8 with a single pick, which
+// closed that tote immediately after one item.
+const fexSlotPlan = buildSlotPlan(15, 5)
+
 const fexPickQueue: PickTask[] = Array.from({ length: 15 }, (_, i) => {
-  const slot = (Math.floor(i / 2) % 9 + 1) as ToteSlot
+  const slot = fexSlotPlan[i]
   const locKey = `loc-z1-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_LOCATIONS
   const itemKey = `item-${String((i % 10) + 1).padStart(3, "0")}` as keyof typeof SEED_ITEMS
   return {

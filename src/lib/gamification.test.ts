@@ -47,6 +47,7 @@ function makeSession(
   return {
     sessionId: "s1",
     userId: "u1",
+    toteStack: [],
     moduleId: "m1",
     moduleType: ContentType.SIMULATION,
     difficulty: DifficultyLevel.BEGINNER,

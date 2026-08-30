@@ -275,6 +275,16 @@ export interface SimulationSession {
 
   // Cart state
   cart: PickCart
+  /**
+   * Barcodes of the loose pick totes the picker obtained and loaded onto the
+   * cart (BBWD-WI-030 §5.1.4) that have not yet been scanned into a slot.
+   *
+   * Build Cart consumes this stack: §5.1.13 has the RF Device name the SLOT,
+   * and the picker scans whichever tote they grabbed off the stack into it.
+   * A tote is removed from here and written onto `cart.totes[slot]` on a
+   * successful scan, so an empty stack means every slot has been assigned.
+   */
+  toteStack: string[]
   pickQueue: PickTask[]
   completedPicks: PickedItem[]
 

@@ -65,7 +65,7 @@ export function startSession(
   const sessionId = generateId("session")
   const now = new Date()
 
-  // Build an empty Pick Cart with 9 placeholder totes (pre-populated for scanning)
+  // Build an empty Pick Cart with 9 unassigned slots.
   const cart = buildEmptyCart(sessionId, scenario)
 
   return {
@@ -76,6 +76,12 @@ export function startSession(
     difficulty: scenario.difficulty,
 
     cart,
+    // This factory has no scenario cart template to draw real totes from, so
+    // synthesize a stack in the canonical T+14-digit format (§Seed Data).
+    toteStack: Array.from(
+      { length: MAX_TOTES_PER_CART },
+      (_, i) => `T${String(11692 + i).padStart(14, "0")}`
+    ),
     pickQueue: scenario.steps
       .filter((s) => s.workflowStep === WorkflowStep.PK_SCAN_ITEM_UPC)
       .map(() => ({} as PickTask)), // Placeholder — real pick tasks provided by scenario data layer
@@ -105,6 +111,25 @@ export function startSessionWithTasks(
   cart: PickCart
 ): SimulationSession {
   const sessionId = generateId("session")
+
+  // A session ALWAYS starts before Build Cart, so the cart arrives unbuilt with
+  // nine empty slots — the scenario's cart is the template describing which
+  // totes the picker will be handed, not a cart that is already assembled.
+  // Shipping it pre-populated made every cart and tote scan a no-op: the slots
+  // already held their barcodes, so scanning changed nothing and could not fail.
+  const unbuiltCart: PickCart = {
+    ...cart,
+    isBuilt: false,
+    totalItemsPicked: 0,
+    totes: cart.totes.map((tote) => ({
+      ...tote,
+      barcode: "",
+      pickedItems: [],
+      isComplete: false,
+      placedOnConveyor: false,
+    })),
+  }
+
   return {
     sessionId,
     userId,
@@ -112,7 +137,9 @@ export function startSessionWithTasks(
     moduleType: ContentType.SIMULATION,
     difficulty: scenario.difficulty,
 
-    cart,
+    cart: unbuiltCart,
+    // The loose totes obtained at the Command Center, in stack order (§5.1.4).
+    toteStack: cart.totes.map((tote) => tote.barcode),
     pickQueue,
     completedPicks: [],
 
@@ -302,9 +329,18 @@ function handleKeyPress(
 
   let nextStep = transition.nextStep
 
-  // Special handling for CTRL+E: transitions into the Pick Phase
+  // Special handling for CTRL+E: finalizes the cart and enters the Pick Phase.
+  // Per BBWD-WI-030 §5.1.15 this is the moment the cart becomes active — every
+  // slot now holds a scanned tote (enforced by guardCtrlE).
   if (keys === "CTRL+E") {
-    nextStep = WorkflowStep.PK_READ_PICK_DISPLAY
+    return {
+      session: {
+        ...session,
+        cart: { ...session.cart, isBuilt: true },
+        currentStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+      },
+      result: { success: true, newStep: WorkflowStep.PK_READ_PICK_DISPLAY },
+    }
   }
 
   // Dynamic CTRL+K routing: WRONG_ITEM errors require tote-to-conveyor before
@@ -490,10 +526,14 @@ function advanceAfterSuccessfulScan(
     // ── Build Cart: tote scanning ────────────────────────────────────────
     case WorkflowStep.BC_SCAN_TOTE_BARCODE: {
       const slotIndex = session.currentToteSlot - 1
+      const scannedBarcode = scanEvent.scannedValue.trim()
       const updatedTotes = session.cart.totes.map((t, i) =>
-        i === slotIndex ? { ...t, barcode: scanEvent.scannedValue } : t
+        i === slotIndex ? { ...t, barcode: scannedBarcode } : t
       )
       const updatedCart = { ...session.cart, totes: updatedTotes }
+      // Consume the tote the picker grabbed — it is now assigned to a slot and
+      // must not be scannable again (§6.1 "Tote already allocated").
+      const remainingStack = session.toteStack.filter((bc) => bc !== scannedBarcode)
 
       // After all 9 totes scanned, advance to the CTRL+E finalize screen.
       // Per BBWD-WI-030 §5.1.15: slot 9 scan → BC_PRESS_CTRL_E (show finalize prompt)
@@ -509,6 +549,7 @@ function advanceAfterSuccessfulScan(
       return {
         ...session,
         cart: updatedCart,
+        toteStack: remainingStack,
         currentStep: nextStep,
         currentToteSlot: nextSlot,
         scanEvents: [...session.scanEvents, scanEvent],
@@ -667,9 +708,16 @@ function isLastPickForCurrentTote(session: SimulationSession): boolean {
     return true
   }
   const currentPick = session.pickQueue[session.currentPickIndex]
-  const nextPick = session.pickQueue[session.currentPickIndex + 1]
-  // End Of Tote when next pick targets a different tote
-  return currentPick.targetToteId !== nextPick.targetToteId
+
+  // Per BBWD-WI-030 §5.2.11: picks repeat into the SAME tote until the tote is
+  // full and "End Of Tote" is displayed. Comparing only against the immediately
+  // following pick made End Of Tote fire whenever the next pick happened to
+  // target a different slot — with an interleaved queue that is every pick.
+  // Scan the remainder of the queue instead: the tote is finished only when no
+  // later pick is destined for it.
+  return !session.pickQueue
+    .slice(session.currentPickIndex + 1)
+    .some((pick) => pick.targetToteId === currentPick.targetToteId)
 }
 
 /**
@@ -683,7 +731,9 @@ function getExpectedScanValue(
     case WorkflowStep.BC_SCAN_CART_BARCODE:
       return session.cart.cartBarcode
     case WorkflowStep.BC_SCAN_TOTE_BARCODE:
-      return session.cart.totes[session.currentToteSlot - 1]?.barcode ?? ""
+      // The slot is still empty at this point — the expected value is the next
+      // tote off the stack (any stack tote is accepted; this is for logging).
+      return session.toteStack[0] ?? ""
     case WorkflowStep.PK_SCAN_ITEM_UPC:
       return (
         session.pickQueue[session.currentPickIndex]?.item.upcBarcode ?? ""

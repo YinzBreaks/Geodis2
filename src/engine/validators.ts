@@ -39,15 +39,27 @@ export function validateScan(
     // Bug 3 fix: accept any non-empty scan — teaches scanning habit without
     // requiring trainees to memorise exact barcode strings.
     case WorkflowStep.BC_SCAN_CART_BARCODE:
-      return scannedValue.trim().length > 0 ? ScanResult.SUCCESS : ScanResult.WRONG_ITEM
+      // The Tasker assigns one specific Pick Cart; scanning a different cart
+      // must fail. Previously any non-empty string passed, so the scan could
+      // never be wrong and the cart was never really assigned.
+      return scannedValue.trim() === session.cart.cartBarcode
+        ? ScanResult.SUCCESS
+        : ScanResult.WRONG_ITEM
 
     // Per BBWD-WI-030 §5.1.12 — Scan each tote barcode into its slot.
     // Bug 3 fix: accept any non-empty scan — teaches scanning habit.
     // TOTE_ALLOCATED check is kept: scanning the same barcode twice is a real
     // exception that trainees need to practice handling.
     case WorkflowStep.BC_SCAN_TOTE_BARCODE: {
-      if (toteAlreadyAllocated(scannedValue, session)) return ScanResult.TOTE_ALLOCATED
-      return scannedValue.trim().length > 0 ? ScanResult.SUCCESS : ScanResult.WRONG_TOTE
+      const value = scannedValue.trim()
+      if (value.length === 0) return ScanResult.WRONG_TOTE
+
+      // Per §5.1.13 the RF Device names the SLOT, not a specific tote — the
+      // picker scans whichever tote they grabbed off the stack. So any tote
+      // still on the stack is valid; order does not matter.
+      if (toteAlreadyAllocated(value, session)) return ScanResult.TOTE_ALLOCATED
+      if (!session.toteStack.includes(value)) return ScanResult.WRONG_TOTE
+      return ScanResult.SUCCESS
     }
 
     // Per BBWD-WI-030 §5.1.9 — Scan zone or FEX barcode
@@ -140,9 +152,12 @@ function toteAlreadyAllocated(
   barcode: string,
   session: SimulationSession
 ): boolean {
-  return session.cart.totes.some(
-    (t) => t.barcode === barcode && t.slot !== session.currentToteSlot
-  )
+  // Per §6.1: the tote is already assigned to a slot on this cart. Slots only
+  // hold a barcode once they have actually been scanned, so any match is a
+  // genuine double-allocation. (The old `slot !== currentToteSlot` clause fired
+  // against the pre-populated template, reporting "Tote already allocated" for
+  // totes that had never been scanned at all.)
+  return session.cart.totes.some((t) => t.barcode.length > 0 && t.barcode === barcode)
 }
 
 /**

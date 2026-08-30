@@ -4,6 +4,14 @@ import {
   getNextProgressState,
   parseSessionSubmission,
 } from "@/services/session-persistence"
+import { SCENARIO_DATA } from "@/data/seedData"
+
+// Derive the canonical tote barcode for each pick from the scenario itself.
+// Hardcoding the slot mapping here let this fixture silently encode a stale
+// pick-queue layout, so it kept passing while the seed data said otherwise.
+const Z1_10 = SCENARIO_DATA.Z1_10_PICKS
+const pickToteBarcode = (index: number): string =>
+  Z1_10.cart.totes[Z1_10.pickQueue[index].targetSlot - 1].barcode
 
 function validSubmission(): Record<string, unknown> {
   const sessionId = "session-test-001"
@@ -80,8 +88,8 @@ function validSubmission(): Record<string, unknown> {
           scanEventId: `scan-pick-tote-${index + 1}`,
           sessionId,
           step: WorkflowStep.PK_SCAN_TOTE_BARCODE,
-          expectedValue: `T${String(11701 + (index % 9)).padStart(14, "0")}`,
-          scannedValue: `T${String(11701 + (index % 9)).padStart(14, "0")}`,
+          expectedValue: pickToteBarcode(index),
+          scannedValue: pickToteBarcode(index),
           result: ScanResult.SUCCESS,
           timestamp: `2026-08-16T12:00:${String(index * 2 + 12).padStart(2, "0")}.000Z`,
           responseTimeMs: 250,

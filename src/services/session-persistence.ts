@@ -164,7 +164,10 @@ function expectedScanValue(
     case WorkflowStep.BC_SCAN_CART_BARCODE:
       return bundle.cart.cartBarcode
     case WorkflowStep.BC_SCAN_TOTE_BARCODE:
-      return bundle.cart.totes[buildToteScanCount]?.barcode ?? null
+      // Per BBWD-WI-030 §5.1.13 the RF Device names the SLOT and the picker
+      // scans whichever tote they grabbed off the stack, so tote order is not
+      // fixed. Membership and single-use are checked separately below.
+      return null
     case WorkflowStep.PK_SCAN_ITEM_UPC:
       return bundle.pickQueue[pickIndex]?.item.upcBarcode ?? null
     case WorkflowStep.PK_SCAN_TOTE_BARCODE: {
@@ -186,8 +189,25 @@ function validateCanonicalScanEvents(
   let buildToteScanCount = 0
   let pickIndex = 0
   const coveredPickIndices = new Set<number>()
+  const cartToteBarcodes = new Set(bundle.cart.totes.map((t) => t.barcode))
+  const assignedTotes = new Set<string>()
 
   for (const event of events) {
+    // Build Cart tote scans may arrive in any order, but each must be a tote
+    // from this cart and may only be assigned to one slot (§6.1).
+    if (
+      event.step === WorkflowStep.BC_SCAN_TOTE_BARCODE &&
+      event.result === ScanResult.SUCCESS
+    ) {
+      if (!cartToteBarcodes.has(event.scannedValue)) {
+        return "Build Cart tote scan is not a tote belonging to this cart"
+      }
+      if (assignedTotes.has(event.scannedValue)) {
+        return "Build Cart assigned the same tote to more than one slot"
+      }
+      assignedTotes.add(event.scannedValue)
+    }
+
     const expected = expectedScanValue(
       event,
       bundle,

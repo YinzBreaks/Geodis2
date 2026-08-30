@@ -103,6 +103,7 @@ function makeSession(
     moduleId: "mod-test",
     moduleType: ContentType.SIMULATION,
     difficulty: DifficultyLevel.BEGINNER,
+    toteStack: [],
     cart: makeCart(),
     pickQueue: [makePickTask()],
     completedPicks: [],

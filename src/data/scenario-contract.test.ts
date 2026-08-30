@@ -9,3 +9,38 @@ describe("simulation scenario contracts", () => {
     })
   }
 })
+
+/**
+ * Per BBWD-WI-030 §5.2.11 a picker repeats picks into the SAME tote until it is
+ * full and "End Of Tote" is displayed, then moves to the next tote. A pick queue
+ * that interleaves slots makes the engine fire End Of Tote — and a conveyor
+ * trip — after every single pick, which is what a round-robin `i % 9` queue did.
+ */
+describe("pick queues fill one tote at a time", () => {
+  for (const [key, bundle] of Object.entries(SCENARIO_DATA)) {
+    it(`${key} never returns to a tote after moving on`, () => {
+      const finished = new Set<number>()
+      let currentSlot: number | null = null
+
+      for (const pick of bundle.pickQueue) {
+        if (pick.targetSlot === currentSlot) continue
+        expect(
+          finished.has(pick.targetSlot),
+          `slot ${pick.targetSlot} is revisited after the queue moved past it`
+        ).toBe(false)
+        if (currentSlot !== null) finished.add(currentSlot)
+        currentSlot = pick.targetSlot
+      }
+    })
+
+    it(`${key} gives every tote more than one pick`, () => {
+      const perSlot = new Map<number, number>()
+      for (const pick of bundle.pickQueue) {
+        perSlot.set(pick.targetSlot, (perSlot.get(pick.targetSlot) ?? 0) + 1)
+      }
+      for (const [slot, count] of perSlot) {
+        expect(count, `slot ${slot} has only ${count} pick`).toBeGreaterThan(1)
+      }
+    })
+  }
+})
