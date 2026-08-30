@@ -67,7 +67,13 @@ export function PickCart({
     >
       <svg
         viewBox="0 0 200 160"
-        style={{ width: 200, height: 160, filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.15))" }}
+        style={{
+          width: 200,
+          height: 160,
+          filter: "drop-shadow(0 4px 8px rgba(0,0,0,0.15))",
+          cursor: scannable ? "pointer" : "default",
+        }}
+        onClick={scannable ? () => onScan(cartBarcode) : undefined}
         aria-label="Pick Cart"
       >
         <defs>

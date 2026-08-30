@@ -34,13 +34,14 @@ export function DeviceSelector() {
       <select
         value={activeDeviceModelId}
         onChange={(e) => setActiveDevice(e.target.value)}
+        className="touch-target min-h-[44px]"
         style={{
           backgroundColor: "var(--color-surface-1)",
           color: "var(--color-text-primary)",
           border: "1px solid var(--color-border)",
           borderRadius: "var(--radius-sm)",
-          padding: "4px 8px",
-          fontSize: 11,
+          padding: "6px 10px",
+          fontSize: 12,
           fontFamily: "var(--font-mono)",
           cursor: "pointer",
           outline: "none",

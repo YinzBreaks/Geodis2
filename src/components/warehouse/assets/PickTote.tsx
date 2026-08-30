@@ -69,7 +69,13 @@ export function PickTote({
     >
       <svg
         viewBox="0 0 80 56"
-        style={{ width: 80, height: 56, filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))" }}
+        style={{
+          width: 80,
+          height: 56,
+          filter: "drop-shadow(0 2px 4px rgba(0,0,0,0.15))",
+          cursor: scannable ? "pointer" : "default",
+        }}
+        onClick={scannable ? () => onScan(toteBarcode) : undefined}
         aria-label={`Tote Slot ${slotNumber}`}
       >
         <defs>

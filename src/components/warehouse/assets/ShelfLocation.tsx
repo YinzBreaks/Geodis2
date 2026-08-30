@@ -96,7 +96,13 @@ export function ShelfLocation({
     >
       <svg
         viewBox="0 0 220 140"
-        style={{ width: 220, height: 140, filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }}
+        style={{
+          width: 220,
+          height: 140,
+          filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))",
+          cursor: scannable ? "pointer" : "default",
+        }}
+        onClick={scannable ? () => onScan(aloc) : undefined}
         aria-label={`Shelf location ${aloc}`}
       >
         <defs>

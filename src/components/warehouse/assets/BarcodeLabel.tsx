@@ -77,16 +77,16 @@ export function BarcodeLabel({ value, scannable, difficulty, onScan }: BarcodeLa
       tabIndex={scannable ? 0 : undefined}
       aria-label={scannable ? `Scan barcode ${value}` : undefined}
       onKeyDown={scannable ? (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); handleClick() } } : undefined}
-      className="relative select-none"
+      className={`relative select-none ${scannable ? "touch-target min-h-[56px] min-w-[56px] justify-center" : ""}`}
       style={{
         cursor: scannable ? "crosshair" : "default",
         display: "inline-flex",
         flexDirection: "column",
         alignItems: "center",
-        padding: "4px 6px",
+        padding: "6px 8px",
         backgroundColor: "#ffffff",
         border: "1px solid #d1d5db",
-        borderRadius: 3,
+        borderRadius: 4,
         transition: "box-shadow 0.2s, transform 0.15s",
         boxShadow: scannable && !scanning
           ? "0 0 0 1px rgba(240, 165, 0, 0.15)"

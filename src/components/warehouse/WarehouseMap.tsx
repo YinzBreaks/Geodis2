@@ -268,10 +268,31 @@ export function WarehouseMap({
       </svg>
 
         {/* Map Controls */}
-        <div className="absolute top-2 right-2 flex flex-col gap-1 bg-black/50 p-1 rounded backdrop-blur">
-          <button onClick={zoomIn} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono font-bold">+</button>
-          <button onClick={zoomOut} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono font-bold">-</button>
-          <button onClick={resetZoom} className="w-6 h-6 flex items-center justify-center text-white hover:bg-white/20 rounded font-mono text-[10px]">R</button>
+        <div className="absolute top-2 right-2 flex flex-col gap-1.5 bg-black/70 p-1.5 rounded-lg backdrop-blur z-10 border border-slate-700">
+          <button
+            type="button"
+            onClick={zoomIn}
+            aria-label="Zoom in warehouse map"
+            className="touch-target min-w-[36px] min-h-[36px] flex items-center justify-center text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded font-mono font-bold text-sm"
+          >
+            +
+          </button>
+          <button
+            type="button"
+            onClick={zoomOut}
+            aria-label="Zoom out warehouse map"
+            className="touch-target min-w-[36px] min-h-[36px] flex items-center justify-center text-white bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded font-mono font-bold text-sm"
+          >
+            -
+          </button>
+          <button
+            type="button"
+            onClick={resetZoom}
+            aria-label="Reset map zoom"
+            className="touch-target min-w-[36px] min-h-[36px] flex items-center justify-center text-amber-400 bg-slate-800 hover:bg-slate-700 active:bg-slate-600 rounded font-mono text-xs font-bold"
+          >
+            R
+          </button>
         </div>
       </div>
 

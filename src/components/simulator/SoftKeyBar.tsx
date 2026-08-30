@@ -78,7 +78,7 @@ export function SoftKeyBar({ onKey, disabled = false, uiStyle = "terminal", high
           onClick={() => isKeyEnabled && onKey(key.keys)}
           disabled={disabled}
           className={`
-            touch-target min-h-[44px] min-w-[44px]
+            touch-target min-h-[56px] min-w-[56px]
             text-xs font-mono py-1.5 px-0 rounded border
             flex flex-col items-center justify-center gap-0.5
             transition-colors
