@@ -79,14 +79,26 @@ async function persistCompletedSession(
     async (tx) => {
       const existingSession = await tx.simSession.findUnique({
         where: { id: body.sessionId },
-        select: { id: true, userId: true },
+        select: { id: true, userId: true, status: true, startedAt: true },
       })
 
       if (existingSession) {
         if (existingSession.userId !== userId) {
           throw new Error("SESSION_ID_CONFLICT")
         }
-        return { sessionId: existingSession.id, created: false }
+        if (existingSession.status === "COMPLETED") {
+          return { sessionId: existingSession.id, created: false }
+        }
+        if (existingSession.status === "IN_PROGRESS") {
+          const serverDurationMs =
+            completedAt.getTime() - existingSession.startedAt.getTime()
+          if (body.totalTimeMs > serverDurationMs + 5000) {
+            throw new Error("DURATION_EXCEEDS_SERVER_TIME")
+          }
+          if (serverDurationMs < 2500 && body.totalPicks > 3) {
+            throw new Error("DURATION_BELOW_MINIMUM_FEASIBLE")
+          }
+        }
       }
 
       const existingProgress = await tx.moduleProgress.findUnique({
@@ -106,27 +118,52 @@ async function persistCompletedSession(
         completedAt
       )
 
-      const session = await tx.simSession.create({
-        data: {
-          id: body.sessionId,
-          userId,
-          moduleId: body.scenarioId,
-          moduleType: "SIMULATION",
-          difficulty: body.difficulty,
-          status: "COMPLETED",
-          finalScore: body.finalScore,
-          accuracyScore: body.accuracyScore,
-          speedScore: body.speedScore,
-          passed: body.passed,
-          totalPicks: body.totalPicks,
-          errorCount: body.errorCount,
-          totalTimeMs: body.totalTimeMs,
-          completedAt,
-          scanEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
-          errors: body.errors as unknown as Prisma.InputJsonValue,
-          replayEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
-        },
-      })
+      let sessionIdToReturn = body.sessionId
+
+      if (existingSession && existingSession.status === "IN_PROGRESS") {
+        const session = await tx.simSession.update({
+          where: { id: body.sessionId },
+          data: {
+            difficulty: body.difficulty,
+            status: "COMPLETED",
+            finalScore: body.finalScore,
+            accuracyScore: body.accuracyScore,
+            speedScore: body.speedScore,
+            passed: body.passed,
+            totalPicks: body.totalPicks,
+            errorCount: body.errorCount,
+            totalTimeMs: body.totalTimeMs,
+            completedAt,
+            scanEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+            errors: body.errors as unknown as Prisma.InputJsonValue,
+            replayEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+          },
+        })
+        sessionIdToReturn = session.id
+      } else {
+        const session = await tx.simSession.create({
+          data: {
+            id: body.sessionId,
+            userId,
+            moduleId: body.scenarioId,
+            moduleType: "SIMULATION",
+            difficulty: body.difficulty,
+            status: "COMPLETED",
+            finalScore: body.finalScore,
+            accuracyScore: body.accuracyScore,
+            speedScore: body.speedScore,
+            passed: body.passed,
+            totalPicks: body.totalPicks,
+            errorCount: body.errorCount,
+            totalTimeMs: body.totalTimeMs,
+            completedAt,
+            scanEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+            errors: body.errors as unknown as Prisma.InputJsonValue,
+            replayEvents: body.scanEvents as unknown as Prisma.InputJsonValue,
+          },
+        })
+        sessionIdToReturn = session.id
+      }
 
       await tx.moduleProgress.upsert({
         where: {
@@ -152,7 +189,7 @@ async function persistCompletedSession(
         },
       })
 
-      return { sessionId: session.id, created: true }
+      return { sessionId: sessionIdToReturn, created: true }
     },
     { isolationLevel: Prisma.TransactionIsolationLevel.Serializable }
   )
@@ -181,8 +218,22 @@ export async function POST(request: NextRequest) {
   try {
     outcome = await persistCompletedSession(userId, parsed.data)
   } catch (error) {
-    if (error instanceof Error && error.message === "SESSION_ID_CONFLICT") {
-      return NextResponse.json({ error: "Session ID conflict" }, { status: 409 })
+    if (error instanceof Error) {
+      if (error.message === "SESSION_ID_CONFLICT") {
+        return NextResponse.json({ error: "Session ID conflict" }, { status: 409 })
+      }
+      if (error.message === "DURATION_EXCEEDS_SERVER_TIME") {
+        return NextResponse.json(
+          { error: "Session duration exceeds elapsed server time" },
+          { status: 400 }
+        )
+      }
+      if (error.message === "DURATION_BELOW_MINIMUM_FEASIBLE") {
+        return NextResponse.json(
+          { error: "Session duration is below minimum feasible threshold" },
+          { status: 400 }
+        )
+      }
     }
     throw error
   }

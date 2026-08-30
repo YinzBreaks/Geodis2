@@ -365,6 +365,39 @@ export const useSimulation = create<SimulationState>((set, get) => ({
       estimatedTotalSteps,
       coaching: resolveCoaching(session.currentStep, session.difficulty),
     })
+
+    // Initialize server-tracked session in background
+    if (typeof window !== "undefined") {
+      fetch("/api/sessions/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          scenarioId: bundle.scenario.moduleId,
+          difficulty: bundle.scenario.difficulty,
+        }),
+      })
+        .then(async (res) => {
+          if (!res.ok) return null
+          return (await res.json()) as { sessionId: string; startedAt: string }
+        })
+        .then((data) => {
+          if (data) {
+            set((state) => {
+              if (!state.session) return state
+              return {
+                session: {
+                  ...state.session,
+                  sessionId: data.sessionId,
+                  startedAt: new Date(data.startedAt),
+                },
+              }
+            })
+          }
+        })
+        .catch(() => {
+          // Gracefully fallback to client-generated session ID (offline / dev)
+        })
+    }
   },
 
   processInput(input: CanonicalInput) {
