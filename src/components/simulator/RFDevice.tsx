@@ -8,7 +8,7 @@
 "use client"
 
 import { useState, useRef, useEffect, useCallback } from "react"
-import { KineticTerminalHUD } from "./KineticTerminalHUD"
+import { SymbolWT4090Terminal } from "./SymbolWT4090Terminal"
 import {
   useSimulation,
   getInputMode,
@@ -104,19 +104,16 @@ export function RFDevice() {
         : ""
 
   return (
-    <KineticTerminalHUD
+    <SymbolWT4090Terminal
       session={session}
       rfScreen={rfScreen}
       inputValue={inputValue}
       inputMode={inputMode}
       isComplete={isComplete}
-      showFeedback={showFeedback}
       result={result}
       inputError={inputError}
       coaching={coaching}
-      animClass={animClass}
       softKeyEnabled={softKeyEnabled}
-      inputRef={inputRef}
       handleSubmit={handleSubmit}
       handleKeyDown={handleKeyDown}
       handleSoftKey={handleSoftKey}

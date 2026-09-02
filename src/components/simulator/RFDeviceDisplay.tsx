@@ -18,16 +18,16 @@
 import type { RFDeviceScreen, RFScreenLine } from "@/types/domain"
 import type { RFDeviceScreenConfig } from "@/types/devices"
 
-/** Fallback realistic off-white defaults when no screenConfig is supplied. */
+/** Transflective monochrome QVGA LCD defaults matching Symbol WT4090/WT41N0. */
 const TERMINAL_DEFAULTS: RFDeviceScreenConfig = {
-  bgColor: "#0a0a0a",
-  textColor: "#e5e7eb",
+  bgColor: "#14181B",
+  textColor: "#D6E2E8",
   fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Courier New', monospace",
-  highlightColor: "#93c5fd",
-  cursorColor: "#f3f4f6",
-  labelColor: "#9ca3af",
-  fontSize: "11px",
-  lineHeight: "1.3",
+  highlightColor: "#38BDF8",
+  cursorColor: "#D6E2E8",
+  labelColor: "#8E9AA0",
+  fontSize: "12px",
+  lineHeight: "1.35",
 }
 
 /** Characters wide for the terminal grid — matches all device displayColumns. */

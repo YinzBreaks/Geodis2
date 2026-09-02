@@ -136,11 +136,18 @@ export const sounds = {
   scanError: () => playTone(220, 0.12, "sawtooth", 0, 0.12),
   /** Soft click — keyboard shortcut accepted. */
   ctrlKey: () => playTone(440, 0.04, "sine", 0, 0.08),
+  /** Tactile chiclet key depression click. */
+  keyClick: () => playTone(700, 0.015, "triangle", 0, 0.05),
   /** C-E-G success chord — tote complete. */
   toteComplete: () => playChord([523.25, 659.25, 783.99], 0.3, "sine"),
   /** Ascending fanfare — session complete. */
   sessionDone: () => playFanfare(),
 } as const;
+
+/** Tactile mechanical chiclet key depression. */
+export function playKeyClick(): void {
+  sounds.keyClick();
+}
 
 // ─────────────────────────────────────────────────────────────────────────────
 // LEGACY EXPORTS (retained for existing callers)

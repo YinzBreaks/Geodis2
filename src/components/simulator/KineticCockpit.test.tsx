@@ -69,7 +69,7 @@ const MOCK_SESSION: SimulationSession = {
 }
 
 describe("KineticCockpit", () => {
-  it("renders the 3-viewport layout with Kinetic OS branding", () => {
+  it("renders grounded physical warehouse environment with mounted Symbol WT4090 terminal", () => {
     render(
       <KineticCockpit
         session={MOCK_SESSION}
@@ -82,10 +82,12 @@ describe("KineticCockpit", () => {
     // Cockpit brand
     expect(screen.getByText("KINETIC OS")).toBeTruthy()
 
-    // Viewport headers
-    expect(screen.getByText("VIEWPORT A: PICK FACE ELEVATION")).toBeTruthy()
-    expect(screen.getByText("VIEWPORT B: OVERHEAD SERPENTINE ROUTE")).toBeTruthy()
-    expect(screen.getByText("WMS INDUSTRIAL TERMINAL")).toBeTruthy()
+    // Physical warehouse shelf signage
+    expect(screen.getByText("LEVEL B WIRE DECKING")).toBeTruthy()
+
+    // Physical Symbol WT4090 terminal mounted on right
+    expect(screen.getByText("symbol")).toBeTruthy()
+    expect(screen.getByText("WT4090")).toBeTruthy()
   })
 
   it("displays 9-tote cart target pulse and location check-digit", () => {
@@ -99,7 +101,7 @@ describe("KineticCockpit", () => {
     )
 
     expect(screen.getByText("TARGET: SLOT 3 (TOTE-03)")).toBeTruthy()
-    expect(screen.getByText("Check-Digit: [47]")).toBeTruthy()
+    expect(screen.getByText("[47]")).toBeTruthy()
   })
 
   it("renders persistent 4-beat metronomic cadence strip in footer", () => {
@@ -112,10 +114,10 @@ describe("KineticCockpit", () => {
       />
     )
 
-    expect(screen.getByText("LOCATION")).toBeTruthy()
-    expect(screen.getByText("SKU")).toBeTruthy()
-    expect(screen.getByText("QTY")).toBeTruthy()
-    expect(screen.getByText("TOTE")).toBeTruthy()
+    expect(screen.getByText(/1\. LOCATION/)).toBeTruthy()
+    expect(screen.getByText(/2\. SKU/)).toBeTruthy()
+    expect(screen.getByText(/3\. QTY/)).toBeTruthy()
+    expect(screen.getByText(/4\. TOTE/)).toBeTruthy()
 
     // Telemetry items
     expect(screen.getByText("Pace:")).toBeTruthy()
