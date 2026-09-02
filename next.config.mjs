@@ -1,4 +1,33 @@
 /** @type {import('next').NextConfig} */
+
+// Dynamically resolve Supabase HTTP and WebSocket origins for CSP connect-src
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+let supabaseOrigin = ""
+let supabaseWsOrigin = ""
+if (supabaseUrl) {
+  try {
+    const parsed = new URL(supabaseUrl)
+    supabaseOrigin = parsed.origin
+    supabaseWsOrigin = parsed.origin.replace(/^http/, "ws")
+  } catch {
+    // Ignore URL parse error
+  }
+}
+
+const connectSrcDirectives = [
+  "'self'",
+  "https://*.supabase.co",
+  "wss://*.supabase.co",
+  "http://127.0.0.1:*",
+  "http://localhost:*",
+  "ws://127.0.0.1:*",
+  "ws://localhost:*",
+  supabaseOrigin,
+  supabaseWsOrigin,
+]
+  .filter(Boolean)
+  .join(" ")
+
 const nextConfig = {
   /**
    * Transpile CJS packages that ship CommonJS bundles and need to be treated
@@ -53,7 +82,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
               "font-src 'self' https://fonts.gstatic.com data:",
               "img-src 'self' data: blob:",
-              "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+              `connect-src ${connectSrcDirectives}`,
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'",
