@@ -69,11 +69,35 @@ export function validateScan(
         ? ScanResult.SUCCESS
         : ScanResult.WRONG_ITEM
 
-    // Per BBWD-WI-030 §5.2.9 — Scan item UPC barcode
+    // Per BBWD-WI-030 §5.2.7 — Beat 1: Verify location check digit or location barcode
+    case WorkflowStep.PK_VERIFY_LOCATION:
+    case WorkflowStep.PK_READ_PICK_DISPLAY: {
+      const currentPick = session.pickQueue[session.currentPickIndex]
+      if (!currentPick) return ScanResult.ITEM_NOT_FOUND
+      const loc = currentPick.location
+      const val = scannedValue.trim().toUpperCase()
+      const isCheckDigit = loc.checkDigit && val === loc.checkDigit.toUpperCase()
+      const isLocBarcode = loc.barcode && val === loc.barcode.toUpperCase()
+      const isDisplay = val === loc.displayLabel.toUpperCase()
+      const isLocId = val === loc.locationId.toUpperCase()
+
+      if (isCheckDigit || isLocBarcode || isDisplay || isLocId) {
+        return ScanResult.SUCCESS
+      }
+
+      // If user scanned item UPC prematurely at location verification step, it's an out-of-order sequence bypass
+      if (val === currentPick.item.upcBarcode.toUpperCase()) {
+        return ScanResult.WRONG_LOCATION
+      }
+
+      return ScanResult.WRONG_LOCATION
+    }
+
+    // Per BBWD-WI-030 §5.2.9 — Beat 2: Scan item UPC barcode
     case WorkflowStep.PK_SCAN_ITEM_UPC: {
       const currentPick = session.pickQueue[session.currentPickIndex]
       if (!currentPick) return ScanResult.ITEM_NOT_FOUND
-      return scannedValue === currentPick.item.upcBarcode
+      return scannedValue.trim() === currentPick.item.upcBarcode
         ? ScanResult.SUCCESS
         : ScanResult.WRONG_ITEM
     }

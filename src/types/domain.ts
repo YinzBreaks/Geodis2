@@ -137,6 +137,10 @@ export interface WarehouseLocation {
   level: string
   /** What shows on RF Device display, e.g. "316-001-A1" */
   displayLabel: string
+  /** 2 or 3-digit shelf check digit for physical verification, e.g. "18", "47", "83" */
+  checkDigit?: string
+  /** Scannable location barcode, e.g. "LOC-316-01-A-01" */
+  barcode?: string
 }
 
 /** An item/product in inventory. */
@@ -298,6 +302,16 @@ export interface SimulationSession {
   scanEvents: ScanEvent[]
   errors: SimulationError[]
 
+  // Industrial & 4-Beat Telemetry
+  /** Number of times trainee attempted an out-of-order action (e.g. SKU scan before check digit) */
+  sequenceBypasses?: number
+  /** Number of check digits or bin locations successfully verified */
+  checkDigitsVerified?: number
+  /** Timestamp when current step prompt appeared on RF screen (for cognitive latency calculation) */
+  stepPromptTimestamp?: number
+  /** Total cognitive latency in ms accumulated across all location-to-first-action prompts */
+  totalCognitiveLatencyMs?: number
+
   // Timing
   startedAt: Date
   completedAt?: Date
@@ -325,6 +339,18 @@ export interface SessionScore {
   finalScore: number
   passed: boolean
   passingThreshold: number
+
+  // 4-Beat & Day 1 Telemetry
+  /** 0–100% — percentage of picks where check digit was properly validated before SKU scan */
+  checkDigitScanRate?: number
+  /** 0–100% — First-Time Pick Accuracy */
+  firstTimePickAccuracy?: number
+  /** Mean cognitive latency in ms between RF location prompt and first valid scan */
+  cognitiveLatencyMs?: number
+  /** Total sequence bypass violations logged */
+  sequenceBypasses?: number
+  /** Programmatic Day 1 qualification gate status */
+  day1Passed?: boolean
 }
 
 /**
@@ -362,6 +388,13 @@ export interface SessionResult {
   errorsEncountered: ScanResult[]
   /** Count of injected errors resolved correctly */
   exceptionsResolved: number
+
+  // ── 4-Beat & Day 1 Metrics ────────────────────────────────────────────────
+  checkDigitScanRate?: number
+  firstTimePickAccuracy?: number
+  cognitiveLatencyMs?: number
+  sequenceBypasses?: number
+  day1Passed?: boolean
 
   // ── Derived ───────────────────────────────────────────────────────────────
   band: ScoreBand

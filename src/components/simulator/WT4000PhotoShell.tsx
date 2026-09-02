@@ -214,18 +214,10 @@ export function WT4000PhotoShell({
     const floor = document.getElementById("warehouse-floor")
     if (!floor) return
 
-    const activeTarget = floor.querySelector<HTMLButtonElement>(
-      '[data-scan-target="active"]'
-    )
-
-    if (activeTarget && !activeTarget.disabled) {
-      activeTarget.click()
-      return
-    }
-
     floor.scrollIntoView({ behavior: "smooth", block: "nearest" })
     floor.classList.add("floor-flash")
     setTimeout(() => floor.classList.remove("floor-flash"), 900)
+    inputRef.current?.focus()
   }, [])
 
   /** Dispatch the appropriate action for a hotspot click. */
@@ -582,23 +574,43 @@ export function WT4000PhotoShell({
 
         if (expectedInput === "scan") {
           return (
-            <button
-              type="button"
-              onClick={triggerFloorScan}
-              className="touch-target text-[10px] font-mono text-center py-2 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
-              style={{
-                backgroundColor: "#18181b",
-                color:           "#fcd34d",
-                border:          "1px dashed #713f12",
-                minHeight:       touchTarget,
-                display:         "flex",
-                alignItems:      "center",
-                justifyContent:  "center",
-                cursor:          "pointer",
-              }}
-            >
-              ↙ Scan on Warehouse Floor  (or tap blue button on device)
-            </button>
+            <div className="flex flex-col gap-1.5 w-full">
+              <div className="flex gap-2">
+                <input
+                  ref={inputRef}
+                  value={inputValue}
+                  onChange={(e) => setInputValue(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Scan or key barcode / check digit..."
+                  autoFocus
+                  className="bg-black/60 border border-amber-600/40 text-amber-300 font-mono text-xs px-2 py-1 rounded flex-1 focus:outline-none focus:border-amber-400"
+                />
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  className="bg-amber-600/30 hover:bg-amber-600/50 border border-amber-500/50 text-amber-200 text-xs px-2.5 py-1 rounded font-mono font-bold"
+                >
+                  ENTER
+                </button>
+              </div>
+              <button
+                type="button"
+                onClick={triggerFloorScan}
+                className="touch-target text-[10px] font-mono text-center py-1.5 rounded w-full transition-opacity hover:opacity-80 active:opacity-60"
+                style={{
+                  backgroundColor: "#18181b",
+                  color: "#fcd34d",
+                  border: "1px dashed #713f12",
+                  minHeight: touchTarget,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  cursor: "pointer",
+                }}
+              >
+                ↙ Hardware Scan Wedge Active
+              </button>
+            </div>
           )
         }
 

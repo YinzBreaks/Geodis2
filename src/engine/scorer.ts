@@ -64,9 +64,31 @@ export function calculateScore(
   const { accuracy, speed } = scenario.scoringWeights
   const finalScore = Math.round(accuracyScore * accuracy + speedScore * speed)
 
+  const totalPicks = session.completedPicks.length
+  const checkDigitScanRate =
+    totalPicks > 0
+      ? Math.min(
+          100,
+          Math.round(((session.checkDigitsVerified ?? 0) / totalPicks) * 100)
+        )
+      : 100
+  const firstTimePickAccuracy = Math.round(accuracyRate * 100)
+  const cognitiveLatencyMs =
+    (session.checkDigitsVerified ?? 0) > 0
+      ? Math.round(
+          (session.totalCognitiveLatencyMs ?? 0) /
+            (session.checkDigitsVerified ?? 1)
+        )
+      : 0
+  const sequenceBypasses = session.sequenceBypasses ?? 0
+  const day1Passed =
+    checkDigitScanRate === 100 &&
+    firstTimePickAccuracy >= 98 &&
+    sequenceBypasses === 0
+
   return {
     sessionId: session.sessionId,
-    totalPicks: session.completedPicks.length,
+    totalPicks,
     correctFirstScanRate: accuracyRate,
     errorCount: session.errors.length,
     correctedErrorCount: session.errors.filter((e) => e.corrected).length,
@@ -80,6 +102,11 @@ export function calculateScore(
     finalScore,
     passed: finalScore >= scenario.passCriteria.minScore,
     passingThreshold: scenario.passCriteria.minScore,
+    checkDigitScanRate,
+    firstTimePickAccuracy,
+    cognitiveLatencyMs,
+    sequenceBypasses,
+    day1Passed,
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -262,6 +289,11 @@ export function computeSessionResult(
     difficulty: session.difficulty,
     zone: session.cart.zone,
     scenarioTitle: scenario.title,
+    checkDigitScanRate: score.checkDigitScanRate,
+    firstTimePickAccuracy: score.firstTimePickAccuracy,
+    cognitiveLatencyMs: score.cognitiveLatencyMs,
+    sequenceBypasses: score.sequenceBypasses,
+    day1Passed: score.day1Passed,
   }
 
   const { strengths, improvements } = generateFeedback(base, scenarioTargetSeconds)

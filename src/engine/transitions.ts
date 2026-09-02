@@ -75,9 +75,23 @@ const guardCtrlA: Guard = (session) => {
   return null
 }
 
+/** Guard: verify location check digit or barcode before scanning item UPC. */
+const guardVerifyLocationScan: Guard = (session, action) => {
+  if (action.type === "SCAN") {
+    const currentPick = session.pickQueue[session.currentPickIndex]
+    if (currentPick && action.value.trim() === currentPick.item.upcBarcode) {
+      return "Sequence bypass: verify location check digit before scanning item SKU"
+    }
+  }
+  return null
+}
+
 /** Guard: must be at PK_SCAN_ITEM_UPC step to scan an item barcode. */
 const guardScanItem: Guard = (session) => {
-  if (session.currentStep !== WorkflowStep.PK_SCAN_ITEM_UPC) {
+  if (
+    session.currentStep !== WorkflowStep.PK_SCAN_ITEM_UPC &&
+    session.currentStep !== WorkflowStep.PK_VERIFY_ITEM
+  ) {
     return "Complete previous step first — item scan not expected at this stage"
   }
   return null
@@ -98,6 +112,7 @@ const guardScanTote: Guard = (session) => {
   }
   return null
 }
+
 
 // ─────────────────────────────────────────────────────────────────────────────
 // TRANSITION DEFINITION
@@ -339,6 +354,16 @@ export const TRANSITIONS: Readonly<
   // Per BBWD-WI-030 §5.2.5 — RF Device auto-displays the first pick
   [WorkflowStep.PK_READ_PICK_DISPLAY]: [
     {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: guardVerifyLocationScan,
+    },
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: alwaysAllow,
+    },
+    {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_TRAVEL_TO_LOCATION,
       guard: alwaysAllow,
@@ -348,14 +373,34 @@ export const TRANSITIONS: Readonly<
   // Per BBWD-WI-030 §5.2.6 — Travel to Pick Front (physical — must be confirmed)
   [WorkflowStep.PK_TRAVEL_TO_LOCATION]: [
     {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: guardVerifyLocationScan,
+    },
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: alwaysAllow,
+    },
+    {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_VERIFY_LOCATION,
       guard: alwaysAllow,
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.7 — Verify physical location matches RF Device
+  // Per BBWD-WI-030 §5.2.7 — Beat 1: Verify physical location check digit or barcode
   [WorkflowStep.PK_VERIFY_LOCATION]: [
+    {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: guardVerifyLocationScan,
+    },
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: alwaysAllow,
+    },
     {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_VERIFY_ITEM,
@@ -363,8 +408,13 @@ export const TRANSITIONS: Readonly<
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.8 — Verify the item
+  // Per BBWD-WI-030 §5.2.8 — Verify the item (physical — legacy alias)
   [WorkflowStep.PK_VERIFY_ITEM]: [
+    {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_ENTER_QUANTITY,
+      guard: guardScanItem,
+    },
     {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
@@ -372,16 +422,21 @@ export const TRANSITIONS: Readonly<
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.9 — Scan item UPC barcode
+  // Per BBWD-WI-030 §5.2.9 — Beat 2: Scan item UPC barcode
   [WorkflowStep.PK_SCAN_ITEM_UPC]: [
     {
       actionType: "SCAN",
-      nextStep: WorkflowStep.PK_PICK_QUANTITY,
+      nextStep: WorkflowStep.PK_ENTER_QUANTITY,
       guard: guardScanItem,
+    },
+    {
+      actionType: "CONFIRM",
+      nextStep: WorkflowStep.PK_PICK_QUANTITY,
+      guard: alwaysAllow,
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.10 — Pick the quantity shown (physical)
+  // Per BBWD-WI-030 §5.2.10 — Pick the quantity shown (physical — legacy alias)
   [WorkflowStep.PK_PICK_QUANTITY]: [
     {
       actionType: "CONFIRM",
@@ -390,7 +445,7 @@ export const TRANSITIONS: Readonly<
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.11 — Place item(s) in tote (physical)
+  // Per BBWD-WI-030 §5.2.11 — Place item(s) in tote (physical — legacy alias)
   [WorkflowStep.PK_PLACE_IN_TOTE]: [
     {
       actionType: "CONFIRM",
@@ -399,23 +454,33 @@ export const TRANSITIONS: Readonly<
     },
   ],
 
-  // Per BBWD-WI-030 §5.2.12 — Enter quantity picked → Enter
+  // Per BBWD-WI-030 §5.2.12 — Beat 3: Enter quantity picked → Enter
   [WorkflowStep.PK_ENTER_QUANTITY]: [
     {
       actionType: "TYPE",
       nextStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
       guard: guardEnterQuantity,
     },
+    {
+      actionType: "CONFIRM",
+      nextStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
+      guard: guardEnterQuantity,
+    },
   ],
 
-  // Per BBWD-WI-030 §5.2.13 — Scan the Pick Tote barcode shown on RF Device
+  // Per BBWD-WI-030 §5.2.13 — Beat 4: Scan the Pick Tote barcode shown on RF Device
   // After success: engine checks if more picks remain or if End Of Tote
   [WorkflowStep.PK_SCAN_TOTE_BARCODE]: [
     {
       actionType: "SCAN",
-      // nextStep is dynamic in engine: PK_READ_PICK_DISPLAY or PK_END_OF_TOTE_DISPLAY
-      nextStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+      // nextStep is dynamic in engine: PK_VERIFY_LOCATION (4-Beat) or PK_READ_PICK_DISPLAY or PK_END_OF_TOTE_DISPLAY
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
       guard: guardScanTote,
+    },
+    {
+      actionType: "CONFIRM",
+      nextStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+      guard: alwaysAllow,
     },
   ],
 
@@ -545,6 +610,21 @@ export const TRANSITIONS: Readonly<
     {
       actionType: "KEY_PRESS",
       expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: guardVerifyLocationScan,
+    },
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_VERIFY_LOCATION,
       guard: alwaysAllow,
     },

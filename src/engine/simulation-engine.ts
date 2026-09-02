@@ -94,6 +94,10 @@ export function startSession(
 
     scanEvents: [],
     errors: [],
+    sequenceBypasses: 0,
+    checkDigitsVerified: 0,
+    stepPromptTimestamp: now.getTime(),
+    totalCognitiveLatencyMs: 0,
 
     startedAt: now,
     status: "IN_PROGRESS",
@@ -149,6 +153,10 @@ export function startSessionWithTasks(
 
     scanEvents: [],
     errors: [],
+    sequenceBypasses: 0,
+    checkDigitsVerified: 0,
+    stepPromptTimestamp: Date.now(),
+    totalCognitiveLatencyMs: 0,
 
     startedAt: new Date(),
     status: "IN_PROGRESS",
@@ -187,8 +195,15 @@ export function dispatch(
   // 1. Check if action is permitted at this step
   const permissionError = isActionPermitted(session, action)
   if (permissionError !== null) {
+    const isBypass =
+      permissionError.toLowerCase().includes("bypass") ||
+      permissionError.toLowerCase().includes("before")
+    const newSession: SimulationSession = isBypass
+      ? { ...session, sequenceBypasses: (session.sequenceBypasses ?? 0) + 1 }
+      : session
+
     return {
-      session,
+      session: newSession,
       result: {
         success: false,
         newStep: session.currentStep,
@@ -239,6 +254,10 @@ function handleScan(
     scanResult = validateScan(step, scannedValue, session)
   }
 
+  const latency = session.stepPromptTimestamp
+    ? Math.max(0, Date.now() - session.stepPromptTimestamp)
+    : Date.now() - scanStartMs
+
   // Build the scan event (always logged — even on failure)
   const scanEvent: ScanEvent = {
     scanEventId: generateId("scan"),
@@ -248,7 +267,7 @@ function handleScan(
     scannedValue,
     result: scanResult,
     timestamp: new Date(),
-    responseTimeMs: Date.now() - scanStartMs,
+    responseTimeMs: latency,
   }
 
   if (scanResult !== ScanResult.SUCCESS) {
@@ -299,7 +318,24 @@ function handleScan(
   }
 
   // Scan succeeded — advance the state machine
-  const nextSession = advanceAfterSuccessfulScan(session, scanEvent)
+  let nextSession = advanceAfterSuccessfulScan(session, scanEvent)
+  if (
+    step === WorkflowStep.PK_VERIFY_LOCATION ||
+    step === WorkflowStep.PK_READ_PICK_DISPLAY ||
+    step === WorkflowStep.PK_TRAVEL_TO_LOCATION
+  ) {
+    nextSession = {
+      ...nextSession,
+      checkDigitsVerified: (nextSession.checkDigitsVerified ?? 0) + 1,
+      totalCognitiveLatencyMs: (nextSession.totalCognitiveLatencyMs ?? 0) + latency,
+      stepPromptTimestamp: Date.now(),
+    }
+  } else {
+    nextSession = {
+      ...nextSession,
+      stepPromptTimestamp: Date.now(),
+    }
+  }
 
   return {
     session: nextSession,
@@ -397,32 +433,87 @@ function handleKeyPress(
 }
 
 /**
- * Handle a text type action (typing "1", "2", quantity, etc.)
+ * Handle a text type action (typing "1", "2", quantity, check digit, etc.)
  */
 function handleType(
   session: SimulationSession,
   text: string
 ): { session: SimulationSession; result: EngineResult } {
-  // Quantity entry has its own validation path
+  // Quantity entry has its own validation path (Beat 3)
   if (session.currentStep === WorkflowStep.PK_ENTER_QUANTITY) {
-    if (!validateQuantity(text, session)) {
+    const currentPick = session.pickQueue[session.currentPickIndex]
+    const effectiveText =
+      !text.trim() && currentPick?.quantityRequired === 1 ? "1" : text
+
+    if (!validateQuantity(effectiveText, session)) {
       return {
         session,
         result: {
           success: false,
           newStep: session.currentStep,
-          feedback: "Invalid quantity — must be a positive number not exceeding the required amount",
+          feedback:
+            "Invalid quantity — must be a positive number not exceeding the required amount",
         },
       }
     }
-    // Advance to tote scan
+    // Advance to tote scan (Beat 4)
     const newSession: SimulationSession = {
       ...session,
       currentStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
+      stepPromptTimestamp: Date.now(),
     }
     return {
       session: newSession,
       result: { success: true, newStep: WorkflowStep.PK_SCAN_TOTE_BARCODE },
+    }
+  }
+
+  // Type check digit at location verification (Beat 1)
+  if (
+    session.currentStep === WorkflowStep.PK_VERIFY_LOCATION ||
+    session.currentStep === WorkflowStep.PK_READ_PICK_DISPLAY ||
+    session.currentStep === WorkflowStep.PK_TRAVEL_TO_LOCATION ||
+    session.currentStep === WorkflowStep.EX_INCORRECT_LOCATION
+  ) {
+    const currentPick = session.pickQueue[session.currentPickIndex]
+    const loc = currentPick?.location
+    const typed = text.trim().toUpperCase()
+    const isCheckDigit =
+      loc?.checkDigit && typed === loc.checkDigit.toUpperCase()
+    const isLocBarcode = loc?.barcode && typed === loc.barcode.toUpperCase()
+    const isLocId = loc && typed === loc.locationId.toUpperCase()
+    const isDisplay = loc && typed === loc.displayLabel.toUpperCase()
+
+    if (isCheckDigit || isLocBarcode || isLocId || isDisplay) {
+      const latency = session.stepPromptTimestamp
+        ? Math.max(0, Date.now() - session.stepPromptTimestamp)
+        : 0
+      const scanEvent: ScanEvent = {
+        scanEventId: generateId("scan"),
+        sessionId: session.sessionId,
+        step: session.currentStep,
+        expectedValue: loc?.checkDigit ?? loc?.displayLabel ?? "",
+        scannedValue: typed,
+        result: ScanResult.SUCCESS,
+        timestamp: new Date(),
+        responseTimeMs: latency,
+      }
+      return {
+        session: {
+          ...session,
+          currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+          checkDigitsVerified: (session.checkDigitsVerified ?? 0) + 1,
+          totalCognitiveLatencyMs:
+            (session.totalCognitiveLatencyMs ?? 0) + latency,
+          stepPromptTimestamp: Date.now(),
+          scanEvents: [...session.scanEvents, scanEvent],
+        },
+        result: {
+          success: true,
+          newStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+          scanResult: ScanResult.SUCCESS,
+        },
+      }
     }
   }
 
@@ -437,6 +528,7 @@ function handleType(
   const newSession: SimulationSession = {
     ...session,
     currentStep: transition.nextStep,
+    stepPromptTimestamp: Date.now(),
   }
 
   return {
@@ -453,6 +545,22 @@ function handleConfirm(
   session: SimulationSession,
   confirmedStep: WorkflowStep
 ): { session: SimulationSession; result: EngineResult } {
+  // Support single-piece pick confirmation by pressing Enter on quantity screen
+  if (session.currentStep === WorkflowStep.PK_ENTER_QUANTITY) {
+    const currentPick = session.pickQueue[session.currentPickIndex]
+    if (currentPick && currentPick.quantityRequired === 1) {
+      const newSession: SimulationSession = {
+        ...session,
+        currentStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
+        stepPromptTimestamp: Date.now(),
+      }
+      return {
+        session: newSession,
+        result: { success: true, newStep: WorkflowStep.PK_SCAN_TOTE_BARCODE },
+      }
+    }
+  }
+
   const transition = findTransition(session.currentStep, {
     type: "CONFIRM",
     step: confirmedStep,
@@ -556,15 +664,31 @@ function advanceAfterSuccessfulScan(
       }
     }
 
-    // ── Pick: item UPC scan ──────────────────────────────────────────────
-    case WorkflowStep.PK_SCAN_ITEM_UPC:
+    // ── Pick: location check-digit / barcode scan (Beat 1) ───────────────
+    case WorkflowStep.PK_VERIFY_LOCATION:
+    case WorkflowStep.PK_READ_PICK_DISPLAY:
+    case WorkflowStep.PK_TRAVEL_TO_LOCATION:
       return {
         ...session,
-        currentStep: WorkflowStep.PK_PICK_QUANTITY,
+        currentStep: WorkflowStep.PK_SCAN_ITEM_UPC,
         scanEvents: [...session.scanEvents, scanEvent],
       }
 
-    // ── Pick: tote barcode scan ──────────────────────────────────────────
+    // ── Pick: item UPC scan (Beat 2) ─────────────────────────────────────
+    case WorkflowStep.PK_SCAN_ITEM_UPC: {
+      const isFourBeat =
+        session.moduleId.startsWith("day1") ||
+        session.pickQueue.some((p) => Boolean(p.location.checkDigit))
+      return {
+        ...session,
+        currentStep: isFourBeat
+          ? WorkflowStep.PK_ENTER_QUANTITY
+          : WorkflowStep.PK_PICK_QUANTITY,
+        scanEvents: [...session.scanEvents, scanEvent],
+      }
+    }
+
+    // ── Pick: tote barcode scan (Beat 4) ─────────────────────────────────
     case WorkflowStep.PK_SCAN_TOTE_BARCODE: {
       const currentPick = session.pickQueue[session.currentPickIndex]
 
@@ -585,12 +709,15 @@ function advanceAfterSuccessfulScan(
 
       const nextPickIndex = session.currentPickIndex + 1
       const isEndOfTote = isLastPickForCurrentTote(session)
+      const isFourBeat =
+        session.moduleId.startsWith("day1") ||
+        session.pickQueue.some((p) => Boolean(p.location.checkDigit))
 
-      // Always route through End Of Tote display when tote is complete —
-      // even for the very last pick. PS_ROUND_COMPLETE is set from
-      // PK_PLACE_TOTE_ON_CONVEYOR confirmation. Per BBWD-WI-030 §5.2.14–17.
+      // Route through End Of Tote if tote complete, or directly to Beat 1 (PK_VERIFY_LOCATION) in 4-Beat
       const nextStep = isEndOfTote
         ? WorkflowStep.PK_END_OF_TOTE_DISPLAY
+        : isFourBeat
+        ? WorkflowStep.PK_VERIFY_LOCATION
         : WorkflowStep.PK_READ_PICK_DISPLAY
 
       // Update total items picked on the cart
@@ -734,6 +861,12 @@ function getExpectedScanValue(
       // The slot is still empty at this point — the expected value is the next
       // tote off the stack (any stack tote is accepted; this is for logging).
       return session.toteStack[0] ?? ""
+    case WorkflowStep.PK_VERIFY_LOCATION:
+    case WorkflowStep.PK_READ_PICK_DISPLAY:
+    case WorkflowStep.PK_TRAVEL_TO_LOCATION: {
+      const loc = session.pickQueue[session.currentPickIndex]?.location
+      return loc?.checkDigit ?? loc?.barcode ?? loc?.displayLabel ?? ""
+    }
     case WorkflowStep.PK_SCAN_ITEM_UPC:
       return (
         session.pickQueue[session.currentPickIndex]?.item.upcBarcode ?? ""

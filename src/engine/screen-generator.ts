@@ -318,7 +318,8 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
     case WorkflowStep.PK_READ_PICK_DISPLAY:
     case WorkflowStep.PK_TRAVEL_TO_LOCATION:
     case WorkflowStep.PK_VERIFY_LOCATION:
-    case WorkflowStep.PK_VERIFY_ITEM:
+    case WorkflowStep.PK_VERIFY_ITEM: {
+      const hasCheckDigit = Boolean(pick?.location.checkDigit)
       return {
         screenId: `screen-${step}`,
         workflowStep: step,
@@ -329,6 +330,9 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
             value: pick?.location.displayLabel,
             isHighlighted: true,
           },
+          ...(hasCheckDigit
+            ? [{ label: "Check Digit:", isCursorField: true }]
+            : [{ label: "Item Barcode:", isCursorField: true }]),
           { label: "Item:", value: pick?.item.sku },
           { label: "Item (Last 4):", value: pick?.item.lastFourDigits },
           {
@@ -337,11 +341,19 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
               ? `${pick.quantityRequired} ${formatPickUnit(pick.quantityRequired, pick.item.unitOfMeasure)}`
               : undefined,
           },
-          { label: "Item Barcode:", isCursorField: true },
         ],
-        activeField: "Item Barcode",
+        activeField: hasCheckDigit ? "Check Digit" : "Item Barcode",
         inputType: "BARCODE",
+        contextualData: pick
+          ? {
+              toteId: tote?.toteId ?? "",
+              location: pick.location.displayLabel,
+              sku: pick.item.sku,
+              checkDigit: pick.location.checkDigit ?? "",
+            }
+          : undefined,
       }
+    }
 
     case WorkflowStep.PK_PICK_QUANTITY:
     case WorkflowStep.PK_PLACE_IN_TOTE:
