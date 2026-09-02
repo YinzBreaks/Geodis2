@@ -264,29 +264,54 @@ export function SerpentineRouteMap({
           )
         })}
 
-        {/* Current Cart Node in Corridor */}
+        {/* Current Cart Node in Corridor with 9-Tote Mini-Grid */}
         <g transform={`translate(140, ${cartY})`}>
+          {/* Cart Frame */}
           <rect
-            x="-12"
-            y="-8"
-            width="24"
-            height="16"
-            fill="#3b82f6"
-            stroke="#ffffff"
+            x="-18"
+            y="-14"
+            width="36"
+            height="28"
+            fill="#0f172a"
+            stroke="#38bdf8"
             strokeWidth="1.5"
             rx="3"
           />
-          <text
-            x="0"
-            y="3"
-            fill="#ffffff"
-            fontSize="7"
-            fontWeight="bold"
-            textAnchor="middle"
-            fontFamily="monospace"
-          >
-            CART
-          </text>
+
+          {/* 3x3 Tote Slots: Tier 3 (top: 7,8,9), Tier 2 (mid: 4,5,6), Tier 1 (bottom: 1,2,3) */}
+          {[
+            // Tier 3 (Top)
+            { slot: 7, x: -14, y: -11 },
+            { slot: 8, x: -4, y: -11 },
+            { slot: 9, x: 6, y: -11 },
+            // Tier 2 (Middle)
+            { slot: 4, x: -14, y: -3 },
+            { slot: 5, x: -4, y: -3 },
+            { slot: 6, x: 6, y: -3 },
+            // Tier 1 (Bottom)
+            { slot: 1, x: -14, y: 5 },
+            { slot: 2, x: -4, y: 5 },
+            { slot: 3, x: 6, y: 5 },
+          ].map(({ slot, x, y }) => {
+            const targetSlot = currentPick?.targetSlot
+            const isTarget = slot === targetSlot
+            const tote = session.cart.totes.find((t) => t.slot === slot)
+            const hasPicks = (tote?.pickedItems.length ?? 0) > 0
+
+            return (
+              <rect
+                key={`tote-cell-${slot}`}
+                x={x}
+                y={y}
+                width="8"
+                height="6"
+                rx="1"
+                fill={isTarget ? "#f59e0b" : hasPicks ? "#10b981" : "#334155"}
+                stroke={isTarget ? "#ffffff" : "#1e293b"}
+                strokeWidth={isTarget ? 0.8 : 0.4}
+              />
+            )
+          })}
         </g>
       </svg>
 

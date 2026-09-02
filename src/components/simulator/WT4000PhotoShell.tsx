@@ -99,16 +99,16 @@ const KEY_MAP: KeyHotspot[] = [
 
   // ── Keyboard row 1: 1/AB — 2/CD — 3/EF ────────────────────────────────────
   { id: "K1", label: "1/AB", cx: "67.0%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "1", shiftChar: "A", ctrlKey: "CTRL+A" },
-  { id: "K2", label: "2/CD", cx: "74.8%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "2", shiftChar: "C" },
+  { id: "K2", label: "2/CD", cx: "74.8%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "2", shiftChar: "C", ctrlKey: "CTRL+D" },
   { id: "K3", label: "3/EF", cx: "82.3%", cy: "25.8%", w: "5.5%", h: "5.5%", primary: "3", shiftChar: "E", ctrlKey: "CTRL+E" },
 
   // ── Keyboard row 2: 4/GH — 5/IJ — 6/KL ────────────────────────────────────
-  { id: "K4", label: "4/GH", cx: "67.0%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "4", shiftChar: "G" },
+  { id: "K4", label: "4/GH", cx: "67.0%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "4", shiftChar: "G", ctrlKey: "CTRL+H" },
   { id: "K5", label: "5/IJ", cx: "74.8%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "5", shiftChar: "I" },
   { id: "K6", label: "6/KL", cx: "82.3%", cy: "33.4%", w: "5.5%", h: "5.5%", primary: "6", shiftChar: "K", ctrlKey: "CTRL+K" },
 
   // ── Keyboard row 3: 7/MN — 8/OP — 9/QR ────────────────────────────────────
-  { id: "K7", label: "7/MN", cx: "67.0%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "7", shiftChar: "M" },
+  { id: "K7", label: "7/MN", cx: "67.0%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "7", shiftChar: "M", ctrlKey: "CTRL+M" },
   { id: "K8", label: "8/OP", cx: "74.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "8", shiftChar: "O" },
   { id: "K9", label: "9/QR", cx: "82.8%", cy: "41.8%", w: "5.5%", h: "5.5%", primary: "9", shiftChar: "Q" },
 

@@ -587,6 +587,92 @@ export function generateScreen(session: SimulationSession): RFDeviceScreen {
         ],
       }
 
+    // === DAY 4 NON-DESTRUCTIVE EXCEPTION SCREENS ===
+    case WorkflowStep.EX_SHORT_PICK:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "SHORT PICK EXCEPTION" },
+          { label: "REQ QTY:", value: String(pick?.quantityRequired ?? 1) },
+          { label: "FOUND QTY:", isCursorField: true },
+          { label: "^W:", value: "Cancel" },
+        ],
+      }
+
+    case WorkflowStep.EX_SHORT_REASON:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "SELECT SHORT REASON" },
+          { label: "1:", value: "Empty Bin Slot" },
+          { label: "2:", value: "Partial Count" },
+          { label: "3:", value: "Suspected Mis-slot" },
+          { label: "REASON (1-3):", isCursorField: true },
+        ],
+      }
+
+    case WorkflowStep.EX_MANUAL_BARCODE:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "MANUAL BARCODE ENTRY" },
+          { label: "UNREADABLE / TORN" },
+          { label: "ENTER UPC:", isCursorField: true },
+          { label: "^W:", value: "Cancel" },
+        ],
+      }
+
+    case WorkflowStep.EX_MANUAL_CHECK_DIGIT:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "CHECK-DIGIT OVERRIDE" },
+          { label: "LOC:", value: pick?.location.displayLabel ?? "" },
+          { label: "ENTER CD:", isCursorField: true },
+          { label: "^W:", value: "Cancel" },
+        ],
+      }
+
+    case WorkflowStep.EX_DAMAGE_TAG:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "DAMAGED ITEM TAG" },
+          { label: "STATUS:", value: "QA Quarantine" },
+          { label: "ACTION:", value: "Place in Bad-Order" },
+          { label: "ENTER:", value: "Log QA & Continue" },
+        ],
+      }
+
+    case WorkflowStep.EX_HAZMAT_ALERT:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "!!! HAZMAT ALERT !!!" },
+          { label: "HAZARD:", value: "Spill / Puncture Halt" },
+          { label: "NOTIFY LEAD:", value: "Immediate" },
+          { label: "ENTER:", value: "Confirm Lead Notified" },
+        ],
+      }
+
+    case WorkflowStep.EX_HAZMAT_REDIRECT:
+      return {
+        screenId: `screen-${step}`,
+        workflowStep: step,
+        lines: [
+          { value: "HAZMAT SEGREGATION" },
+          { label: "TARGET TOTE:", value: "TOTE-09-HAZ" },
+          { label: "ACTION:", value: "Scan Containment Tote" },
+          { label: "SCAN:", isCursorField: true },
+        ],
+      }
+
     // ── Pick-phase login/menu screens ────────────────────────────────────
     // Mirror BC_LOGIN_RF / BC_SELECT_BBWD / BC_SELECT_OUTBOUND for the
     // STANDALONE PICK MODE path (PK_PICKUP_CART → PK_LOGIN_RF → …).

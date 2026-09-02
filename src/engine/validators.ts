@@ -136,6 +136,19 @@ export function isActionPermitted(
   session: SimulationSession,
   action: EngineAction
 ): string | null {
+  // Global WMS exception hotkeys are permitted during active pick steps (not during mandatory lead notification)
+  if (action.type === "KEY_PRESS") {
+    const isPickStep =
+      session.currentStep.startsWith("PK_") ||
+      session.currentStep === WorkflowStep.EX_SHORT_INVENTORY ||
+      session.currentStep === WorkflowStep.EX_PRESS_CTRL_K ||
+      session.currentStep === WorkflowStep.EX_SHORT_PICK
+    const exceptionHotkeys = ["CTRL+K", "CTRL+M", "CTRL+D", "CTRL+H", "CTRL+A"]
+    if (isPickStep && exceptionHotkeys.includes(action.keys)) {
+      return null
+    }
+  }
+
   const transition = findTransition(session.currentStep, action)
 
   // No matching transition at all — action is not valid for this step

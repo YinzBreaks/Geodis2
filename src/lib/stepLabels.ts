@@ -78,6 +78,15 @@ export const STEP_LABELS: Record<WorkflowStep, string> = {
   [WorkflowStep.EX_NOTIFY_LEAD]:               "Notify Lead / Supervisor",
   [WorkflowStep.EX_ITEM_TO_AMNESTY_BIN]:       "Item to Amnesty Bin",
   [WorkflowStep.EX_ITEM_TO_IC]:                "Item to Inventory Control",
+
+  // Day 4 Non-Destructive Exception Workflows
+  [WorkflowStep.EX_SHORT_PICK]:                "Short Pick Exception",
+  [WorkflowStep.EX_SHORT_REASON]:              "Select Short Reason",
+  [WorkflowStep.EX_MANUAL_BARCODE]:            "Manual Barcode Entry",
+  [WorkflowStep.EX_MANUAL_CHECK_DIGIT]:        "Manual Check-Digit Confirmation",
+  [WorkflowStep.EX_DAMAGE_TAG]:                "Damaged Item Tag & Quarantine",
+  [WorkflowStep.EX_HAZMAT_ALERT]:              "Hazardous Material Incident Alert",
+  [WorkflowStep.EX_HAZMAT_REDIRECT]:           "Hazmat Segregation Scan",
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -16,6 +16,15 @@ import {
   type WarehouseLocation,
 } from "@/types/domain"
 import { evaluateTraversal, evaluateDay2PassGate } from "@/engine/routing-engine"
+import {
+  calculateTotePutAccuracy,
+  calculateMeanTotePutLatency,
+  evaluateDay3PassGate,
+} from "@/engine/cart-engine"
+import {
+  calculateMeanExceptionLatency,
+  evaluateDay4PassGate,
+} from "@/engine/exception-engine"
 
 /**
  * Calculate the final score for a completed simulation session.
@@ -113,6 +122,37 @@ export function calculateScore(
     backtrackViolations === 0 &&
     cadenceVariance <= 0.30
 
+  // Day 3 High-Density Wave Telemetry
+  const totePutAccuracy = calculateTotePutAccuracy(
+    totalPicks,
+    session.misSlotAttempts ?? 0
+  )
+  const meanTotePutLatencySeconds = calculateMeanTotePutLatency(
+    session.totePutLatencies ?? []
+  )
+  const verticalTierFtpa = firstTimePickAccuracy
+  const sustainedUph = Math.round(actualPicksPerHour)
+  const day3Passed = evaluateDay3PassGate(
+    totePutAccuracy,
+    meanTotePutLatencySeconds,
+    verticalTierFtpa,
+    sustainedUph
+  )
+
+  // Day 4 Industrial Exceptions Telemetry
+  const prematureToteDrops = session.prematureToteDrops ?? 0
+  const exceptionResolutionLatencySeconds = calculateMeanExceptionLatency(
+    session.exceptionResolutionLatencies ?? []
+  )
+  const icDiscrepancyAccuracy = 100
+  const hazmatComplianceScore = 100
+  const day4Passed = evaluateDay4PassGate(
+    prematureToteDrops,
+    exceptionResolutionLatencySeconds,
+    icDiscrepancyAccuracy,
+    hazmatComplianceScore
+  )
+
   return {
     sessionId: session.sessionId,
     totalPicks,
@@ -138,6 +178,16 @@ export function calculateScore(
     backtrackViolations,
     cadenceVariance,
     day2Passed,
+    totePutAccuracy,
+    meanTotePutLatencySeconds,
+    verticalTierFtpa,
+    sustainedUph,
+    day3Passed,
+    prematureToteDrops,
+    exceptionResolutionLatencySeconds,
+    icDiscrepancyAccuracy,
+    hazmatComplianceScore,
+    day4Passed,
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -329,6 +379,16 @@ export function computeSessionResult(
     backtrackViolations: score.backtrackViolations,
     cadenceVariance: score.cadenceVariance,
     day2Passed: score.day2Passed,
+    totePutAccuracy: score.totePutAccuracy,
+    meanTotePutLatencySeconds: score.meanTotePutLatencySeconds,
+    verticalTierFtpa: score.verticalTierFtpa,
+    sustainedUph: score.sustainedUph,
+    day3Passed: score.day3Passed,
+    prematureToteDrops: score.prematureToteDrops,
+    exceptionResolutionLatencySeconds: score.exceptionResolutionLatencySeconds,
+    icDiscrepancyAccuracy: score.icDiscrepancyAccuracy,
+    hazmatComplianceScore: score.hazmatComplianceScore,
+    day4Passed: score.day4Passed,
   }
 
   const { strengths, improvements } = generateFeedback(base, scenarioTargetSeconds)

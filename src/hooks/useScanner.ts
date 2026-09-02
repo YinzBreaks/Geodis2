@@ -63,7 +63,26 @@ export function useScanner(): UseScannerResult {
     }
 
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Never intercept modifier hotkeys (CTRL+K, CTRL+E, CTRL+T, etc.)
+      // Intercept recognized WMS modifier hotkeys (CTRL+K, CTRL+M, CTRL+D, CTRL+H, CTRL+A, CTRL+W, CTRL+E, CTRL+T)
+      if (e.ctrlKey && !e.altKey && !e.metaKey) {
+        const keyUpper = e.key.toUpperCase()
+        const recognizedCombos = ["K", "M", "D", "H", "A", "W", "E", "T"]
+        if (recognizedCombos.includes(keyUpper)) {
+          e.preventDefault()
+          e.stopPropagation()
+          if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
+          bufferRef.current = ""
+          isBurstRef.current = false
+          processInput({
+            type: "SOFTKEY",
+            value: `CTRL+${keyUpper}`,
+            source: "keyboard",
+          })
+          return
+        }
+      }
+
+      // Never intercept other modifier combos
       if (e.ctrlKey || e.altKey || e.metaKey) {
         if (flushTimerRef.current) clearTimeout(flushTimerRef.current)
         bufferRef.current = ""

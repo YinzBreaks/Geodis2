@@ -77,10 +77,36 @@ const guardCtrlA: Guard = (session) => {
 
 /** Guard: verify location check digit or barcode before scanning item UPC. */
 const guardVerifyLocationScan: Guard = (session, action) => {
-  if (action.type === "SCAN") {
-    const currentPick = session.pickQueue[session.currentPickIndex]
-    if (currentPick && action.value.trim() === currentPick.item.upcBarcode) {
+  const currentPick = session.pickQueue[session.currentPickIndex]
+  if (!currentPick) return null
+
+  if (action.type === "SCAN" || action.type === "TYPE") {
+    const val = (action.type === "SCAN" ? action.value : action.text)
+      .trim()
+      .toUpperCase()
+
+    // 1. Sequence bypass: premature SKU scan
+    if (
+      action.type === "SCAN" &&
+      val === currentPick.item.upcBarcode.toUpperCase()
+    ) {
       return "Sequence bypass: verify location check digit before scanning item SKU"
+    }
+
+    // 2. Vertical tier mismatch: check digit belongs to another level in the same bay
+    const otherTier = session.pickQueue
+      .map((p) => p.location)
+      .find(
+        (loc) =>
+          loc.bay === currentPick.location.bay &&
+          loc.level.toUpperCase() !==
+            currentPick.location.level.toUpperCase() &&
+          ((loc.checkDigit && val === loc.checkDigit.toUpperCase()) ||
+            (loc.barcode && val === loc.barcode.toUpperCase()))
+      )
+
+    if (otherTier) {
+      return `Vertical tier mismatch: Location check digit belongs to Level ${otherTier.level}, requested Level ${currentPick.location.level}`
     }
   }
   return null
@@ -705,6 +731,93 @@ export const TRANSITIONS: Readonly<
     {
       actionType: "CONFIRM",
       nextStep: WorkflowStep.PK_READ_PICK_DISPLAY,
+      guard: alwaysAllow,
+    },
+  ],
+
+  // === DAY 4 NON-DESTRUCTIVE EXCEPTION TRANSITIONS ===
+  [WorkflowStep.EX_SHORT_PICK]: [
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.EX_SHORT_REASON,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_SHORT_REASON]: [
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.EX_SHORT_PICK,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_MANUAL_BARCODE]: [
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.EX_MANUAL_CHECK_DIGIT,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.PK_SCAN_ITEM_UPC,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_MANUAL_CHECK_DIGIT]: [
+    {
+      actionType: "TYPE",
+      nextStep: WorkflowStep.PK_ENTER_QUANTITY,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.EX_MANUAL_BARCODE,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_DAMAGE_TAG]: [
+    {
+      actionType: "CONFIRM",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
+      guard: alwaysAllow,
+    },
+    {
+      actionType: "KEY_PRESS",
+      expectedKeys: "CTRL+W",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_HAZMAT_ALERT]: [
+    {
+      actionType: "CONFIRM",
+      nextStep: WorkflowStep.EX_HAZMAT_REDIRECT,
+      guard: alwaysAllow,
+    },
+  ],
+
+  [WorkflowStep.EX_HAZMAT_REDIRECT]: [
+    {
+      actionType: "SCAN",
+      nextStep: WorkflowStep.PK_VERIFY_LOCATION,
       guard: alwaysAllow,
     },
   ],

@@ -33,7 +33,6 @@ import {
   day2Cart,
 } from "@/data/scenarios/day2SerpentineRouting"
 import {
-  startSessionWithTasks,
   WorkflowStep,
   ScanResult,
 } from "@/types/domain"

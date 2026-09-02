@@ -77,6 +77,15 @@ export enum WorkflowStep {
   EX_NOTIFY_LEAD = "EX_NOTIFY_LEAD",
   EX_ITEM_TO_AMNESTY_BIN = "EX_ITEM_TO_AMNESTY_BIN",
   EX_ITEM_TO_IC = "EX_ITEM_TO_IC",
+
+  // === DAY 4 NON-DESTRUCTIVE EXCEPTION WORKFLOWS ===
+  EX_SHORT_PICK = "EX_SHORT_PICK",
+  EX_SHORT_REASON = "EX_SHORT_REASON",
+  EX_MANUAL_BARCODE = "EX_MANUAL_BARCODE",
+  EX_MANUAL_CHECK_DIGIT = "EX_MANUAL_CHECK_DIGIT",
+  EX_DAMAGE_TAG = "EX_DAMAGE_TAG",
+  EX_HAZMAT_ALERT = "EX_HAZMAT_ALERT",
+  EX_HAZMAT_REDIRECT = "EX_HAZMAT_REDIRECT",
 }
 
 /**
@@ -182,8 +191,10 @@ export interface PickTask {
   targetToteId: string
   /** Which slot on the cart */
   targetSlot: ToteSlot
-  /** FEX order requires "FEX" task group scan */
-  isExpress: boolean
+  /** Whether this is a high-priority Express pick */
+  isExpress?: boolean
+  /** Day 4 simulated defect visual overlay */
+  itemDefect?: "SCRATCHED_BARCODE" | "CRUSHED_CARTON" | "HAZMAT_SPILL"
 }
 
 /** A tote (one of 9 on the Pick Cart). */
@@ -281,7 +292,8 @@ export interface SimulationSession {
   sessionId: string
   userId: string
   moduleId: string
-  moduleType: ContentType
+  scenarioId?: string
+  moduleType?: ContentType
   difficulty: DifficultyLevel
 
   // Cart state
@@ -328,6 +340,58 @@ export interface SimulationSession {
   pathEfficiency?: number
   /** Pick-to-pick time intervals in seconds for cadence CV calculation */
   pickCadenceSeconds?: number[]
+
+  // Day 3 High-Density & Vertical Tier Telemetry
+  /** Timestamp when Beat 3 (Quantity confirmation) completed, for tote put latency calculation */
+  beat3CompletedTimestamp?: number
+  /** Array of elapsed times in ms from Beat 3 completion to Beat 4 tote scan */
+  totePutLatencies?: number[]
+  /** Number of attempts to scan an incorrect/adjacent tote on the cart */
+  misSlotAttempts?: number
+
+  // Day 4 Industrial Exception Telemetry
+  /** Timestamp when an exception workflow was initiated */
+  exceptionStartTimestamp?: number
+  /** Array of elapsed times in ms from exception initiation to wave resumption */
+  exceptionResolutionLatencies?: number[]
+  /** Log of inventory control physical shortages identified */
+  inventoryDiscrepancies?: Array<{
+    pickTaskId: string
+    sku: string
+    locationId: string
+    requestedQty: number
+    actualFoundQty: number
+    delta: number
+    reason: 1 | 2 | 3
+    timestamp: Date
+  }>
+  /** Log of damaged goods quarantined to bad-order bin */
+  damageQuarantineRecords?: Array<{
+    pickTaskId: string
+    sku: string
+    locationId: string
+    disposition: "BAD_ORDER_BIN"
+    scheduledIcReplacement: boolean
+    timestamp: Date
+  }>
+  /** Log of hazardous material spills or punctures isolated */
+  hazmatIncidentRecords?: Array<{
+    pickTaskId: string
+    sku: string
+    locationId: string
+    incidentType: "CHEMICAL_SPILL" | "PUNCTURED_AEROSOL"
+    supervisorNotified: boolean
+    destinationTote: string
+    timestamp: Date
+  }>
+  /** Number of premature tote drop / conveyor dump attempts (0 allowed) */
+  prematureToteDrops?: number
+  /** Current active exception state metadata */
+  activeExceptionBuffer?: {
+    type: "SHORT" | "MANUAL" | "DAMAGE" | "HAZMAT"
+    foundQty?: number
+    enteredUpc?: string
+  }
 
   // Timing
   startedAt: Date
@@ -378,6 +442,30 @@ export interface SessionScore {
   cadenceVariance?: number
   /** Programmatic Day 2 qualification gate status */
   day2Passed?: boolean
+
+  // Day 3 High-Density Wave Telemetry
+  /** 0–100% — Percentage of correct tote placements (100% target, zero mis-slots) */
+  totePutAccuracy?: number
+  /** Mean seconds between Beat 3 quantity confirmation and Beat 4 tote scan (target <= 2.5s) */
+  meanTotePutLatencySeconds?: number
+  /** 0–100% — First-Time Pick Accuracy across all 4 vertical tiers */
+  verticalTierFtpa?: number
+  /** Sustained units per hour during active wave */
+  sustainedUph?: number
+  /** Programmatic Day 3 qualification gate status */
+  day3Passed?: boolean
+
+  // Day 4 Industrial Exceptions Telemetry
+  /** Number of premature tote drops onto takeaway conveyor (0 allowed) */
+  prematureToteDrops?: number
+  /** Mean exception resolution latency in seconds (target <= 7.0s) */
+  exceptionResolutionLatencySeconds?: number
+  /** Accuracy of physical short quantity and reason logging (100% target) */
+  icDiscrepancyAccuracy?: number
+  /** Hazmat safety stop and segregation compliance (100% target) */
+  hazmatComplianceScore?: number
+  /** Programmatic Day 4 qualification gate status */
+  day4Passed?: boolean
 }
 
 /**
@@ -428,6 +516,20 @@ export interface SessionResult {
   backtrackViolations?: number
   cadenceVariance?: number
   day2Passed?: boolean
+
+  // ── Day 3 High-Density Wave Metrics ───────────────────────────────────────
+  totePutAccuracy?: number
+  meanTotePutLatencySeconds?: number
+  verticalTierFtpa?: number
+  sustainedUph?: number
+  day3Passed?: boolean
+
+  // ── Day 4 Industrial Exceptions Metrics ────────────────────────────────────
+  prematureToteDrops?: number
+  exceptionResolutionLatencySeconds?: number
+  icDiscrepancyAccuracy?: number
+  hazmatComplianceScore?: number
+  day4Passed?: boolean
 
   // ── Derived ───────────────────────────────────────────────────────────────
   band: ScoreBand

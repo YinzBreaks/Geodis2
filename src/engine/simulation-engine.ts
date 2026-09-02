@@ -39,6 +39,20 @@ import {
 } from "@/engine/validators"
 import { findTransition, ERROR_ENTRY_STEPS } from "@/engine/transitions"
 import {
+  initiateShortPick,
+  processShortPickQty,
+  processShortReason,
+  initiateManualBarcode,
+  processManualBarcode,
+  processManualCheckDigit,
+  initiateDamageTag,
+  confirmDamageTag,
+  initiateHazmatAlert,
+  confirmHazmatAlert,
+  processHazmatRedirect,
+  recordPrematureToteDrop,
+} from "@/engine/exception-engine"
+import {
   getInjectedError,
   getActiveError,
   type InjectedError,
@@ -299,8 +313,16 @@ function handleScan(
       pickIndex: session.currentPickIndex,
     }
 
+    let updatedSession = session
+    if (step === WorkflowStep.PK_SCAN_TOTE_BARCODE && scanResult === ScanResult.WRONG_TOTE) {
+      updatedSession = {
+        ...updatedSession,
+        misSlotAttempts: (updatedSession.misSlotAttempts ?? 0) + 1,
+      }
+    }
+
     const newSession: SimulationSession = {
-      ...session,
+      ...updatedSession,
       currentStep: errorStep,
       scanEvents: [...session.scanEvents, scanEvent],
       errors: [...session.errors, simError],
@@ -330,6 +352,15 @@ function handleScan(
       totalCognitiveLatencyMs: (nextSession.totalCognitiveLatencyMs ?? 0) + latency,
       stepPromptTimestamp: Date.now(),
     }
+  } else if (step === WorkflowStep.PK_SCAN_TOTE_BARCODE) {
+    const putLatencyMs = session.beat3CompletedTimestamp
+      ? Date.now() - session.beat3CompletedTimestamp
+      : latency
+    nextSession = {
+      ...nextSession,
+      totePutLatencies: [...(session.totePutLatencies ?? []), putLatencyMs],
+      stepPromptTimestamp: Date.now(),
+    }
   } else {
     nextSession = {
       ...nextSession,
@@ -355,16 +386,6 @@ function handleKeyPress(
   keys: string,
   _scenario?: SimulationScenario
 ): { session: SimulationSession; result: EngineResult } {
-  const transition = findTransition(session.currentStep, {
-    type: "KEY_PRESS",
-    keys,
-  })
-  if (!transition) {
-    return noTransitionResult(session, `Key ${keys} is not valid at this step`)
-  }
-
-  let nextStep = transition.nextStep
-
   // Special handling for CTRL+E: finalizes the cart and enters the Pick Phase.
   // Per BBWD-WI-030 §5.1.15 this is the moment the cart becomes active — every
   // slot now holds a scanned tote (enforced by guardCtrlE).
@@ -379,17 +400,30 @@ function handleKeyPress(
     }
   }
 
-  // Dynamic CTRL+K routing: WRONG_ITEM errors require tote-to-conveyor before
-  // amnesty bin; all other errors (ITEM_NOT_FOUND) skip directly to pick display.
-  // Per BBWD-WI-030 §6.5.1 vs §6.6
-  //
-  // Bug 6 fix: both skip paths MUST increment currentPickIndex so the pick
-  // counter advances and the next pick is shown after exception recovery.
+  // Dynamic CTRL+K routing
   if (keys === "CTRL+K") {
+    // Cannot skip from EX_NOTIFY_LEAD — lead notification must be confirmed first
+    if (session.currentStep === WorkflowStep.EX_NOTIFY_LEAD) {
+      return noTransitionResult(session, "Must confirm lead notification before skipping pick")
+    }
+
+    // If Day 4 or at active pick steps, initiate non-destructive short pick
+    if (
+      session.scenarioId?.startsWith("day4") ||
+      session.currentStep === WorkflowStep.PK_VERIFY_LOCATION ||
+      session.currentStep === WorkflowStep.PK_SCAN_ITEM_UPC ||
+      session.currentStep === WorkflowStep.PK_ENTER_QUANTITY ||
+      session.currentStep === WorkflowStep.EX_SHORT_INVENTORY
+    ) {
+      const initiated = initiateShortPick(session)
+      return {
+        session: initiated,
+        result: { success: true, newStep: WorkflowStep.EX_SHORT_PICK },
+      }
+    }
+
     const activeError = getActiveError(session)
     if (activeError && activeError.errorType === ScanResult.WRONG_ITEM) {
-      // Skip this pick — increment index then send tote to conveyor
-      // Per BBWD-WI-030 §6.5.1: CTRL+K → tote to Putwall → item to Amnesty/IC
       const skippedSession: SimulationSession = {
         ...session,
         currentStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR,
@@ -400,8 +434,6 @@ function handleKeyPress(
         result: { success: true, newStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR },
       }
     } else if (activeError && activeError.errorType === ScanResult.ITEM_NOT_FOUND) {
-      // Skip this pick — mark error corrected and advance to next pick
-      // Per BBWD-WI-030 §6.6: CTRL+K after short inventory → continue picks
       const updatedErrors = markActiveErrorCorrected(session.errors)
       const newSession: SimulationSession = {
         ...session,
@@ -414,8 +446,59 @@ function handleKeyPress(
         result: { success: true, newStep: WorkflowStep.PK_READ_PICK_DISPLAY },
       }
     }
-    // else: no active error, stays PK_READ_PICK_DISPLAY (from transition)
   }
+
+  // Day 4: CTRL+M (Manual Barcode Entry)
+  if (keys === "CTRL+M") {
+    const initiated = initiateManualBarcode(session)
+    return {
+      session: initiated,
+      result: { success: true, newStep: WorkflowStep.EX_MANUAL_BARCODE },
+    }
+  }
+
+  // Day 4: CTRL+D (Damage Tag)
+  if (keys === "CTRL+D") {
+    const initiated = initiateDamageTag(session)
+    return {
+      session: initiated,
+      result: { success: true, newStep: WorkflowStep.EX_DAMAGE_TAG },
+    }
+  }
+
+  // Day 4: CTRL+H (Hazmat Incident Alert)
+  if (keys === "CTRL+H") {
+    const initiated = initiateHazmatAlert(session)
+    return {
+      session: initiated,
+      result: { success: true, newStep: WorkflowStep.EX_HAZMAT_ALERT },
+    }
+  }
+
+  // Day 4: CTRL+A (End of Tote) — reject if called prematurely during active pick
+  if (keys === "CTRL+A") {
+    if (session.currentStep !== WorkflowStep.PK_END_OF_TOTE_DISPLAY) {
+      const penalized = recordPrematureToteDrop(session)
+      return {
+        session: penalized,
+        result: {
+          success: false,
+          newStep: session.currentStep,
+          feedback: "Premature tote drop violation: Active tote cannot be railed before end of tote (no tote completion pending)",
+        },
+      }
+    }
+  }
+
+  const transition = findTransition(session.currentStep, {
+    type: "KEY_PRESS",
+    keys,
+  })
+  if (!transition) {
+    return noTransitionResult(session, `Key ${keys} is not valid at this step`)
+  }
+
+  const nextStep = transition.nextStep
 
   const newSession: SimulationSession = {
     ...session,
@@ -439,6 +522,58 @@ function handleType(
   session: SimulationSession,
   text: string
 ): { session: SimulationSession; result: EngineResult } {
+  // Day 4: Short pick quantity input
+  if (session.currentStep === WorkflowStep.EX_SHORT_PICK) {
+    const res = processShortPickQty(session, text)
+    return {
+      session: res.session,
+      result: {
+        success: !res.error,
+        newStep: res.nextStep,
+        feedback: res.error,
+      },
+    }
+  }
+
+  // Day 4: Short reason selection (1, 2, 3)
+  if (session.currentStep === WorkflowStep.EX_SHORT_REASON) {
+    const res = processShortReason(session, text)
+    return {
+      session: res.session,
+      result: {
+        success: !res.error,
+        newStep: res.nextStep,
+        feedback: res.error,
+      },
+    }
+  }
+
+  // Day 4: Manual 12-digit UPC entry
+  if (session.currentStep === WorkflowStep.EX_MANUAL_BARCODE) {
+    const res = processManualBarcode(session, text)
+    return {
+      session: res.session,
+      result: {
+        success: !res.error,
+        newStep: res.nextStep,
+        feedback: res.error,
+      },
+    }
+  }
+
+  // Day 4: Manual shelf check digit confirmation
+  if (session.currentStep === WorkflowStep.EX_MANUAL_CHECK_DIGIT) {
+    const res = processManualCheckDigit(session, text)
+    return {
+      session: res.session,
+      result: {
+        success: !res.error,
+        newStep: res.nextStep,
+        feedback: res.error,
+      },
+    }
+  }
+
   // Quantity entry has its own validation path (Beat 3)
   if (session.currentStep === WorkflowStep.PK_ENTER_QUANTITY) {
     const currentPick = session.pickQueue[session.currentPickIndex]
@@ -461,6 +596,7 @@ function handleType(
       ...session,
       currentStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
       stepPromptTimestamp: Date.now(),
+      beat3CompletedTimestamp: Date.now(),
     }
     return {
       session: newSession,
@@ -553,6 +689,7 @@ function handleConfirm(
         ...session,
         currentStep: WorkflowStep.PK_SCAN_TOTE_BARCODE,
         stepPromptTimestamp: Date.now(),
+        beat3CompletedTimestamp: Date.now(),
       }
       return {
         session: newSession,
@@ -573,6 +710,24 @@ function handleConfirm(
   }
 
   let nextStep = transition.nextStep
+
+  // Day 4 Damage Tag confirm
+  if (session.currentStep === WorkflowStep.EX_DAMAGE_TAG) {
+    const res = confirmDamageTag(session)
+    return {
+      session: res.session,
+      result: { success: true, newStep: res.nextStep },
+    }
+  }
+
+  // Day 4 Hazmat Alert confirm
+  if (session.currentStep === WorkflowStep.EX_HAZMAT_ALERT) {
+    const res = confirmHazmatAlert(session)
+    return {
+      session: res.session,
+      result: { success: true, newStep: res.nextStep },
+    }
+  }
 
   // Dynamic branching at PK_PLACE_TOTE_ON_CONVEYOR:
   // - If an active (uncorrected) WRONG_ITEM error exists → route to amnesty/IC

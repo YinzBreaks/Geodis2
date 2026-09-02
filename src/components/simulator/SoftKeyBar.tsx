@@ -23,7 +23,10 @@ const SOFT_KEYS: SoftKeyDef[] = [
   { shortLabel: "^T", fullLabel: "Task Grp", keys: "CTRL+T" },
   { shortLabel: "^E", fullLabel: "Finalize", keys: "CTRL+E" },
   { shortLabel: "^A", fullLabel: "Accept", keys: "CTRL+A" },
-  { shortLabel: "^K", fullLabel: "Skip", keys: "CTRL+K" },
+  { shortLabel: "^K", fullLabel: "Short", keys: "CTRL+K" },
+  { shortLabel: "^M", fullLabel: "Manual", keys: "CTRL+M" },
+  { shortLabel: "^D", fullLabel: "Damage", keys: "CTRL+D" },
+  { shortLabel: "^H", fullLabel: "Hazmat", keys: "CTRL+H" },
   { shortLabel: "^W", fullLabel: "Back", keys: "CTRL+W" },
   { shortLabel: "ENT", fullLabel: "Enter", keys: "ENTER" },
 ]

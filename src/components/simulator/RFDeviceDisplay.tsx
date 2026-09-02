@@ -95,12 +95,16 @@ export function RFDeviceDisplay({
     ? screen.lines.slice(0, displayRows)
     : screen.lines
 
+  const isHazmatAlert = screen.workflowStep === "EX_HAZMAT_ALERT"
+
   // Terminal rendering path (original)
   return (
     <div
-      className="retro-lcd-screen retro-lcd-text font-mono text-xs text-[11px] text-gray-200 text-left p-2 leading-tight"
+      className={`retro-lcd-screen retro-lcd-text font-mono text-xs text-[11px] text-gray-200 text-left p-2 leading-tight ${
+        isHazmatAlert ? "animate-pulse ring-2 ring-red-500 shadow-lg shadow-red-900/80" : ""
+      }`}
       style={{
-        backgroundColor: cfg.bgColor,
+        backgroundColor: isHazmatAlert ? "#2a0808" : cfg.bgColor,
         fontFamily: cfg.fontFamily,
         fontSize: cfg.fontSize ?? "11px",
         lineHeight: cfg.lineHeight ?? "1.3",
