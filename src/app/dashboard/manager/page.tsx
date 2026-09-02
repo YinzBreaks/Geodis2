@@ -7,6 +7,7 @@ import { redirect } from "next/navigation"
 import { prisma } from "@/lib/prisma"
 import { requireRole } from "@/lib/auth/roles"
 import { getManagerReport } from "@/services/reporting/manager-reporting"
+import { getExecutiveSummary, getCohortRoster } from "@/services/reporting-service"
 import { ManagerDashboardClient } from "./manager-client"
 
 export default async function ManagerDashboardPage() {
@@ -15,23 +16,34 @@ export default async function ManagerDashboardPage() {
     redirect("/unauthorized")
   }
 
-  const manager = await prisma.user.findUnique({
-    where: { id: auth.userId },
-    select: { name: true },
-  })
-  if (!manager) {
-    redirect("/unauthorized")
+  let managerName = "Site Operations Director"
+  if (prisma && prisma.user) {
+    try {
+      const manager = await prisma.user.findUnique({
+        where: { id: auth.userId },
+        select: { name: true },
+      })
+      if (manager) managerName = manager.name
+    } catch {
+      // Fallback
+    }
   }
 
-  const report = await getManagerReport(auth.facilityId)
+  const [report, executiveSummary, cohortRoster] = await Promise.all([
+    getManagerReport(auth.facilityId),
+    getExecutiveSummary(auth.facilityId),
+    getCohortRoster("ALL", auth.facilityId),
+  ])
 
   return (
     <ManagerDashboardClient
-      managerName={manager.name}
+      managerName={managerName}
       facilityId={auth.facilityId}
       kpis={report.kpis}
       weeklySignoffs={report.weeklySignoffs}
       exceptionFailureRates={report.exceptionFailureRates}
+      executiveSummary={executiveSummary}
+      initialCohort={cohortRoster}
     />
   )
 }

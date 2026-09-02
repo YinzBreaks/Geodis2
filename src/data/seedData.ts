@@ -30,6 +30,7 @@ import { DAY1_EQUIPMENT_CHECK_DIGIT } from "@/data/scenarios/day1EquipmentCheckD
 import { DAY2_SERPENTINE_ROUTING } from "@/data/scenarios/day2SerpentineRouting"
 import { DAY3_HIGH_DENSITY_WAVE } from "@/data/scenarios/day3HighDensityWave"
 import { DAY4_INDUSTRIAL_EXCEPTIONS } from "@/data/scenarios/day4IndustrialExceptions"
+import { DAY5_CERTIFICATION_WAVE } from "@/data/scenarios/day5CertificationWave"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEED LOCATIONS — 30 across Z1/Z2/Z3/Z4/HAZ
@@ -577,5 +578,6 @@ export const SCENARIO_DATA: Readonly<Record<string, ScenarioBundle>> = {
   DAY2_SERPENTINE_ROUTING,
   DAY3_HIGH_DENSITY_WAVE,
   DAY4_INDUSTRIAL_EXCEPTIONS,
+  DAY5_CERTIFICATION_WAVE,
 }
 
