@@ -83,6 +83,13 @@ export async function POST(request: NextRequest) {
         scenarioId: session.moduleId,
         difficulty: session.difficulty,
         status: session.status,
+        config: {
+          zone: bundle.scenario.zone,
+          pickCount: bundle.scenario.pickCount,
+          toteCount: bundle.scenario.toteCount,
+          passCriteria: bundle.scenario.passCriteria,
+        },
+        pickQueue: bundle.scenario.steps ?? [],
       },
       { status: 201 }
     )

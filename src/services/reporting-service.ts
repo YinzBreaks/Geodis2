@@ -16,6 +16,7 @@
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import { ROI_CONSTANTS, CERTIFICATION_THRESHOLDS } from "@/services/certification-engine"
+import { buildCsvRow } from "@/lib/security/sanitize-csv"
 
 export type CohortFilter = "ALL" | "QUALIFIED" | "IN_TRAINING" | "REMEDIAL"
 
@@ -404,21 +405,21 @@ export async function generateAuditExport(facilityId: string = "FAC-BBWD-01"): P
         .update(`${item.id}|${item.employeeId}|${item.velocityUph}|${item.status}`)
         .digest("hex")
 
-    return [
-      `"${item.name.replace(/"/g, '""')}"`,
-      `"${item.employeeId}"`,
-      `"${item.facilityId}"`,
+    return buildCsvRow([
+      item.name,
+      item.employeeId,
+      item.facilityId,
       item.currentDay,
       item.velocityUph.toFixed(1),
       item.ftpa.toFixed(1),
-      `"${item.status}"`,
+      item.status,
       item.status === "CERTIFIED" ? "5.0" : "20.0",
       item.status === "CERTIFIED" ? item.hoursRecouped.toFixed(1) : "0.0",
-      `"$${item.dollarsRecouped.toLocaleString("en-US", { minimumFractionDigits: 2 })}"`,
-      `"${item.certifiedAt ?? "PENDING_CERTIFICATION"}"`,
-      `"${digest}"`,
-    ].join(",")
+      `$${item.dollarsRecouped.toLocaleString("en-US", { minimumFractionDigits: 2 })}`,
+      item.certifiedAt ?? "PENDING_CERTIFICATION",
+      digest,
+    ])
   })
 
-  return [headers.join(","), ...rows].join("\r\n")
+  return [buildCsvRow(headers), ...rows].join("\r\n")
 }

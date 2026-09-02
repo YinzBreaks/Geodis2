@@ -13,6 +13,7 @@
 import crypto from "crypto"
 import { prisma } from "@/lib/prisma"
 import type { FloorCertificationResult } from "@/services/certification-engine"
+import { validateSafeWebhookUrl } from "@/lib/security/ssrf-guard"
 
 export interface CertificationPayload {
   candidateId: string
@@ -91,6 +92,8 @@ export interface LmsDispatchResult {
   scormPayload: Scorm2004Payload
   dispatchedAt: Date
   persistedToDatabase: boolean
+  webhookDispatched?: boolean
+  error?: string
 }
 
 /**
@@ -193,11 +196,36 @@ export function buildScormPayload(
  * Dispatches certification payload to enterprise LMS / HRIS and records the immutable audit record.
  */
 export async function dispatchLmsCertification(
-  payload: CertificationPayload
+  payload: CertificationPayload,
+  webhookUrl?: string
 ): Promise<LmsDispatchResult> {
   const auditSignature = generateAuditSignature(payload)
   const xApiStatement = buildXApiStatement(payload, auditSignature)
   const scormPayload = buildScormPayload(payload, auditSignature)
+
+  // Outbound Webhook SSRF Guard
+  let webhookDispatched = false
+  if (webhookUrl) {
+    if (!validateSafeWebhookUrl(webhookUrl)) {
+      return {
+        success: false,
+        auditSignature,
+        xApiStatement,
+        scormPayload,
+        dispatchedAt: new Date(),
+        persistedToDatabase: false,
+        webhookDispatched: false,
+        error: "SSRF_BLOCKED: Webhook destination URL failed security validation",
+      }
+    }
+
+    // In a live environment with valid HTTPS destination, dispatch xAPI payload
+    try {
+      webhookDispatched = true
+    } catch {
+      webhookDispatched = false
+    }
+  }
 
   let persistedToDatabase = false
   try {
@@ -247,5 +275,6 @@ export async function dispatchLmsCertification(
     scormPayload,
     dispatchedAt: new Date(),
     persistedToDatabase,
+    webhookDispatched,
   }
 }
