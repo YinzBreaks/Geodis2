@@ -21,11 +21,16 @@ import { useSimulation } from "@/hooks/useSimulation"
 const mockProcessInput = vi.fn()
 vi.mock("@/hooks/useSimulation", () => {
   return {
-    useSimulation: vi.fn((selector: (state: unknown) => unknown) =>
-      selector({
-        processInput: mockProcessInput,
-        session: { currentStep: "PK_SCAN_ITEM_UPC" },
-      })
+    useSimulation: vi.fn((selector: any) =>
+      typeof selector === "function"
+        ? selector({
+            processInput: mockProcessInput,
+            session: { currentStep: "PK_SCAN_ITEM_UPC" },
+          })
+        : {
+            processInput: mockProcessInput,
+            session: { currentStep: "PK_SCAN_ITEM_UPC" },
+          }
     ),
   }
 })
@@ -34,12 +39,16 @@ describe("useScanner — Hardware Keyboard Wedge Listener", () => {
   beforeEach(() => {
     vi.useFakeTimers()
     mockProcessInput.mockClear()
-    ;(useSimulation as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      (selector: (state: unknown) => unknown) =>
-        selector({
-          processInput: mockProcessInput,
-          session: { currentStep: "PK_SCAN_ITEM_UPC" },
-        })
+    ;(useSimulation as any).mockImplementation((selector: any) =>
+      typeof selector === "function"
+        ? selector({
+            processInput: mockProcessInput,
+            session: { currentStep: "PK_SCAN_ITEM_UPC" },
+          })
+        : {
+            processInput: mockProcessInput,
+            session: { currentStep: "PK_SCAN_ITEM_UPC" },
+          }
     )
   })
 

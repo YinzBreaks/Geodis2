@@ -35,6 +35,7 @@ import {
 import {
   WorkflowStep,
   ScanResult,
+  ContentType,
 } from "@/types/domain"
 
 describe("Serpentine Routing Engine", () => {
@@ -226,6 +227,7 @@ describe("Serpentine Routing Engine", () => {
         userId: "user-001",
         scenarioId: day2Scenario.moduleId,
         moduleId: day2Scenario.moduleId,
+        moduleType: ContentType.SIMULATION,
         currentStep: WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR,
         difficulty: day2Scenario.difficulty,
         currentPickIndex: 14,
