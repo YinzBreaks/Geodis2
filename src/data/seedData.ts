@@ -27,6 +27,7 @@ import {
   type ToteSlot,
 } from "@/types/domain"
 import { DAY1_EQUIPMENT_CHECK_DIGIT } from "@/data/scenarios/day1EquipmentCheckDigit"
+import { DAY2_SERPENTINE_ROUTING } from "@/data/scenarios/day2SerpentineRouting"
 
 // ─────────────────────────────────────────────────────────────────────────────
 // SEED LOCATIONS — 30 across Z1/Z2/Z3/Z4/HAZ
@@ -571,5 +572,6 @@ export const SCENARIO_DATA: Readonly<Record<string, ScenarioBundle>> = {
     cart: { ...SEED_CARTS["cart-fex-001"], isBuilt: true },
   },
   DAY1_EQUIPMENT_CHECK_DIGIT,
+  DAY2_SERPENTINE_ROUTING,
 }
 

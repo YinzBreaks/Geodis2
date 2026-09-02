@@ -141,6 +141,13 @@ export interface WarehouseLocation {
   checkDigit?: string
   /** Scannable location barcode, e.g. "LOC-316-01-A-01" */
   barcode?: string
+  /** Spatial coordinates for routing and map visualization */
+  spatial?: {
+    x: number
+    y: number
+    aisleSide: "LEFT" | "RIGHT"
+    levelHeight?: number
+  }
 }
 
 /** An item/product in inventory. */
@@ -312,6 +319,16 @@ export interface SimulationSession {
   /** Total cognitive latency in ms accumulated across all location-to-first-action prompts */
   totalCognitiveLatencyMs?: number
 
+  // Day 2 Serpentine Routing Telemetry
+  /** Ordered list of locationIds visited during the session */
+  traversalPath?: string[]
+  /** Total bay/level backtracking violations logged */
+  backtrackViolations?: number
+  /** Path efficiency percentage (optimal / actual * 100) */
+  pathEfficiency?: number
+  /** Pick-to-pick time intervals in seconds for cadence CV calculation */
+  pickCadenceSeconds?: number[]
+
   // Timing
   startedAt: Date
   completedAt?: Date
@@ -351,6 +368,16 @@ export interface SessionScore {
   sequenceBypasses?: number
   /** Programmatic Day 1 qualification gate status */
   day1Passed?: boolean
+
+  // Day 2 Serpentine Routing Telemetry
+  /** 0–100% — Optimal travel distance / Actual travel distance */
+  pathEfficiency?: number
+  /** Total bay-level backward jumps logged (0 allowed) */
+  backtrackViolations?: number
+  /** Cadence variance (Coefficient of Variation sigma / mu, target <= 0.30) */
+  cadenceVariance?: number
+  /** Programmatic Day 2 qualification gate status */
+  day2Passed?: boolean
 }
 
 /**
@@ -395,6 +422,12 @@ export interface SessionResult {
   cognitiveLatencyMs?: number
   sequenceBypasses?: number
   day1Passed?: boolean
+
+  // ── Day 2 Serpentine Routing Metrics ──────────────────────────────────────
+  pathEfficiency?: number
+  backtrackViolations?: number
+  cadenceVariance?: number
+  day2Passed?: boolean
 
   // ── Derived ───────────────────────────────────────────────────────────────
   band: ScoreBand

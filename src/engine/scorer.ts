@@ -13,7 +13,9 @@ import {
   type SimulationSession,
   type SimulationScenario,
   type SessionScore,
+  type WarehouseLocation,
 } from "@/types/domain"
+import { evaluateTraversal, evaluateDay2PassGate } from "@/engine/routing-engine"
 
 /**
  * Calculate the final score for a completed simulation session.
@@ -86,6 +88,31 @@ export function calculateScore(
     firstTimePickAccuracy >= 98 &&
     sequenceBypasses === 0
 
+  // Day 2 Serpentine Routing & Spatial Traversal Evaluation
+  const actualLocations = session.completedPicks
+    .map(
+      (p) =>
+        session.pickQueue.find((t) => t.pickTaskId === p.pickTaskId)?.location
+    )
+    .filter((loc): loc is WarehouseLocation => Boolean(loc))
+  const optimalLocations = session.pickQueue.map((p) => p.location)
+  const pickTimestamps = session.completedPicks.map((p) => p.scannedAt)
+
+  const traversalReport = evaluateTraversal(
+    actualLocations,
+    optimalLocations,
+    pickTimestamps
+  )
+  const pathEfficiency = session.pathEfficiency ?? traversalReport.efficiencyScore
+  const backtrackViolations =
+    session.backtrackViolations ?? traversalReport.backtracks.length
+  const cadenceVariance = traversalReport.cadenceCv
+  const day2Passed =
+    pathEfficiency >= 95 &&
+    firstTimePickAccuracy >= 99 &&
+    backtrackViolations === 0 &&
+    cadenceVariance <= 0.30
+
   return {
     sessionId: session.sessionId,
     totalPicks,
@@ -107,6 +134,10 @@ export function calculateScore(
     cognitiveLatencyMs,
     sequenceBypasses,
     day1Passed,
+    pathEfficiency,
+    backtrackViolations,
+    cadenceVariance,
+    day2Passed,
   }
 }
 // ─────────────────────────────────────────────────────────────────────────────
@@ -294,6 +325,10 @@ export function computeSessionResult(
     cognitiveLatencyMs: score.cognitiveLatencyMs,
     sequenceBypasses: score.sequenceBypasses,
     day1Passed: score.day1Passed,
+    pathEfficiency: score.pathEfficiency,
+    backtrackViolations: score.backtrackViolations,
+    cadenceVariance: score.cadenceVariance,
+    day2Passed: score.day2Passed,
   }
 
   const { strengths, improvements } = generateFeedback(base, scenarioTargetSeconds)

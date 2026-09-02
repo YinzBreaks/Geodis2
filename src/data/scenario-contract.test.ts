@@ -18,7 +18,13 @@ describe("simulation scenario contracts", () => {
  */
 describe("pick queues fill one tote at a time", () => {
   for (const [key, bundle] of Object.entries(SCENARIO_DATA)) {
+    // Cluster batch waves (e.g. Day 2) intentionally interleave picks across active cart totes
+    const isCluster =
+      bundle.scenario.moduleId.startsWith("day2") ||
+      Boolean((bundle.scenario as { isClusterWave?: boolean }).isClusterWave)
+
     it(`${key} never returns to a tote after moving on`, () => {
+      if (isCluster) return
       const finished = new Set<number>()
       let currentSlot: number | null = null
 
