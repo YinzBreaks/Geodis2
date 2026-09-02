@@ -49,11 +49,11 @@ function LoginForm() {
     <main className="min-h-screen bg-zinc-950 flex flex-col items-center justify-center p-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <h1 className="text-green-400 font-mono text-2xl font-bold tracking-wider">
-            WarehousePro
+          <h1 className="text-amber-400 font-mono text-2xl font-black tracking-widest uppercase">
+            Kinetic OS
           </h1>
-          <p className="text-zinc-500 font-mono text-xs mt-1">
-            GEODIS Picker Training Platform
+          <p className="text-zinc-400 font-mono text-xs mt-1 uppercase tracking-wider">
+            Kinetic Workforce Velocity Platform
           </p>
         </div>
 

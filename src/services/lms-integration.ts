@@ -45,7 +45,7 @@ export interface XApiStatement {
   object: {
     id: "urn:geodis:warehousepro:floor-certified"
     definition: {
-      name: { "en-US": "WarehousePro Level 1 Floor Certification" }
+      name: { "en-US": "Kinetic OS Level 1 Floor Certification" }
       description: {
         "en-US": "50-pick high-density multi-aisle certification wave across Aisles 316 & 317 into 9-tote cart"
       }
@@ -136,7 +136,7 @@ export function buildXApiStatement(
     object: {
       id: "urn:geodis:warehousepro:floor-certified",
       definition: {
-        name: { "en-US": "WarehousePro Level 1 Floor Certification" },
+        name: { "en-US": "Kinetic OS Level 1 Floor Certification" },
         description: {
           "en-US":
             "50-pick high-density multi-aisle certification wave across Aisles 316 & 317 into 9-tote cart",

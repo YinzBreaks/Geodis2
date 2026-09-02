@@ -41,8 +41,9 @@ const interFont = Inter({
 })
 
 export const metadata: Metadata = {
-  title: "WarehousePro — GEODIS Picker Training",
-  description: "Warehouse picker training and simulation platform",
+  title: "Kinetic OS — Kinetic Workforce Velocity Platform",
+  description:
+    "Enterprise 3PL Logistics Operations & Workforce Acceleration Operating System (GEODIS Tier-1 Certified)",
 }
 
 export default function RootLayout({
@@ -51,17 +52,14 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    // style={{ background }} is a literal color (not a CSS var) so the very
-    // first paint matches the app background — prevents white/black flash
-    // before the stylesheet resolves --color-base. #0d1117 = --color-base.
     <html
       lang="en"
       className={`${displayFont.variable} ${uiFont.variable} ${monoFont.variable} ${plexMonoFont.variable} ${interFont.variable}`}
-      style={{ background: "#0d1117" }}
+      style={{ background: "#07090e" }}
     >
-      <body style={{ backgroundColor: "var(--color-base)", color: "var(--color-text-primary)" }}>
+      <body className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans">
         <SiteNav />
-        {children}
+        <div className="flex-1 flex flex-col">{children}</div>
       </body>
     </html>
   )

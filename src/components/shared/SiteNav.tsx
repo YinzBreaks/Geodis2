@@ -2,16 +2,16 @@
  * SiteNav — role-aware top navigation bar.
  *
  * Server Component: reads the current Supabase session to determine the user's
- * role and renders the appropriate dashboard link. Renders nothing when running
- * on the login page or when the user is not authenticated.
+ * role and renders the appropriate dashboard link.
  *
- * Industrial Dashboard design system — GEODIS / WAREHOUSEPRO wordmark,
- * amber active links, role pill badge.
+ * Kinetic OS design system — Tactical Slate canvas, Kinetic OS wordmark,
+ * ambient Hardware Scanner Status Pill, and role pill badge.
  */
 
 import Link from "next/link"
 import { getRoleFromSession, type UserRole } from "@/lib/auth/roles"
 import { UserMenu } from "@/components/shared/UserMenu"
+import { HardwareScannerPill } from "@/components/simulator/HardwareScannerPill"
 
 // ─── role → dashboard URL mapping ───────────────────────────────────────────
 
@@ -23,17 +23,17 @@ const ROLE_HOME: Record<UserRole, string> = {
 }
 
 const ROLE_LABEL: Record<UserRole, string> = {
-  SUPERVISOR: "Supervisor Dashboard",
-  PICK_LEAD: "Lead Dashboard",
-  WAREHOUSE_MGR: "Manager Dashboard",
-  TRAINEE: "My Progress",
+  SUPERVISOR: "Supervisor Command",
+  PICK_LEAD: "Floor Lead Hub",
+  WAREHOUSE_MGR: "Executive Portal",
+  TRAINEE: "My Velocity",
 }
 
 const ROLE_BADGE: Record<UserRole, string> = {
   SUPERVISOR: "SUPERVISOR",
-  PICK_LEAD: "PICK LEAD",
-  WAREHOUSE_MGR: "MANAGER",
-  TRAINEE: "TRAINEE",
+  PICK_LEAD: "LEAD",
+  WAREHOUSE_MGR: "EXECUTIVE",
+  TRAINEE: "ASSOCIATE",
 }
 
 // ─── component ───────────────────────────────────────────────────────────────
@@ -50,105 +50,57 @@ export default async function SiteNav() {
 
   return (
     <nav
-      style={{
-        width: "100%",
-        borderBottom: "1px solid var(--color-border)",
-        backgroundColor: "var(--color-base)",
-        backdropFilter: "blur(8px)",
-        position: "sticky",
-        top: 0,
-        zIndex: 50,
-      }}
+      className="w-full border-b border-zinc-800/90 bg-zinc-950/95 backdrop-blur-md sticky top-0 z-50 font-sans"
       aria-label="Site navigation"
     >
-      <div
-        style={{
-          maxWidth: "80rem",
-          margin: "0 auto",
-          padding: "0 1rem",
-          height: "3rem",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-        }}
-      >
-        {/* Brand — GEODIS / WAREHOUSEPRO */}
+      <div className="max-w-7xl mx-auto px-4 h-12 flex items-center justify-between gap-4">
+        {/* Brand — KINETIC OS / VELOCITY PLATFORM */}
         <Link
           href={homeHref}
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "0.5rem",
-            textDecoration: "none",
-          }}
+          className="flex items-center gap-2 text-decoration-none group"
         >
-          <span
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: "0.75rem",
-              color: "var(--color-text-secondary)",
-              fontWeight: 500,
-              letterSpacing: "0.05em",
-            }}
-          >
-            GEODIS
-          </span>
-          <span style={{ color: "var(--color-text-muted)", fontSize: "0.75rem" }}>/</span>
-          <span
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "1rem",
-              fontWeight: 700,
-              color: "var(--color-amber)",
-              letterSpacing: "0.08em",
-            }}
-          >
-            WAREHOUSEPRO
+          <div className="flex items-center gap-1.5">
+            <span className="h-2.5 w-2.5 rounded-sm bg-amber-500 shadow-sm shadow-amber-500/50" />
+            <span className="font-mono text-sm font-black tracking-widest text-white uppercase group-hover:text-amber-400 transition-colors">
+              KINETIC OS
+            </span>
+          </div>
+          <span className="text-zinc-600 text-xs">/</span>
+          <span className="font-mono text-[11px] text-zinc-400 font-semibold tracking-wider uppercase hidden sm:inline">
+            Workforce Velocity Platform
           </span>
         </Link>
 
+        {/* Center/Right — Ambient Hardware Scanner Pill */}
+        <div className="hidden md:flex items-center">
+          <HardwareScannerPill compact />
+        </div>
+
         {/* Right side — nav links + role badge */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            gap: "1.25rem",
-            fontSize: "0.75rem",
-          }}
-        >
+        <div className="flex items-center gap-4 text-xs font-mono">
           <Link
             href={homeHref}
-            style={{
-              fontFamily: "var(--font-ui)",
-              color: "var(--color-text-secondary)",
-              textDecoration: "none",
-              fontWeight: 500,
-              borderBottom: "2px solid transparent",
-              paddingBottom: "2px",
-              transition: "color 0.15s, border-color 0.15s",
-            }}
-            onMouseEnter={undefined}
+            className="text-zinc-300 hover:text-white transition-colors"
           >
             {homeLabel}
           </Link>
 
           <Link
             href="/sim"
-            style={{
-              fontFamily: "var(--font-ui)",
-              color: "var(--color-text-secondary)",
-              textDecoration: "none",
-              fontWeight: 500,
-              borderBottom: "2px solid transparent",
-              paddingBottom: "2px",
-              transition: "color 0.15s, border-color 0.15s",
-            }}
+            className="text-amber-400 hover:text-amber-300 font-bold transition-colors"
           >
             Simulator
           </Link>
 
+          <Link
+            href="/dashboard/screener"
+            className="text-cyan-400 hover:text-cyan-300 font-bold hidden sm:inline transition-colors"
+          >
+            Screener
+          </Link>
+
           {/* Role badge with sign-out dropdown */}
-          <UserMenu roleBadge={roleBadge} email={email} />
+          <UserMenu email={email} roleBadge={roleBadge} />
         </div>
       </div>
     </nav>

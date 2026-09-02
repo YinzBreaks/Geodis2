@@ -1123,8 +1123,8 @@ export function TraineeDashboardClient({
       {/* Page header */}
       <div className="border-b bg-white" style={{ borderColor: '#e2e8f0' }}>
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-5">
-          <p className="text-xs uppercase tracking-widest mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: '#f0a500', letterSpacing: '0.08em' }}>
-            WarehousePro Training
+          <p className="text-xs uppercase tracking-widest mb-0.5" style={{ fontFamily: 'var(--font-mono)', color: '#f59e0b', letterSpacing: '0.08em' }}>
+            Kinetic OS Training
           </p>
           <h1 className="text-2xl font-bold" style={{ color: '#0d1117', fontFamily: 'var(--font-display)' }}>
             Welcome back, {user.name.split(" ")[0]}
@@ -1164,7 +1164,7 @@ export function TraineeDashboardClient({
 
         {/* Footer */}
         <p className="text-center text-xs pb-4" style={{ color: '#94a3b8', fontFamily: 'var(--font-mono)' }}>
-          WarehousePro — GEODIS Training Platform &middot; {user.facilityId}
+          Kinetic OS — Workforce Velocity Platform &middot; {user.facilityId}
         </p>
       </div>
     </div>

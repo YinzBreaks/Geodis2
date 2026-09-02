@@ -1,39 +1,23 @@
 /**
- * /sim — RF Device Simulator page
+ * /sim — Kinetic OS Workforce Velocity Simulator
  *
- * Flow: scenario selection → active simulation → score display
- *
- * Per CLAUDE.md §Content Rules §Simulations
- * Redesigned with Industrial Dashboard tokens (amber accent, surface cards).
+ * Full-bleed tablet cockpit layout (16:10 / 4:3) with 3 synchronized viewports:
+ * - Viewport A: Pick Face Elevation & 9-Tote Cart
+ * - Viewport B: Overhead Serpentine Traversal Map
+ * - Viewport C: WMS Industrial Terminal HUD
+ * - Persistent Metronomic 4-Beat Cadence Strip & Dual-Handed Thumb Zones
  */
 "use client"
 
 import { useEffect, useState } from "react"
-import { RFDevice } from "@/components/simulator/RFDevice"
-import { DeviceSelector } from "@/components/simulator/DeviceSelector"
-import { CoachingPanel } from "@/components/simulator/CoachingPanel"
 import { useSimulation } from "@/hooks/useSimulation"
-import { DifficultyLevel, WorkflowStep, type SessionResult } from "@/types/domain"
+import { DifficultyLevel, type SessionResult } from "@/types/domain"
 import { SCENARIO_DATA, type ScenarioBundle } from "@/data/seedData"
-import { COACHING_CONTENT } from "@/data/coachingContent"
-import { COACHING_CONTENT_ES } from "@/data/coachingContent.es"
-import { t, type AppLanguage } from "@/lib/i18n"
-import dynamic from "next/dynamic"
-
-const PhaserSimulationShell = dynamic(
-  () => import("@/components/warehouse/phaser/PhaserSimulationShell").then((m) => m.PhaserSimulationShell),
-  {
-    ssr: false,
-    loading: () => (
-      <div className="w-full h-[100dvh] flex items-center justify-center bg-slate-950 text-amber-400 font-mono text-xs">
-        Loading 2.5D Warehouse Simulator...
-      </div>
-    ),
-  }
-)
+import { KineticCockpit } from "@/components/simulator/KineticCockpit"
+import { HardwareScannerPill } from "@/components/simulator/HardwareScannerPill"
 
 // ─────────────────────────────────────────────────────────────────────────────
-// SCENARIO CATALOG — matches SCENARIO_DATA keys in seedData.ts
+// SCENARIO CATALOG
 // ─────────────────────────────────────────────────────────────────────────────
 
 const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
@@ -42,56 +26,12 @@ const SCENARIO_OPTIONS: { key: string; levelLabel: string }[] = [
   { key: "Z2_20_PICKS", levelLabel: "INTERMEDIATE" },
   { key: "HAZ_10_PICKS", levelLabel: "ADVANCED" },
   { key: "FEX_15_PICKS", levelLabel: "INTERMEDIATE" },
+  { key: "DAY1_EQUIPMENT_CHECK_DIGIT", levelLabel: "DAY 1 CERT" },
+  { key: "DAY2_SERPENTINE_ROUTING", levelLabel: "DAY 2 CERT" },
+  { key: "DAY3_HIGH_DENSITY_WAVE", levelLabel: "DAY 3 CERT" },
+  { key: "DAY4_INDUSTRIAL_EXCEPTIONS", levelLabel: "DAY 4 CERT" },
+  { key: "DAY5_CERTIFICATION_WAVE", levelLabel: "FINAL QUAL" },
 ]
-
-type TabletFocusMode = "scanner" | "environment"
-type EnvironmentPanel = "map" | "floor"
-
-const COMPACT_LAYOUT_QUERY = "(max-width: 1080px)"
-
-function isTravelStep(step: WorkflowStep): boolean {
-  return (
-    step === WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER ||
-    step === WorkflowStep.PK_TRAVEL_TO_LOCATION
-  )
-}
-
-function getTabletFocusMode(step: WorkflowStep): TabletFocusMode {
-  switch (step) {
-    case WorkflowStep.BC_TRAVEL_TO_COMMAND_CENTER:
-    case WorkflowStep.BC_SCAN_ZONE_TASK_GROUP:
-    case WorkflowStep.BC_SCAN_CART_BARCODE:
-    case WorkflowStep.BC_SCAN_TOTE_BARCODE:
-    case WorkflowStep.BC_PLACE_TOTE_IN_SLOT:
-    case WorkflowStep.PK_TRAVEL_TO_LOCATION:
-    case WorkflowStep.PK_VERIFY_LOCATION:
-    case WorkflowStep.PK_SCAN_ITEM_UPC:
-    case WorkflowStep.PK_PLACE_IN_TOTE:
-    case WorkflowStep.PK_SCAN_TOTE_BARCODE:
-    case WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR:
-    case WorkflowStep.EX_INCORRECT_LOCATION:
-    case WorkflowStep.EX_INCORRECT_TOTE:
-    case WorkflowStep.EX_INVALID_ITEM_LAST:
-    case WorkflowStep.EX_INVALID_ITEM_NOT_LAST:
-    case WorkflowStep.EX_SHORT_INVENTORY:
-    case WorkflowStep.EX_DAMAGED_ITEM:
-    case WorkflowStep.EX_ITEM_TO_AMNESTY_BIN:
-    case WorkflowStep.EX_ITEM_TO_IC:
-      return "environment"
-    default:
-      return "scanner"
-  }
-}
-
-function extractSopRef(sopContext: string): { badge: string; rest: string } {
-  const match = sopContext.match(/^(§[\d.]+)(?:\s+—\s+)?([\s\S]*)$/)
-  if (!match) return { badge: "", rest: sopContext }
-  return { badge: match[1], rest: match[2] }
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// PAGE
-// ─────────────────────────────────────────────────────────────────────────────
 
 export default function SimPage() {
   const {
@@ -104,43 +44,19 @@ export default function SimPage() {
     saveStatus,
     saveError,
     persistSession,
-    actionCount,
-    estimatedTotalSteps,
     processInput,
+    result,
+    score,
   } = useSimulation()
-  const [isCompactLayout, setIsCompactLayout] = useState(false)
-  const [showIntermediateGuide, setShowIntermediateGuide] = useState(false)
-  const [language, setLanguage] = useState<AppLanguage>("en")
 
-  useEffect(() => {
-    const stored = window.localStorage.getItem("warehousepro.lang")
-    if (stored === "en" || stored === "es") {
-      setLanguage(stored)
-    }
-  }, [])
-
-  useEffect(() => {
-    window.localStorage.setItem("warehousepro.lang", language)
-  }, [language])
-
-  useEffect(() => {
-    const mq = window.matchMedia(COMPACT_LAYOUT_QUERY)
-    const apply = () => setIsCompactLayout(mq.matches)
-    apply()
-    mq.addEventListener("change", apply)
-    return () => mq.removeEventListener("change", apply)
-  }, [])
-
-  // Trigger DB persistence as soon as the result is ready (fire-and-forget)
+  // Trigger DB persistence as soon as result is ready
   useEffect(() => {
     if (sessionResult && saveStatus === "idle") {
       void persistSession()
     }
   }, [sessionResult, saveStatus, persistSession])
 
-  // Reset the global simulation store when this page unmounts, so navigating
-  // away (e.g. to /simulate) and back doesn't resume a stale session in the
-  // module-level Zustand singleton store.
+  // Reset session on unmount
   useEffect(() => () => reset(), [reset])
 
   // Results screen — shown when simulation is complete
@@ -157,12 +73,16 @@ export default function SimPage() {
     )
   }
 
-  // Active simulation — Immersive 2.5D Tablet-First Experience
+  // Active simulation — Kinetic OS Three-Viewport Cockpit
   if (session) {
     return (
-      <PhaserSimulationShell
-        difficulty={session.difficulty}
-        language={language}
+      <KineticCockpit
+        session={session}
+        coaching={coaching}
+        result={result}
+        score={score}
+        processInput={processInput}
+        onExit={reset}
       />
     )
   }
@@ -175,176 +95,104 @@ export default function SimPage() {
 // SCENARIO SELECTOR
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Best session result per moduleId, fetched from /api/sessions. */
 type SessionBest = { bestScore: number; passed: boolean }
 
-/** Difficulty label → left border color */
 const DIFFICULTY_COLOR: Record<string, string> = {
-  BEGINNER: "var(--color-success, #2ea043)",
-  INTERMEDIATE: "var(--color-amber, #f0a500)",
-  ADVANCED: "var(--color-danger, #f85149)",
+  BEGINNER: "#10b981",
+  INTERMEDIATE: "#f59e0b",
+  ADVANCED: "#ef4444",
+  "DAY 1 CERT": "#38bdf8",
+  "DAY 2 CERT": "#38bdf8",
+  "DAY 3 CERT": "#38bdf8",
+  "DAY 4 CERT": "#a855f7",
+  "FINAL QUAL": "#10b981",
 }
 
 function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
-  const [sessionBests, setSessionBests] = useState<Record<string, SessionBest>>(
-    {}
-  )
+  const [sessionBests, setSessionBests] = useState<Record<string, SessionBest>>({})
 
   useEffect(() => {
     fetch("/api/sessions")
       .then((r) => (r.ok ? r.json() : {}))
       .then((data: Record<string, SessionBest>) => setSessionBests(data))
-      .catch(() => {
-        // Not authenticated or network error — silently skip badges
-      })
+      .catch(() => {})
   }, [])
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center gap-8 p-4"
-      style={{ backgroundColor: "var(--color-base)" }}
-    >
-      {/* Page header row: title left, device selector right — normal document flow */}
-      <div
-        style={{
-          width: "100%",
-          maxWidth: 440,
-          display: "flex",
-          alignItems: "flex-end",
-          justifyContent: "space-between",
-          gap: 12,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontFamily: "var(--font-display)",
-              fontSize: "clamp(1.5rem, 4vw, 2.25rem)",
-              fontWeight: 700,
-              color: "var(--color-text-primary)",
-              letterSpacing: "0.04em",
-            }}
-          >
-            RF SIMULATOR
-          </h1>
-          <p
-            style={{
-              fontFamily: "var(--font-ui)",
-              fontSize: 14,
-              color: "var(--color-text-secondary)",
-              marginTop: 4,
-            }}
-          >
-            Select a scenario to begin
-          </p>
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-start p-6 font-sans">
+      <div className="w-full max-w-3xl space-y-6">
+        {/* Header with Kinetic OS branding & Scanner Pill */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-6 border-b border-zinc-800">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-mono font-bold uppercase tracking-wider bg-amber-500/20 text-amber-400 border border-amber-500/30">
+                Kinetic OS v2.0
+              </span>
+              <span className="text-xs text-zinc-400 font-mono">
+                Workforce Velocity Simulator
+              </span>
+            </div>
+            <h1 className="text-3xl font-black text-white uppercase tracking-tight mt-1">
+              Industrial Training Simulator
+            </h1>
+            <p className="text-xs text-zinc-400 font-mono mt-0.5">
+              Select a production wave scenario to begin cadence and accuracy training.
+            </p>
+          </div>
+
+          <HardwareScannerPill />
         </div>
-        <DeviceSelector />
-      </div>
 
-      <div className="flex flex-col gap-3 w-full" style={{ maxWidth: 440 }}>
-        {SCENARIO_OPTIONS.map(({ key, levelLabel }) => {
-          const bundle = SCENARIO_DATA[key] as ScenarioBundle
-          const { scenario } = bundle
-          const best = sessionBests[scenario.moduleId]
-          const borderColor = DIFFICULTY_COLOR[levelLabel] ?? "var(--color-border)"
+        {/* Scenario Grid with 52px+ Glove Hit Targets */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          {SCENARIO_OPTIONS.map(({ key, levelLabel }) => {
+            const bundle = SCENARIO_DATA[key] as ScenarioBundle | undefined
+            if (!bundle) return null
+            const { scenario } = bundle
+            const best = sessionBests[scenario.moduleId]
+            const color = DIFFICULTY_COLOR[levelLabel] ?? "#10b981"
 
-          return (
-            <button
-              key={key}
-              onClick={() => onStart(key)}
-              style={{
-                backgroundColor: "var(--color-surface-1)",
-                border: "1px solid var(--color-border)",
-                borderLeft: `3px solid ${borderColor}`,
-                borderRadius: "var(--radius-md)",
-                padding: "16px 18px",
-                textAlign: "left",
-                cursor: "pointer",
-                transition: "transform 0.15s ease, box-shadow 0.15s ease, border-color 0.15s, background-color 0.15s",
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-2)"
-                e.currentTarget.style.borderLeftColor = "var(--color-amber)"
-                e.currentTarget.style.transform = "translateY(-2px)"
-                e.currentTarget.style.boxShadow = "0 4px 20px rgba(240, 165, 0, 0.2)"
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.backgroundColor = "var(--color-surface-1)"
-                e.currentTarget.style.borderLeftColor = borderColor
-                e.currentTarget.style.transform = "translateY(0)"
-                e.currentTarget.style.boxShadow = "none"
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
-                <span
-                  style={{
-                    fontFamily: "var(--font-display)",
-                    fontWeight: 700,
-                    fontSize: 15,
-                    color: "var(--color-text-primary)",
-                    lineHeight: 1.3,
-                  }}
-                >
-                  {scenario.title}
-                </span>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, flexShrink: 0, marginTop: 2 }}>
-                  {best && (
-                    <span
-                      style={{
-                        fontFamily: "var(--font-mono)",
-                        fontSize: 10,
-                        padding: "2px 6px",
-                        borderRadius: "var(--radius-sm)",
-                        backgroundColor: best.passed
-                          ? "rgba(46, 160, 67, 0.15)"
-                          : "rgba(240, 165, 0, 0.15)",
-                        color: best.passed ? "var(--color-success)" : "var(--color-amber)",
-                        border: `1px solid ${best.passed ? "rgba(46, 160, 67, 0.3)" : "rgba(240, 165, 0, 0.3)"}`,
-                      }}
-                    >
-                      ✓ Best: {best.bestScore}
+            return (
+              <button
+                key={key}
+                onClick={() => onStart(key)}
+                className="glove-target-primary bg-zinc-900/80 hover:bg-zinc-850 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 text-left flex flex-col justify-between transition-all cursor-pointer group shadow-md"
+                style={{ borderLeft: `4px solid ${color}` }}
+              >
+                <div>
+                  <div className="flex justify-between items-start gap-2 mb-1.5">
+                    <span className="font-bold text-sm text-white group-hover:text-amber-400 transition-colors">
+                      {scenario.title}
                     </span>
-                  )}
-                  <span
-                    style={{
-                      fontFamily: "var(--font-mono)",
-                      fontSize: 10,
-                      color: borderColor,
-                      fontWeight: 600,
-                    }}
-                  >
-                    {levelLabel}
-                  </span>
+                    <span
+                      className="text-[10px] font-mono font-bold px-2 py-0.5 rounded uppercase"
+                      style={{ backgroundColor: `${color}20`, color }}
+                    >
+                      {levelLabel}
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-zinc-400 font-sans line-clamp-2 mb-3">
+                    {scenario.description}
+                  </p>
                 </div>
-              </div>
-              <p
-                style={{
-                  fontFamily: "var(--font-ui)",
-                  fontSize: 12,
-                  color: "var(--color-text-secondary)",
-                  marginBottom: 10,
-                  lineHeight: 1.5,
-                }}
-              >
-                {scenario.description}
-              </p>
-              <div
-                style={{
-                  display: "flex",
-                  gap: 16,
-                  fontFamily: "var(--font-mono)",
-                  fontSize: 11,
-                  color: "var(--color-text-secondary)",
-                }}
-              >
-                <span><strong style={{ color: "var(--color-amber)" }}>{scenario.pickCount}</strong> picks</span>
-                <span>~{scenario.estimatedMinutes} min</span>
-                <span>Zone {scenario.zone}</span>
-                <span>Pass: {scenario.passCriteria.minScore}</span>
-              </div>
-            </button>
-          )
-        })}
+
+                <div className="flex items-center justify-between font-mono text-[11px] text-zinc-500 border-t border-zinc-800/80 pt-2.5">
+                  <span>
+                    <strong className="text-amber-400">{scenario.pickCount}</strong> picks · ~{scenario.estimatedMinutes} min
+                  </span>
+                  {best ? (
+                    <span className={best.passed ? "text-emerald-400 font-bold" : "text-amber-400"}>
+                      Best: {best.bestScore}%
+                    </span>
+                  ) : (
+                    <span className="text-zinc-600">Unattempted</span>
+                  )}
+                </div>
+              </button>
+            )
+          })}
+        </div>
       </div>
     </div>
   )
@@ -353,338 +201,6 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
 // ─────────────────────────────────────────────────────────────────────────────
 // RESULTS SCREEN
 // ─────────────────────────────────────────────────────────────────────────────
-
-/** Scenario to suggest after a PASS at the current level. */
-const NEXT_SCENARIO_MAP: Record<string, string | undefined> = {
-  Z1_10_PICKS: "Z1_20_PICKS",
-  Z1_20_PICKS: "HAZ_10_PICKS",
-  Z2_20_PICKS: "HAZ_10_PICKS",
-  FEX_15_PICKS: "HAZ_10_PICKS",
-  HAZ_10_PICKS: undefined,
-}
-
-/** Scenario to suggest stepping down to after a FAIL. */
-const LOWER_SCENARIO_MAP: Record<string, string | undefined> = {
-  Z1_10_PICKS: undefined,
-  Z1_20_PICKS: "Z1_10_PICKS",
-  Z2_20_PICKS: "Z1_10_PICKS",
-  FEX_15_PICKS: "Z1_10_PICKS",
-  HAZ_10_PICKS: "Z1_20_PICKS",
-}
-
-/** User-facing label for a scenario key. */
-const SCENARIO_LABEL: Record<string, string> = {
-  Z1_10_PICKS: "Beginner",
-  Z1_20_PICKS: "Intermediate",
-  Z2_20_PICKS: "Intermediate",
-  FEX_15_PICKS: "Intermediate",
-  HAZ_10_PICKS: "Advanced",
-}
-
-function formatDuration(seconds: number): string {
-  if (seconds <= 0) return "—"
-  const m = Math.floor(seconds / 60)
-  const s = String(seconds % 60).padStart(2, "0")
-  return m > 0 ? `${m}m ${s}s` : `${s}s`
-}
-
-// ── Small reusable pieces ────────────────────────────────────────────────────
-
-function MetricTile({
-  label,
-  value,
-  unit,
-  color,
-}: {
-  label: string
-  value: string
-  unit: string
-  color?: string
-}) {
-  return (
-    <div
-      style={{
-        backgroundColor: "var(--color-surface-2)",
-        border: "1px solid var(--color-border)",
-        borderRadius: "var(--radius-md)",
-        padding: "12px 8px",
-        textAlign: "center",
-      }}
-    >
-      <p
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: 10,
-          fontWeight: 700,
-          letterSpacing: "0.08em",
-          textTransform: "uppercase",
-          color: "var(--color-text-secondary)",
-          marginBottom: 4,
-        }}
-      >
-        {label}
-      </p>
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 22,
-          fontWeight: 700,
-          color: color ?? "var(--color-text-primary)",
-        }}
-      >
-        {value}
-      </p>
-      <p
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 10,
-          color: "var(--color-text-secondary)",
-        }}
-      >
-        {unit}
-      </p>
-    </div>
-  )
-}
-
-function PrimaryBtn({
-  onClick,
-  children,
-  disabled = false,
-}: {
-  onClick: () => void
-  children: React.ReactNode
-  disabled?: boolean
-}) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      style={{
-        width: "100%",
-        backgroundColor: disabled ? "var(--color-surface-2)" : "var(--color-amber)",
-        color: disabled ? "var(--color-text-secondary)" : "var(--color-base)",
-        fontFamily: "var(--font-display)",
-        fontWeight: 700,
-        fontSize: 14,
-        letterSpacing: "0.04em",
-        padding: "12px 24px",
-        borderRadius: "var(--radius-md)",
-        border: "none",
-        cursor: disabled ? "not-allowed" : "pointer",
-        transition: "opacity 0.15s",
-      }}
-      onMouseEnter={(e) => { if (!disabled) e.currentTarget.style.opacity = "0.9" }}
-      onMouseLeave={(e) => { e.currentTarget.style.opacity = "1" }}
-    >
-      {children}
-    </button>
-  )
-}
-
-function SecondaryBtn({
-  onClick,
-  children,
-}: {
-  onClick: () => void
-  children: React.ReactNode
-}) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        width: "100%",
-        backgroundColor: "transparent",
-        color: "var(--color-text-secondary)",
-        fontFamily: "var(--font-display)",
-        fontWeight: 600,
-        fontSize: 13,
-        padding: "10px 24px",
-        borderRadius: "var(--radius-md)",
-        border: "1px solid var(--color-border)",
-        cursor: "pointer",
-        transition: "border-color 0.15s, color 0.15s",
-      }}
-      onMouseEnter={(e) => {
-        e.currentTarget.style.borderColor = "var(--color-amber)"
-        e.currentTarget.style.color = "var(--color-text-primary)"
-      }}
-      onMouseLeave={(e) => {
-        e.currentTarget.style.borderColor = "var(--color-border)"
-        e.currentTarget.style.color = "var(--color-text-secondary)"
-      }}
-    >
-      {children}
-    </button>
-  )
-}
-
-// ── Verdict section (A) ──────────────────────────────────────────────────────
-
-function VerdictSection({ sessionResult }: { sessionResult: SessionResult }) {
-  const { band, finalScore } = sessionResult
-
-  /** Band color mapping */
-  const bandConfig: Record<string, { color: string; label: string; bgOpacity: string }> = {
-    EXCELLENT: { color: "var(--color-success)", label: "EXCELLENT", bgOpacity: "rgba(46, 160, 67, 0.1)" },
-    PASS:      { color: "var(--color-success)", label: "PASSED", bgOpacity: "rgba(46, 160, 67, 0.1)" },
-    BORDERLINE:{ color: "var(--color-amber)", label: "PASSED — JUST", bgOpacity: "rgba(240, 165, 0, 0.1)" },
-    FAIL:      { color: "var(--color-danger)", label: "NOT YET", bgOpacity: "rgba(248, 81, 73, 0.1)" },
-  }
-
-  const config = bandConfig[band] ?? bandConfig.FAIL
-  const isPassed = band !== "FAIL"
-
-  return (
-    <div
-      className="fade-in-up"
-      style={{
-        textAlign: "center",
-        padding: "32px 16px",
-        background: config.bgOpacity,
-        borderRadius: "var(--radius-md)",
-      }}
-    >
-      {/* Icon */}
-      <div style={{ fontSize: 48, color: config.color, marginBottom: 8 }}>
-        {isPassed ? "✓" : "✗"}
-      </div>
-
-      {/* Band label */}
-      <div
-        style={{
-          fontFamily: "var(--font-display)",
-          fontSize: "clamp(1.5rem, 5vw, 2rem)",
-          fontWeight: 700,
-          color: config.color,
-          letterSpacing: "0.06em",
-        }}
-      >
-        {config.label}
-      </div>
-
-      {/* Score */}
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: "clamp(2rem, 8vw, 4rem)",
-          fontWeight: 700,
-          color: "var(--color-text-primary)",
-          marginTop: 4,
-          lineHeight: 1.1,
-        }}
-      >
-        {finalScore}
-      </div>
-      <div
-        style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 12,
-          color: "var(--color-text-secondary)",
-          marginTop: 2,
-        }}
-      >
-        / 100
-      </div>
-
-      {/* Sub-message */}
-      {band === "BORDERLINE" && (
-        <p style={{ color: "var(--color-amber)", fontFamily: "var(--font-ui)", fontSize: 12, marginTop: 12, maxWidth: 280, margin: "12px auto 0" }}>
-          You passed, but your supervisor may recommend additional practice.
-        </p>
-      )}
-      {band === "FAIL" && (
-        <p style={{ color: "var(--color-text-secondary)", fontFamily: "var(--font-ui)", fontSize: 12, marginTop: 12, maxWidth: 280, margin: "12px auto 0" }}>
-          Keep practicing — most trainees need 2–3 attempts before passing.
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ── CTA section (C) ─────────────────────────────────────────────────────────
-
-function CtaSection({
-  sessionResult,
-  scenarioKey,
-  saveStatus,
-  onReset,
-  onStartScenario,
-}: {
-  sessionResult: SessionResult
-  scenarioKey: string
-  saveStatus: "idle" | "saving" | "saved" | "failed"
-  onReset: () => void
-  onStartScenario: (key: string) => void
-}) {
-  const { band, difficulty } = sessionResult
-  const nextKey = NEXT_SCENARIO_MAP[scenarioKey]
-  const lowerKey = LOWER_SCENARIO_MAP[scenarioKey]
-  const isPassed = band === "EXCELLENT" || band === "PASS" || band === "BORDERLINE"
-
-  if (!isPassed && difficulty === DifficultyLevel.BEGINNER) {
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <PrimaryBtn onClick={() => onStartScenario(scenarioKey)}>Try Again — Beginner</PrimaryBtn>
-        <SecondaryBtn onClick={onReset}>Back to scenarios</SecondaryBtn>
-      </div>
-    )
-  }
-
-  if (!isPassed) {
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <PrimaryBtn onClick={() => onStartScenario(scenarioKey)}>Try Again</PrimaryBtn>
-        {lowerKey && (
-          <SecondaryBtn onClick={() => onStartScenario(lowerKey)}>
-            Step down to {SCENARIO_LABEL[lowerKey] ?? lowerKey}
-          </SecondaryBtn>
-        )}
-        <SecondaryBtn onClick={onReset}>Back to scenarios</SecondaryBtn>
-      </div>
-    )
-  }
-
-  if (difficulty === DifficultyLevel.BEGINNER && nextKey) {
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <PrimaryBtn onClick={() => onStartScenario(nextKey)}>
-          🎉 Try Intermediate
-        </PrimaryBtn>
-        <SecondaryBtn onClick={() => onStartScenario(scenarioKey)}>
-          Try Again — Beginner
-        </SecondaryBtn>
-      </div>
-    )
-  }
-
-  if (difficulty === DifficultyLevel.INTERMEDIATE && nextKey) {
-    return (
-      <div className="flex flex-col gap-2 w-full">
-        <PrimaryBtn onClick={() => onStartScenario(nextKey)}>Try Advanced</PrimaryBtn>
-        <SecondaryBtn onClick={() => onStartScenario(scenarioKey)}>
-          Try Again — Intermediate
-        </SecondaryBtn>
-      </div>
-    )
-  }
-
-  // PASS/EXCELLENT on ADVANCED (or no next scenario)
-  return (
-    <div className="flex flex-col gap-2 w-full">
-      <PrimaryBtn onClick={onReset}>Back to scenarios</PrimaryBtn>
-      {(saveStatus === "saved" || saveStatus === "saving") && (
-        <p style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--color-text-secondary)", textAlign: "center", marginTop: 4 }}>
-          {saveStatus === "saving"
-            ? "Saving result..."
-            : "Your supervisor has been notified of your score."}
-        </p>
-      )}
-    </div>
-  )
-}
-
-// ── Full results screen ──────────────────────────────────────────────────────
 
 function ResultsScreen({
   sessionResult,
@@ -701,178 +217,96 @@ function ResultsScreen({
   onReset: () => void
   onStartScenario: (key: string) => void
 }) {
-  /** Color helper for metric values */
-  const scoreColor = (v: number) =>
-    v >= 85 ? "var(--color-success)" : v >= 70 ? "var(--color-amber)" : "var(--color-danger)"
-
-  const exCount = sessionResult.errorsEncountered.length
-  const exColor =
-    exCount === 0 || sessionResult.exceptionsResolved === exCount
-      ? "var(--color-success)"
-      : sessionResult.exceptionsResolved > 0
-        ? "var(--color-amber)"
-        : "var(--color-danger)"
+  const isPassed =
+    sessionResult.band === "EXCELLENT" ||
+    sessionResult.band === "PASS" ||
+    sessionResult.band === "BORDERLINE"
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-start gap-0 py-8 px-4"
-      style={{ backgroundColor: "var(--color-base)" }}
-    >
-      {/* ── Save error banner ── */}
-      {saveError && (
-        <div
-          style={{
-            position: "fixed",
-            top: 0,
-            left: 0,
-            right: 0,
-            zIndex: 50,
-            backgroundColor: "rgba(240, 165, 0, 0.15)",
-            borderBottom: "1px solid rgba(240, 165, 0, 0.3)",
-            padding: "8px 16px",
-            textAlign: "center",
-          }}
-        >
-          <span style={{ color: "var(--color-amber)", fontFamily: "var(--font-mono)", fontSize: 12 }}>{saveError}</span>
-        </div>
-      )}
-
-      <div
-        style={{ width: "100%", maxWidth: 420, marginTop: saveError ? 40 : 0 }}
-      >
-        {/* ── A. VERDICT ── */}
-        <div
-          style={{
-            backgroundColor: "var(--color-surface-1)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-lg)",
-            overflow: "hidden",
-          }}
-        >
-          <VerdictSection sessionResult={sessionResult} />
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col items-center justify-center p-6 font-sans">
+      <div className="w-full max-w-lg bg-zinc-900 border border-zinc-800 rounded-2xl p-6 shadow-2xl space-y-6">
+        {/* Header */}
+        <div className="text-center pb-4 border-b border-zinc-800">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-mono font-bold uppercase mb-2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+            Session Completed
+          </div>
+          <h2 className="text-2xl font-black text-white">
+            {isPassed ? "QUALIFYING PERFORMANCE" : "REMEDIAL PRACTICE NEEDED"}
+          </h2>
+          <p className="text-xs text-zinc-400 font-mono mt-1">
+            Band: <strong className="text-white">{sessionResult.band}</strong> · Scenario: {scenarioKey}
+          </p>
         </div>
 
-        {/* ── B. SCORE BREAKDOWN ── */}
-        <div
-          style={{
-            backgroundColor: "var(--color-surface-1)",
-            border: "1px solid var(--color-border)",
-            borderRadius: "var(--radius-lg)",
-            padding: 16,
-            marginTop: 12,
-          }}
-        >
-          {/* Three metric tiles */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginBottom: 16 }}>
-            <MetricTile
-              label="ACCURACY"
-              value={String(sessionResult.accuracyScore)}
-              unit="/ 100"
-              color={scoreColor(sessionResult.accuracyScore)}
-            />
-            <MetricTile
-              label="SPEED"
-              value={String(sessionResult.speedScore)}
-              unit="/ 100"
-              color={scoreColor(sessionResult.speedScore)}
-            />
-            <MetricTile
-              label="EXCEPTIONS"
-              value={exCount > 0 ? `${sessionResult.exceptionsResolved}/${exCount}` : "—"}
-              unit="Resolved"
-              color={exColor}
-            />
+        {/* 3 Metric Tiles */}
+        <div className="grid grid-cols-3 gap-3 font-mono text-center">
+          <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-xl">
+            <div className="text-[10px] text-zinc-500 uppercase">Accuracy</div>
+            <div className="text-2xl font-black text-emerald-400 mt-1">
+              {sessionResult.accuracyScore}%
+            </div>
           </div>
 
-          {/* Strengths and improvements */}
-          <div
-            style={{
-              display: "grid",
-              gridTemplateColumns: "1fr 1fr",
-              gap: 16,
-              paddingTop: 12,
-              borderTop: "1px solid var(--color-border)",
-            }}
-          >
-            <div>
-              <p
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "var(--color-success)",
-                  marginBottom: 8,
-                }}
-              >
-                ✓ What Went Well
-              </p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-xl">
+            <div className="text-[10px] text-zinc-500 uppercase">Speed</div>
+            <div className="text-2xl font-black text-cyan-400 mt-1">
+              {sessionResult.speedScore}%
+            </div>
+          </div>
+
+          <div className="bg-zinc-950 border border-zinc-800 p-3.5 rounded-xl">
+            <div className="text-[10px] text-zinc-500 uppercase">Exceptions</div>
+            <div className="text-2xl font-black text-amber-400 mt-1">
+              {sessionResult.exceptionsResolved} / {sessionResult.errorsEncountered.length}
+            </div>
+          </div>
+        </div>
+
+        {/* Strengths & Improvements */}
+        <div className="space-y-3 text-xs">
+          {sessionResult.strengths.length > 0 && (
+            <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3">
+              <span className="font-bold text-emerald-400 font-mono uppercase block mb-1">
+                ✓ What Went Well:
+              </span>
+              <ul className="list-disc list-inside text-zinc-300 space-y-1">
                 {sessionResult.strengths.map((s, i) => (
-                  <li key={i} style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                    {s}
-                  </li>
+                  <li key={i}>{s}</li>
                 ))}
               </ul>
             </div>
-            <div>
-              <p
-                style={{
-                  fontFamily: "var(--font-display)",
-                  fontSize: 10,
-                  fontWeight: 700,
-                  letterSpacing: "0.08em",
-                  textTransform: "uppercase",
-                  color: "var(--color-danger)",
-                  marginBottom: 8,
-                }}
-              >
-                ✗ Room to Improve
-              </p>
-              <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          )}
+
+          {sessionResult.improvements.length > 0 && (
+            <div className="bg-rose-950/20 border border-rose-500/30 rounded-xl p-3">
+              <span className="font-bold text-rose-400 font-mono uppercase block mb-1">
+                ✗ Focus Areas for Next Wave:
+              </span>
+              <ul className="list-disc list-inside text-zinc-300 space-y-1">
                 {sessionResult.improvements.map((s, i) => (
-                  <li key={i} style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--color-text-secondary)", lineHeight: 1.5 }}>
-                    {/* Highlight SOP references (e.g. §5.2.8) in amber */}
-                    {s.replace(/(§[\d.]+)/g, "$1").split(/(§[\d.]+)/).map(
-                      (part, j) =>
-                        /^§/.test(part) ? (
-                          <span key={j} style={{ color: "var(--color-amber)", fontWeight: 600 }}>{part}</span>
-                        ) : (
-                          part
-                        )
-                    )}
-                  </li>
+                  <li key={i}>{s}</li>
                 ))}
               </ul>
             </div>
-          </div>
+          )}
         </div>
 
-        {/* ── C. NEXT ACTION ── */}
-        <div style={{ marginTop: 12 }}>
-          <CtaSection
-            sessionResult={sessionResult}
-            scenarioKey={scenarioKey}
-            saveStatus={saveStatus}
-            onReset={onReset}
-            onStartScenario={onStartScenario}
-          />
-        </div>
+        {/* CTA Buttons (52px+ Glove compliant) */}
+        <div className="flex flex-col gap-2.5 pt-2">
+          <button
+            onClick={() => onStartScenario(scenarioKey)}
+            className="glove-target-primary w-full bg-emerald-600 hover:bg-emerald-500 text-zinc-950 font-bold uppercase tracking-wider text-xs rounded-xl shadow-lg shadow-emerald-950 transition-all cursor-pointer flex items-center justify-center"
+          >
+            Run Scenario Again &rarr;
+          </button>
 
-        {/* ── Scenario info line ── */}
-        <p
-          style={{
-            fontFamily: "var(--font-mono)",
-            fontSize: 10,
-            color: "var(--color-text-secondary)",
-            textAlign: "center",
-            marginTop: 16,
-          }}
-        >
-          {sessionResult.zone} &middot; {sessionResult.totalPicks} picks &middot;{" "}
-          {sessionResult.difficulty} &middot; {formatDuration(sessionResult.durationSeconds)}
-        </p>
+          <button
+            onClick={onReset}
+            className="glove-target-primary w-full bg-zinc-800 hover:bg-zinc-700 text-white font-mono font-bold uppercase tracking-wider text-xs rounded-xl border border-zinc-700 transition-all cursor-pointer flex items-center justify-center"
+          >
+            Return to Scenario Catalog
+          </button>
+        </div>
       </div>
     </div>
   )

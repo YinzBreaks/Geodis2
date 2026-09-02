@@ -178,7 +178,7 @@ function ModernScreen({
             letterSpacing: "0.05em",
           }}
         >
-          WarehousePro
+          Kinetic OS
         </span>
         <span
           style={{

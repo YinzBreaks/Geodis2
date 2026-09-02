@@ -9,9 +9,15 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Overhaul palette — Titans / Industrial Warehouse fusion.
-        // Mapped to CSS custom properties in src/styles/tokens.css so the
-        // single source of truth for color stays in the token file.
+        "tactical-slate": "var(--slate-tactical)",
+        "tactical-canvas": "var(--slate-canvas)",
+        "steel-border": "var(--steel-border)",
+        "steel-surface": "var(--steel-surface)",
+        "signal-amber": "var(--signal-amber)",
+        "electric-cyan": "var(--electric-cyan)",
+        "laser-emerald": "var(--laser-emerald)",
+        "terminal-green": "var(--terminal-green)",
+        "danger-red": "var(--danger-red)",
         navy: "var(--navy)",
         "ice-blue": "var(--ice-blue)",
         "ice-white": "var(--ice-white)",
@@ -25,6 +31,14 @@ const config: Config = {
         display: ["var(--font-display)"],
         terminal: ["var(--font-terminal)"],
         body: ["var(--font-body)"],
+        mono: ["var(--font-mono)"],
+      },
+      minHeight: {
+        touch: "var(--touch-target-min)",
+        "touch-primary": "var(--touch-target-primary)",
+      },
+      minWidth: {
+        touch: "var(--touch-target-min)",
       },
     },
   },

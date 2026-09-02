@@ -72,8 +72,8 @@ export function PhaserSimulationShell({
       {/* ── HEADER — solid, in normal document flow, never covers the scene ── */}
       <header className="relative shrink-0 z-20 bg-slate-900 border-b border-slate-700 px-4 py-3 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          <span className="font-display font-bold text-sm text-amber-400 uppercase bg-amber-950/70 px-3 py-1.5 rounded-lg border border-amber-800/80">
-            WarehousePro
+          <span className="font-mono font-black text-sm text-amber-400 uppercase bg-amber-950/70 px-3 py-1.5 rounded-lg border border-amber-800/80 tracking-wider">
+            Kinetic OS
           </span>
           <span className="font-mono text-sm text-slate-200">
             Zone <strong className="text-amber-300">{session.cart.zone}</strong> · Task Group{" "}
@@ -148,8 +148,8 @@ export function PhaserSimulationShell({
           className="shrink-0 w-full lg:w-[400px] max-h-[42vh] lg:max-h-none bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-700 flex flex-col overflow-hidden"
         >
           <div className="flex items-center gap-2 px-4 py-2.5 bg-slate-900 border-b border-slate-700 shrink-0">
-            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400" />
-            <span className="font-mono text-xs font-bold text-amber-400">SYMBOL WT4000 RF DEVICE</span>
+            <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="font-mono text-xs font-bold text-amber-400">WMS INDUSTRIAL TERMINAL</span>
           </div>
 
           <div className="flex-1 min-h-0 overflow-y-auto p-3 flex flex-col items-center gap-3">

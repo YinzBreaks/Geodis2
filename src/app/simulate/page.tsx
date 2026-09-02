@@ -101,8 +101,8 @@ export default function SimulatePage() {
         {/* Top bar */}
         <header className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <span className="text-blue-600 font-bold text-sm font-mono tracking-wider">
-              WarehousePro
+            <span className="text-amber-500 font-black text-sm font-mono tracking-widest uppercase">
+              Kinetic OS
             </span>
             <span className="text-slate-300">|</span>
             <span className="text-slate-500 text-xs font-mono">
@@ -235,8 +235,8 @@ function ScenarioSelector({ onStart }: { onStart: (key: string) => void }) {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center gap-8 p-4">
       <div className="text-center">
-        <h1 className="text-blue-600 font-bold text-2xl tracking-wider">
-          WarehousePro Simulator
+        <h1 className="text-white font-black text-2xl tracking-wider uppercase font-mono">
+          Kinetic OS Simulator
         </h1>
         <p className="text-slate-500 text-sm mt-1 font-mono">
           Select a scenario to begin the three-panel simulation

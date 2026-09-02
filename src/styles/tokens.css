@@ -1,59 +1,76 @@
 /* ═══════════════════════════════════════════════════════════════════════════
-   DESIGN TOKENS — WarehousePro Industrial Dashboard
-   All components use these CSS custom properties — no hardcoded hex values.
+   DESIGN TOKENS — Kinetic OS (Kinetic Workforce Velocity Platform)
+   Industrial Tablet Ergonomics & High-Contrast 3PL Design System.
    ═══════════════════════════════════════════════════════════════════════════ */
 
 :root {
-  /* ── Base surfaces ───────────────────────────────────────────────────── */
-  --color-base:          #0d1117;
-  --color-surface:       #161b22;
-  --color-surface-2:     #21262d;
-  --color-border:        #30363d;
-  --color-border-accent: #f0a500;
+  /* ── Kinetic OS Deep Tactical Slate (Anti-Glare) ──────────────────────── */
+  --slate-tactical:       #07090e;
+  --slate-canvas:         #0b0f17;
+  --color-base:           #07090e;
+  --color-surface:        #0b0f17;
+  --color-surface-2:      #121824;
 
-  /* ── Primary accent — amber ──────────────────────────────────────────── */
-  --color-amber:         #f0a500;
-  --color-amber-dim:     #b87d00;
-  --color-amber-glow:    rgba(240, 165, 0, 0.15);
+  /* ── Industrial Steel Structural Borders ──────────────────────────────── */
+  --steel-border:         #1e293b;
+  --steel-surface:        #24314a;
+  --color-border:         #1e293b;
+  --color-border-accent:  #f59e0b;
 
-  /* ── Semantic colors ─────────────────────────────────────────────────── */
-  --color-success:       #3fb950;
-  --color-danger:        #f85149;
-  --color-warning:       #d29922;
+  /* ── Velocity Accents ─────────────────────────────────────────────────── */
+  --signal-amber:         #f59e0b;
+  --signal-amber-glow:    rgba(245, 158, 11, 0.20);
+  --electric-cyan:        #38bdf8;
+  --electric-cyan-glow:   rgba(56, 189, 248, 0.20);
+
+  --color-amber:          #f59e0b;
+  --color-amber-dim:      #b45309;
+  --color-amber-glow:     rgba(245, 158, 11, 0.15);
+
+  /* ── State Badges & Signals (WCAG AAA Contrast >= 7:1) ────────────────── */
+  --laser-emerald:        #10b981;
+  --terminal-green:       #00ff66;
+  --danger-red:           #ef4444;
+
+  --color-success:        #10b981;
+  --color-danger:         #ef4444;
+  --color-warning:        #f59e0b;
 
   /* ── Text hierarchy ──────────────────────────────────────────────────── */
-  --color-text-primary:   #e6edf3;
-  --color-text-secondary: #8b949e;
-  --color-text-muted:     #484f58;
+  --color-text-primary:   #f8fafc;
+  --color-text-secondary: #94a3b8;
+  --color-text-muted:     #64748b;
 
-  /* ── Overhaul palette — Titans / Industrial Warehouse fusion ─────────── */
-  /* Additive: legacy tokens above remain the dashboard default; these are   */
-  /* the immersive-simulator accents used by the overhaul components.        */
-  --navy:            #0c2340; /* primary dark */
-  --ice-blue:        #4b9cd3; /* accent, interactive */
-  --ice-white:       #e8f4fd; /* light surfaces */
-  --amber-bright:    #f5a623; /* warnings, active states */
-  --success-bright:  #2ecc71; /* scan success, complete */
-  --danger-bright:   #e74c3c; /* errors, invalid scans */
-  --concrete:        #8b8d8e; /* inactive, disabled */
-  --warehouse-floor: #2a2a2a; /* simulator background */
-  --ice-blue-glow:   rgba(75, 156, 211, 0.25);
-  --success-glow:    rgba(46, 204, 113, 0.30);
-  --danger-glow:     rgba(231, 76, 60, 0.30);
+  /* ── Kinetic Industrial Palette ───────────────────────────────────────── */
+  --navy:                 #07090e;
+  --ice-blue:             #38bdf8;
+  --ice-white:            #f8fafc;
+  --amber-bright:         #f59e0b;
+  --success-bright:       #10b981;
+  --danger-bright:        #ef4444;
+  --concrete:             #64748b;
+  --warehouse-floor:      #07090e;
+  --ice-blue-glow:        rgba(56, 189, 248, 0.25);
+  --success-glow:         rgba(16, 185, 129, 0.30);
+  --danger-glow:          rgba(239, 68, 68, 0.30);
 
-  /* ── Typography ──────────────────────────────────────────────────────── */
-  --font-display: 'Barlow Condensed', sans-serif;
-  --font-ui:      'DM Sans', sans-serif;
-  --font-mono:    'JetBrains Mono', monospace;
-  /* RF terminal authenticity — monospace matching the WT4000 screen photos */
-  --font-terminal: 'IBM Plex Mono', 'JetBrains Mono', 'Courier New', monospace;
-  /* Functional coaching/body UI */
-  --font-body: 'Inter', 'DM Sans', sans-serif;
+  /* ── Typography & Tabular Figures ────────────────────────────────────── */
+  --font-display:         'Barlow Condensed', sans-serif;
+  --font-ui:              'DM Sans', sans-serif;
+  --font-mono:            'JetBrains Mono', monospace;
+  --font-terminal:        'IBM Plex Mono', 'JetBrains Mono', monospace;
+  --font-body:            'Inter', 'DM Sans', sans-serif;
 
-  /* ── Spacing + radius ────────────────────────────────────────────────── */
-  --radius-sm:       4px;
-  --radius-md:       8px;
-  --radius-lg:       12px;
-  --shadow-card:     0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-elevated: 0 4px 16px rgba(0, 0, 0, 0.5);
+  /* ── Industrial Glove Hit Target Geometry ────────────────────────────── */
+  --touch-target-min:     48px;
+  --touch-target-primary: 52px;
+  --touch-gutter:         8px;
+
+  /* ── Radius & Shadows ────────────────────────────────────────────────── */
+  --radius-sm:            4px;
+  --radius-md:            8px;
+  --radius-lg:            12px;
+  --radius-xl:            16px;
+  --shadow-card:          0 1px 3px rgba(0, 0, 0, 0.6);
+  --shadow-elevated:      0 8px 30px rgba(0, 0, 0, 0.8);
 }

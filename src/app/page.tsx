@@ -40,11 +40,11 @@ export default async function Home() {
           }}
         />
 
-        <h1 className="font-display font-bold text-[clamp(3rem,8vw,7rem)] text-[var(--color-text-primary)] tracking-wide leading-none relative">
-          WAREHOUSEPRO
+        <h1 className="font-mono font-black text-[clamp(2.5rem,7vw,5.5rem)] text-white tracking-widest leading-none relative uppercase">
+          KINETIC OS
         </h1>
-        <p className="font-ui text-[var(--color-text-secondary)] text-lg mt-3 relative">
-          RF Picking Training Platform
+        <p className="font-mono text-zinc-400 text-base sm:text-lg mt-3 relative uppercase tracking-wider font-semibold">
+          Kinetic Workforce Velocity Platform
         </p>
 
         {/* SOP badge */}
@@ -102,8 +102,8 @@ export default async function Home() {
       </section>
 
       {/* ══ FOOTER ════════════════════════════════════════════════════════ */}
-      <footer className="fade-in-up fade-in-up-3 mt-auto py-8 px-4 text-center font-ui text-[0.6875rem] text-[var(--color-text-muted)]">
-        GEODIS Logistics · WarehousePro Training Platform · BBWD-WI-030
+      <footer className="fade-in-up fade-in-up-3 mt-auto py-8 px-4 text-center font-mono text-[0.6875rem] text-zinc-500 uppercase tracking-wider">
+        GEODIS Tier-1 Certified · Kinetic OS Workforce Velocity Platform · BBWD-WI-030
       </footer>
     </main>
   )

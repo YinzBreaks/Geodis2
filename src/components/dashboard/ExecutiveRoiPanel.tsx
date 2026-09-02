@@ -131,7 +131,7 @@ export function ExecutiveRoiPanel() {
             </span>
           </div>
           <h2 className="text-2xl font-black tracking-tight text-white mt-1">
-            WarehousePro Floor Competency &amp; Financial Recoupment
+            Kinetic OS Floor Competency &amp; Financial Recoupment
           </h2>
         </div>
 
