@@ -39,8 +39,8 @@ export function IdleHintBanner({
       data-testid="idle-hint-banner"
       className="pointer-events-none absolute bottom-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 bg-[#121A24]/95 border-2 border-cyan-500/80 rounded-xl px-4 py-2 text-cyan-200 shadow-[0_4px_25px_rgba(6,182,212,0.4)] animate-pulse"
     >
-      <span className="w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_10px_#22D3EE] animate-ping" />
-      <span className="text-xs font-mono font-bold leading-tight tracking-wide">
+      <span className="pointer-events-none w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_10px_#22D3EE] animate-ping" />
+      <span className="pointer-events-none text-xs font-mono font-bold leading-tight tracking-wide">
         {getHint()}
       </span>
     </div>
