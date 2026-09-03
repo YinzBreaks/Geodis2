@@ -142,11 +142,42 @@ export const sounds = {
   toteComplete: () => playChord([523.25, 659.25, 783.99], 0.3, "sine"),
   /** Ascending fanfare — session complete. */
   sessionDone: () => playFanfare(),
+  /** Crisp industrial high-pitched chirp (880 Hz, 80 ms) — check-digit decode */
+  checkDigitChirp: () => playCheckDigitChirp(),
+  /** Clean dual-tone verification beep (1046 Hz -> 1318 Hz) — barcode scan */
+  barcodeVerificationBeep: () => playBarcodeVerificationBeep(),
+  /** Warm low-frequency chime — item deposited into tote */
+  toteChime: () => playToteChime(),
+  /** Gentle double-bonk tone (180 Hz -> 140 Hz) — non-punitive sequence correction */
+  softFailBonk: () => playSoftFailBonk(),
 } as const;
 
 /** Tactile mechanical chiclet key depression. */
 export function playKeyClick(): void {
-  sounds.keyClick();
+  playTone(700, 0.015, "triangle", 0, 0.05);
+}
+
+/** Crisp industrial high-pitched chirp (880 Hz, 80 ms) — check-digit decode */
+export function playCheckDigitChirp(): void {
+  playTone(880, 0.08, "square", 0, 0.12);
+}
+
+/** Clean dual-tone verification beep (1046 Hz -> 1318 Hz) — barcode scan */
+export function playBarcodeVerificationBeep(): void {
+  playTone(1046.5, 0.06, "sine", 0, 0.1);
+  playTone(1318.5, 0.08, "sine", 0.065, 0.1);
+}
+
+/** Warm low-frequency chime — item deposited into tote */
+export function playToteChime(): void {
+  playTone(440, 0.12, "sine", 0, 0.1);
+  playTone(554.37, 0.18, "sine", 0.1, 0.12);
+}
+
+/** Gentle double-bonk tone (180 Hz -> 140 Hz) — non-punitive sequence correction */
+export function playSoftFailBonk(): void {
+  playTone(180, 0.07, "triangle", 0, 0.1);
+  playTone(140, 0.09, "triangle", 0.08, 0.09);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

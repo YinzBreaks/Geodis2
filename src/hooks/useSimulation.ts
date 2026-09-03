@@ -293,6 +293,8 @@ interface SimulationState {
    * scenario — the pure engine reads scenario.errorScenarios unchanged.
    */
   injectException: (errorType: ScanResult, isLastItemAtLocation?: boolean) => void
+  /** Update session difficulty at runtime (e.g. toggling Day 1 Guided vs Day 3 vs Day 5). */
+  setDifficulty: (difficulty: DifficultyLevel) => void
   reset: () => void
 }
 
@@ -546,6 +548,16 @@ export const useSimulation = create<SimulationState>((set, get) => ({
         ...scenario,
         errorScenarios: [...scenario.errorScenarios, injected],
       },
+    })
+  },
+
+  setDifficulty(difficulty: DifficultyLevel) {
+    const { session } = get()
+    if (!session) return
+    const updatedSession = { ...session, difficulty }
+    set({
+      session: updatedSession,
+      coaching: resolveCoaching(session.currentStep, difficulty),
     })
   },
 

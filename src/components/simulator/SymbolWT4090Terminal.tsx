@@ -20,6 +20,8 @@ export interface SymbolWT4090TerminalProps {
   handleSoftKey: (key: string) => void
   setInputValue: (val: string) => void
   onPullTrigger?: () => void
+  isBeat3Prompt?: boolean
+  onHelpProtocol?: () => void
 }
 
 export function SymbolWT4090Terminal({
@@ -37,6 +39,8 @@ export function SymbolWT4090Terminal({
   handleSoftKey,
   setInputValue,
   onPullTrigger,
+  isBeat3Prompt = false,
+  onHelpProtocol,
 }: SymbolWT4090TerminalProps) {
   const [ctrlActive, setCtrlActive] = useState(false)
   const [shiftActive, setShiftActive] = useState(false)
@@ -273,7 +277,13 @@ export function SymbolWT4090Terminal({
 
             {/* Bottom LCD Prompt Bar */}
             <div className="border-t border-[#252C32] pt-1 mt-1 flex justify-between text-[10px] text-zinc-400">
-              <span>F1=HELP</span>
+              <button
+                type="button"
+                onClick={onHelpProtocol}
+                className="hover:text-white transition-colors uppercase font-bold"
+              >
+                F1=HELP
+              </button>
               <span className="text-zinc-300 font-bold">
                 {session.cart.cartBarcode || "C000000083"}
               </span>
@@ -298,6 +308,7 @@ export function SymbolWT4090Terminal({
               num="1"
               alpha="AB"
               ctrl="CTRL_A"
+              isHighlighted={isBeat3Prompt}
               onClick={() => handleKeyTap("1", "A", "CTRL_A")}
             />
             <KeyButton
@@ -511,7 +522,15 @@ export function SymbolWT4090Terminal({
         </div>
 
         {/* Quick Softkey Overrides (Non-Destructive Exception Strip) */}
-        <div className="mt-2 grid grid-cols-4 gap-1 text-[8px] font-mono">
+        <div className="mt-2 grid grid-cols-5 gap-1 text-[8px] font-mono">
+          <button
+            type="button"
+            onClick={onHelpProtocol}
+            className="py-1 bg-blue-950/60 hover:bg-blue-900/80 border border-blue-700/60 text-blue-300 rounded font-bold"
+            title="Open 4-Beat SOP Guide"
+          >
+            [?] SOP
+          </button>
           <button
             type="button"
             onClick={() => handleSoftKey("CTRL_K")}
@@ -552,17 +571,23 @@ function KeyButton({
   alpha,
   ctrl,
   onClick,
+  isHighlighted = false,
 }: {
   num: string
   alpha: string
   ctrl: string
   onClick: () => void
+  isHighlighted?: boolean
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      className="h-11 bg-[#2C3136] hover:bg-[#383F46] active:translate-y-0.5 active:shadow-inner text-zinc-100 rounded-md border-t border-[#464D54] border-b-2 border-[#171A1D] flex flex-col items-center justify-center shadow-md transition-transform"
+      className={`h-11 active:translate-y-0.5 active:shadow-inner text-zinc-100 rounded-md border-t border-b-2 flex flex-col items-center justify-center shadow-md transition-all ${
+        isHighlighted
+          ? "bg-[#422C0A] border-amber-400 border-t-amber-300 ring-2 ring-amber-400 shadow-[0_0_12px_#F59E0B] animate-pulse"
+          : "bg-[#2C3136] hover:bg-[#383F46] border-t-[#464D54] border-b-[#171A1D]"
+      }`}
     >
       <span className="text-sm font-mono font-black text-zinc-100 leading-none">
         {num}
