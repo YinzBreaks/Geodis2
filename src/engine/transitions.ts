@@ -82,6 +82,7 @@ const guardVerifyLocationScan: Guard = (session, action) => {
 
   if (action.type === "SCAN" || action.type === "TYPE") {
     const val = (action.type === "SCAN" ? action.value : action.text)
+      .replace(/[\[\]]/g, "")
       .trim()
       .toUpperCase()
 

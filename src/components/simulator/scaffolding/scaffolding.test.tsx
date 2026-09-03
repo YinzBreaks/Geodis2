@@ -238,20 +238,53 @@ describe("Progressive Scaffolding Components", () => {
       expect(screen.queryByText(/4-BEAT CADENCE:/)).toBeNull()
     })
 
-    it("opens ProtocolHelpModal when tapping [?] SOP button", () => {
+    it("advances Beat 1 on direct shelf check-digit plate click", () => {
+      const processInput = vi.fn()
       render(
         <KineticCockpit
           session={MOCK_SESSION}
           coaching={{ isVisible: false, content: null, step: null }}
           result={null}
-          processInput={vi.fn()}
+          processInput={processInput}
         />
       )
 
-      const sopButton = screen.getByTitle("Open 4-Beat Protocol Quick Reference")
-      fireEvent.click(sopButton)
+      const plate = screen.getByTestId("shelf-check-digit-plate")
+      fireEvent.click(plate)
 
-      expect(screen.getByTestId("protocol-help-modal")).toBeTruthy()
+      expect(processInput).toHaveBeenCalledWith({
+        type: "SCAN",
+        value: "47",
+        source: "click",
+      })
+    })
+
+    it("advances Beat 1 on terminal keypad ENTER submission with buffer", () => {
+      const processInput = vi.fn()
+      render(
+        <KineticCockpit
+          session={MOCK_SESSION}
+          coaching={{ isVisible: false, content: null, step: null }}
+          result={null}
+          processInput={processInput}
+        />
+      )
+
+      // Click '4' and '7' on chiclet keypad
+      const key4 = screen.getByText("4")
+      const key7 = screen.getByText("7")
+      fireEvent.click(key4)
+      fireEvent.click(key7)
+
+      // Press ENTER bar
+      const enterBtn = screen.getByText("ENTER")
+      fireEvent.click(enterBtn)
+
+      expect(processInput).toHaveBeenCalledWith({
+        type: "SCAN",
+        value: "47",
+        source: "click",
+      })
     })
   })
 })

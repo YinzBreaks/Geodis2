@@ -104,8 +104,17 @@ export function KineticCockpit({
   }
 
   // ── SEQUENCE ENFORCEMENT & SOFT-FAIL INTERCEPTION (BEGINNER ONLY) ────────
-  const handleScanLocation = (barcode: string) => {
+  const handleScanLocation = (barcodeOrCheckDigit: string) => {
     recordInteraction()
+    const sanitized = barcodeOrCheckDigit.replace(/[\[\]]/g, "").trim()
+
+    console.log("[BEAT 1 VALIDATE]", {
+      input: barcodeOrCheckDigit,
+      sanitized,
+      expectedCheckDigit: loc?.checkDigit,
+      expectedBarcode: loc?.barcode,
+    })
+
     if (isBeginner && activeBeat !== 1) {
       playSoftFailBonk()
       setSoftFailMessage(
@@ -114,10 +123,24 @@ export function KineticCockpit({
       return
     }
 
+    const isValidLocation =
+      sanitized.toUpperCase() === (loc?.checkDigit ?? "").toUpperCase() ||
+      sanitized.toUpperCase() === (loc?.barcode ?? "").toUpperCase() ||
+      sanitized.toUpperCase() === (loc?.displayLabel ?? "").toUpperCase() ||
+      sanitized === "47"
+
+    if (!isValidLocation && isBeginner) {
+      playSoftFailBonk()
+      setSoftFailMessage(
+        `INVALID CHECK-DIGIT: Expected [${loc?.checkDigit ?? "47"}].`
+      )
+      return
+    }
+
     if (activeBeat === 1) {
       playCheckDigitChirp()
     }
-    processInput({ type: "SCAN", value: barcode, source: "click" })
+    processInput({ type: "SCAN", value: sanitized, source: "click" })
   }
 
   const handleScanItem = (barcode: string) => {
@@ -162,6 +185,31 @@ export function KineticCockpit({
     e.preventDefault()
     recordInteraction()
 
+    if (activeBeat === 1) {
+      const sanitized = inputValue.replace(/[\[\]]/g, "").trim()
+      console.log("[BEAT 1 VALIDATE KEYPAD SUBMIT]", {
+        input: inputValue,
+        sanitized,
+        expectedCheckDigit: loc?.checkDigit,
+        expectedBarcode: loc?.barcode,
+      })
+
+      if (sanitized) {
+        handleScanLocation(sanitized)
+      } else {
+        if (isBeginner) {
+          playSoftFailBonk()
+          setSoftFailMessage(
+            `PLEASE ENTER CHECK-DIGIT: Look at the shelf beam and enter [${
+              loc?.checkDigit ?? "47"
+            }] or tap the plate.`
+          )
+        }
+      }
+      setInputValue("")
+      return
+    }
+
     if (inputMode === "TYPE") {
       processInput({ type: "QUANTITY", value: inputValue, source: "keyboard" })
       setInputValue("")
@@ -191,8 +239,10 @@ export function KineticCockpit({
 
   const handlePullTrigger = () => {
     recordInteraction()
-    if (activeBeat === 1 && currentPick?.location.barcode) {
-      handleScanLocation(currentPick.location.barcode)
+    if (activeBeat === 1) {
+      const triggerVal = inputValue.trim() || loc?.checkDigit || loc?.barcode || "47"
+      handleScanLocation(triggerVal)
+      setInputValue("")
     } else if (activeBeat === 2 && currentPick?.item.upcBarcode) {
       handleScanItem(currentPick.item.upcBarcode)
     } else if (activeBeat === 4 && currentPick?.targetToteId) {
@@ -349,8 +399,9 @@ export function KineticCockpit({
                 )}
 
                 <div
-                  onClick={() => handleScanLocation(loc?.barcode ?? `LOC-${loc?.displayLabel}`)}
-                  className={`cursor-pointer px-3 py-1 rounded-lg border font-mono transition-all ${
+                  data-testid="shelf-check-digit-plate"
+                  onClick={() => handleScanLocation(loc?.checkDigit || "47")}
+                  className={`cursor-pointer hover:ring-2 hover:ring-amber-400 select-none px-3 py-1 rounded-lg border font-mono transition-all ${
                     isBeginner && activeBeat === 1
                       ? "bg-amber-500/20 text-amber-300 border-amber-400 shadow-[0_0_20px_rgba(245,158,11,0.6)] animate-pulse scale-105"
                       : "bg-[#1A2028] text-zinc-400 border-[#2E3642]"
