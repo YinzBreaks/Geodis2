@@ -179,9 +179,14 @@ function SupportColumns() {
             <boxGeometry args={[0.34, 3.2, 0.34]} />
             <meshStandardMaterial color="#f8fafc" metalness={0.12} roughness={0.72} />
           </mesh>
-          <mesh position={[0, 0.35, 0]} castShadow>
-            <boxGeometry args={[0.36, 0.7, 0.36]} />
-            <meshStandardMaterial color="#facc15" metalness={0.08} roughness={0.6} />
+          {/* GEODIS Blue (#004A99) Collision Bollard Wrap with Safety Accent */}
+          <mesh position={[0, 0.45, 0]} castShadow>
+            <boxGeometry args={[0.38, 0.9, 0.38]} />
+            <meshStandardMaterial color="#004a99" metalness={0.15} roughness={0.4} />
+          </mesh>
+          <mesh position={[0, 0.85, 0]}>
+            <boxGeometry args={[0.385, 0.08, 0.385]} />
+            <meshStandardMaterial color="#facc15" metalness={0.1} roughness={0.5} />
           </mesh>
         </group>
       ))}

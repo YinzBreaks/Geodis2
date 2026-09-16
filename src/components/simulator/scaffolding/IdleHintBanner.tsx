@@ -10,6 +10,14 @@ export interface IdleHintBannerProps {
   targetSlot?: number
 }
 
+/**
+ * IdleHintBanner — contextual nudge shown after >6s of trainee inactivity.
+ *
+ * Renders as a normal-flow status strip, NOT a floating overlay. The cockpit
+ * docks it in a reserved slot directly above the 4-Beat Cadence footer, so it
+ * can never sit on top of the 9-tote cart or any other equipment. It carries
+ * `pointer-events-none` end to end so it can never intercept a tap either.
+ */
 export function IdleHintBanner({
   visible,
   beat,
@@ -37,10 +45,12 @@ export function IdleHintBanner({
   return (
     <div
       data-testid="idle-hint-banner"
-      className="pointer-events-none absolute bottom-14 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2.5 bg-[#121A24]/95 border-2 border-cyan-500/80 rounded-xl px-4 py-2 text-cyan-200 shadow-[0_4px_25px_rgba(6,182,212,0.4)] animate-pulse"
+      role="status"
+      aria-live="polite"
+      className="pointer-events-none w-full h-full flex items-center justify-center gap-2.5 bg-[#121A24]/95 border border-cyan-500/70 rounded-lg px-3 text-cyan-200 shadow-[0_0_14px_rgba(6,182,212,0.25)] overflow-hidden"
     >
-      <span className="pointer-events-none w-2.5 h-2.5 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_10px_#22D3EE] animate-ping" />
-      <span className="pointer-events-none text-xs font-mono font-bold leading-tight tracking-wide">
+      <span className="pointer-events-none w-2 h-2 rounded-full bg-cyan-400 shrink-0 shadow-[0_0_8px_#22D3EE] animate-ping" />
+      <span className="pointer-events-none text-[11px] font-mono font-bold leading-tight tracking-wide truncate">
         {getHint()}
       </span>
     </div>

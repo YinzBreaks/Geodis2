@@ -1,0 +1,102 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1270 999" width="1270" height="999">
+  <defs>
+    <linearGradient id="chassisGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stopColor="#374151"/>
+      <stop offset="40%" stopColor="#1f2937"/>
+      <stop offset="100%" stopColor="#111827"/>
+    </linearGradient>
+    <radialGradient id="glassGrad" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stopColor="#0f2619"/>
+      <stop offset="100%" stopColor="#03120a"/>
+    </radialGradient>
+  </defs>
+  <!-- Forearm Wrist Mount Padded Cradle -->
+  <rect x="80" y="100" width="1110" height="800" rx="50" fill="#0b0f19" stroke="#1f2937" stroke-width="8"/>
+  <rect x="30" y="250" width="70" height="500" rx="15" fill="#1e293b"/>
+  <rect x="1170" y="250" width="70" height="500" rx="15" fill="#1e293b"/>
+
+  <!-- Main Ruggedized Polymer Terminal Body -->
+  <rect x="140" y="150" width="990" height="700" rx="30" fill="url(#chassisGrad)" stroke="#4b5563" stroke-width="6"/>
+
+  <!-- Left Modifier Keypad Column (ESC, TAB, ALT/CTRL, SHIFT, BLUE SCAN) -->
+  <rect x="180" y="210" width="90" height="60" rx="8" fill="#374151" stroke="#6b7280" stroke-width="2"/>
+  <text x="225" y="248" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ESC</text>
+
+  <rect x="180" y="295" width="90" height="60" rx="8" fill="#374151" stroke="#6b7280" stroke-width="2"/>
+  <text x="225" y="333" font-family="'Courier New', Courier, monospace" font-size="16" font-weight="900" fill="#ffffff" text-anchor="middle">TAB</text>
+
+  <rect x="180" y="380" width="90" height="60" rx="8" fill="#1d4ed8" stroke="#3b82f6" stroke-width="2"/>
+  <text x="225" y="418" font-family="'Courier New', Courier, monospace" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">CTRL</text>
+
+  <rect x="180" y="465" width="90" height="60" rx="8" fill="#d97706" stroke="#f59e0b" stroke-width="2"/>
+  <text x="225" y="503" font-family="'Courier New', Courier, monospace" font-size="15" font-weight="900" fill="#ffffff" text-anchor="middle">SHIFT</text>
+
+  <!-- Large Blue Scan Trigger Key -->
+  <rect x="180" y="550" width="90" height="90" rx="12" fill="#0284c7" stroke="#38bdf8" stroke-width="3"/>
+  <text x="225" y="605" font-family="'Courier New', Courier, monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">SCAN</text>
+
+  <!-- Triple Status LEDs above display -->
+  <!-- Decode Green LED -->
+  <circle cx="360" cy="185" r="10" fill="#22c55e"/>
+  <text x="360" y="165" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#9ca3af" text-anchor="middle">DECODE</text>
+  <!-- Warning Amber LED -->
+  <circle cx="530" cy="185" r="10" fill="#eab308"/>
+  <text x="530" y="165" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#9ca3af" text-anchor="middle">WARN</text>
+  <!-- Error Red LED -->
+  <circle cx="700" cy="185" r="10" fill="#ef4444"/>
+  <text x="700" y="165" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="800" fill="#9ca3af" text-anchor="middle">ERROR</text>
+
+  <!-- Landscape LCD Screen Glass Bezel -->
+  <rect x="310" y="210" width="460" height="370" rx="14" fill="#000000" stroke="#374151" stroke-width="4"/>
+  <rect x="325" y="225" width="430" height="340" rx="8" fill="url(#glassGrad)"/>
+  
+  <!-- Active Green Phosphor Terminal Lines (Authentic GEODIS WMS Display) -->
+  <text x="345" y="260" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="700" fill="#22c55e">Tote: T00000000010001</text>
+  <rect x="340" y="275" width="400" height="32" fill="#7f1d1d"/>
+  <text x="345" y="298" font-family="'Courier New', Courier, monospace" font-size="20" font-weight="900" fill="#ffffff">Aloc: 316-01-B-01 (CD:83)</text>
+  <text x="345" y="340" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="700" fill="#22c55e">Item: 024505572</text>
+  <text x="345" y="375" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="700" fill="#22c55e">Item (Last 4): 2001</text>
+  <text x="345" y="410" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="700" fill="#22c55e">Qty:  1 Unit</text>
+  <text x="345" y="450" font-family="'Courier New', Courier, monospace" font-size="20" font-weight="900" fill="#facc15">Item Barcode: _</text>
+
+  <!-- Right Alphanumeric Keypad Grid -->
+  <!-- Row 1: 1/A 2/B 3/C -->
+  <rect x="810" y="220" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="852" y="262" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">1</text>
+
+  <rect x="910" y="220" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="952" y="262" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">2</text>
+
+  <rect x="1010" y="220" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="1052" y="262" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">3</text>
+
+  <!-- Row 2: 4 5 6 -->
+  <rect x="810" y="305" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="852" y="347" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">4</text>
+
+  <rect x="910" y="305" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="952" y="347" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">5</text>
+
+  <rect x="1010" y="305" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="1052" y="347" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">6</text>
+
+  <!-- Row 3: 7 8 9 -->
+  <rect x="810" y="390" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="852" y="432" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">7</text>
+
+  <rect x="910" y="390" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="952" y="432" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">8</text>
+
+  <rect x="1010" y="390" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="1052" y="432" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">9</text>
+
+  <!-- Row 4: BKSP 0 ENTER -->
+  <rect x="810" y="475" width="85" height="70" rx="8" fill="#b91c1c" stroke="#dc2626" stroke-width="2"/>
+  <text x="852" y="517" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">BKSP</text>
+
+  <rect x="910" y="475" width="85" height="70" rx="8" fill="#1f2937" stroke="#4b5563" stroke-width="2"/>
+  <text x="952" y="517" font-family="'Courier New', Courier, monospace" font-size="24" font-weight="900" fill="#ffffff" text-anchor="middle">0</text>
+
+  <rect x="1010" y="475" width="85" height="70" rx="8" fill="#15803d" stroke="#22c55e" stroke-width="2"/>
+  <text x="1052" y="517" font-family="'Courier New', Courier, monospace" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ENT</text>
+</svg>

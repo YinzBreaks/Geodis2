@@ -1,0 +1,48 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 560" width="960" height="560">
+  <rect width="960" height="560" fill="#081426"/>
+  <!-- Architectural Blueprint Grid -->
+  <defs>
+    <pattern id="blueGrid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#0f2b4c" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="960" height="560" fill="url(#blueGrid)"/>
+
+  <!-- Facility Outer Perimeter Walls -->
+  <rect x="28" y="34" width="904" height="498" fill="none" stroke="#38bdf8" stroke-width="3"/>
+
+  <!-- Zones Z1 to Z4 -->
+  <!-- Zone 1 (Aisle 316) -->
+  <rect x="70" y="76" width="182" height="150" rx="8" fill="#0c2340" stroke="#38bdf8" stroke-width="2"/>
+  <text x="161" y="140" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ZONE 1</text>
+  <text x="161" y="165" font-family="'Courier New', Courier, monospace" font-size="13" font-weight="800" fill="#38bdf8" text-anchor="middle">AISLE 316</text>
+
+  <!-- Zone 2 (Aisle 412) -->
+  <rect x="270" y="76" width="182" height="150" rx="8" fill="#0c2340" stroke="#38bdf8" stroke-width="2"/>
+  <text x="361" y="140" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ZONE 2</text>
+  <text x="361" y="165" font-family="'Courier New', Courier, monospace" font-size="13" font-weight="800" fill="#38bdf8" text-anchor="middle">AISLE 412</text>
+
+  <!-- Zone 3 (Aisle 508) -->
+  <rect x="470" y="76" width="182" height="150" rx="8" fill="#0c2340" stroke="#38bdf8" stroke-width="2"/>
+  <text x="561" y="140" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ZONE 3</text>
+  <text x="561" y="165" font-family="'Courier New', Courier, monospace" font-size="13" font-weight="800" fill="#38bdf8" text-anchor="middle">AISLE 508</text>
+
+  <!-- Zone 4 (Aisle 612) -->
+  <rect x="670" y="76" width="182" height="150" rx="8" fill="#0c2340" stroke="#38bdf8" stroke-width="2"/>
+  <text x="761" y="140" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#ffffff" text-anchor="middle">ZONE 4</text>
+  <text x="761" y="165" font-family="'Courier New', Courier, monospace" font-size="13" font-weight="800" fill="#38bdf8" text-anchor="middle">AISLE 612</text>
+
+  <!-- Command Center (CSR / Tasker Dispatch) -->
+  <rect x="150" y="300" width="300" height="120" rx="8" fill="#0f172a" stroke="#f59e0b" stroke-width="2.5"/>
+  <text x="300" y="355" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#f59e0b" text-anchor="middle">COMMAND CENTER</text>
+  <text x="300" y="380" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="800" fill="#cbd5e1" text-anchor="middle">TASKER / CSR / DISPATCH DESK</text>
+
+  <!-- Hazmat Segregation Zone (Aisle 900) -->
+  <rect x="628" y="286" width="224" height="148" rx="8" fill="#451a03" stroke="#eab308" stroke-width="2.5"/>
+  <text x="740" y="355" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#fef08a" text-anchor="middle">HAZMAT ZONE</text>
+  <text x="740" y="380" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="800" fill="#fef3c7" text-anchor="middle">AISLE 900 (CHEM STORAGE)</text>
+
+  <!-- Putwall Conveyor Line -->
+  <rect x="70" y="482" width="782" height="36" rx="6" fill="#1e293b" stroke="#38bdf8" stroke-width="2"/>
+  <text x="461" y="506" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="14" font-weight="900" fill="#ffffff" text-anchor="middle" letter-spacing="2">OUTBOUND TAKEAWAY CONVEYOR INDUCTION LINE</text>
+</svg>

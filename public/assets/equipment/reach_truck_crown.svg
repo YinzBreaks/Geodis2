@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 800" width="800" height="800">
+  <ellipse cx="400" cy="740" rx="300" ry="30" fill="#000000" opacity="0.3"/>
+  <!-- Base chassis in GEODIS Blue -->
+  <rect x="250" y="520" width="300" height="180" rx="20" fill="#004A99" stroke="#1e3a8a" stroke-width="4"/>
+  <circle cx="300" cy="700" r="40" fill="#18181b" stroke="#71717a" stroke-width="6"/>
+  <circle cx="500" cy="700" r="40" fill="#18181b" stroke="#71717a" stroke-width="6"/>
+
+  <!-- Vertical Steel Telescoping Mast -->
+  <rect x="360" y="80" width="25" height="540" fill="#475569"/>
+  <rect x="415" y="80" width="25" height="540" fill="#475569"/>
+  <!-- Cross Braces -->
+  <line x1="360" y1="160" x2="440" y2="220" stroke="#334155" stroke-width="6"/>
+  <line x1="360" y1="300" x2="440" y2="360" stroke="#334155" stroke-width="6"/>
+
+  <!-- Overhead Safety Guard (Yellow) -->
+  <path d="M280,180 L520,180 L520,240 L280,240 Z" fill="#eab308" stroke="#a16207" stroke-width="4"/>
+  <line x1="320" y1="180" x2="320" y2="520" stroke="#eab308" stroke-width="8"/>
+  <line x1="480" y1="180" x2="480" y2="520" stroke="#eab308" stroke-width="8"/>
+
+  <text x="400" y="600" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="22" font-weight="900" fill="#ffffff" text-anchor="middle">CROWN SP 4000</text>
+  <text x="400" y="630" font-family="'Courier New', Courier, monospace" font-size="14" font-weight="800" fill="#93c5fd" text-anchor="middle">GEODIS FLEET #TRK-840</text>
+</svg>

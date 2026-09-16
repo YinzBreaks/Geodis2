@@ -117,7 +117,12 @@ export function validateScan(
     case WorkflowStep.PK_SCAN_TOTE_BARCODE: {
       const pick = session.pickQueue[session.currentPickIndex]
       const targetTote = session.cart.totes.find((t) => t.slot === pick?.targetSlot)
-      return targetTote && scannedValue === targetTote.barcode
+      if (!targetTote) return ScanResult.WRONG_TOTE
+      const val = scannedValue.trim().toUpperCase()
+      const matchesBarcode = Boolean(targetTote.barcode && val === targetTote.barcode.toUpperCase())
+      const matchesToteId = Boolean(targetTote.toteId && val === targetTote.toteId.toUpperCase())
+      const matchesSlot = val === `TOTE-${String(targetTote.slot).padStart(2, "0")}`
+      return (matchesBarcode || matchesToteId || matchesSlot)
         ? ScanResult.SUCCESS
         : ScanResult.WRONG_TOTE
     }

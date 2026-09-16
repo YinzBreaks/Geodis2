@@ -45,8 +45,10 @@ export class PhaserWarehouseScene extends Phaser.Scene {
   private worldContainer!: Phaser.GameObjects.Container
 
   // Plates
+  private inboundDockPlate!: Phaser.GameObjects.Image
   private aislePlate!: Phaser.GameObjects.Image
   private conveyorPlate!: Phaser.GameObjects.Image
+  private hazmatPlate!: Phaser.GameObjects.Image
 
   // Foreground Cart & Totes
   private cartContainer!: Phaser.GameObjects.Container
@@ -77,7 +79,7 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     onScan: () => {},
     onConfirm: () => {},
   }
-  private currentPlate: "aisle" | "conveyor" = "aisle"
+  private currentPlate: "inbound_dock" | "aisle" | "conveyor" | "hazmat" = "inbound_dock"
   private activeHighlightedBarcode: string | null = null
   private isZoomedToShelf: boolean = false
   private targetShelfLoc: string = "316-001-A1"
@@ -186,8 +188,10 @@ export class PhaserWarehouseScene extends Phaser.Scene {
 
   public preload() {
     // 1. Background plates
+    this.load.image("inbound_dock_plate", "/assets/simulation/inbound_dock_plate.jpg")
     this.load.image("aisle_plate", "/assets/simulation/aisle_plate.jpg")
     this.load.image("conveyor_plate", "/assets/simulation/conveyor_plate.jpg")
+    this.load.image("hazmat_plate", "/assets/simulation/hazmat_staging_bay.jpg")
 
     // 2. Isolated sprites
     this.load.image("pick_cart", "/assets/simulation/Aluminum_warehouse_pick_cart.png")
@@ -213,10 +217,16 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     this.conveyorPlate = this.add.image(0, 0, "conveyor_plate").setAlpha(0).setDepth(1)
     this.conveyorPlate.setPosition(this.conveyorPlate.width / 2, this.conveyorPlate.height / 2)
 
-    this.aislePlate = this.add.image(0, 0, "aisle_plate").setAlpha(1).setDepth(2)
+    this.hazmatPlate = this.add.image(0, 0, "hazmat_plate").setAlpha(0).setDepth(2)
+    this.hazmatPlate.setPosition(this.hazmatPlate.width / 2, this.hazmatPlate.height / 2)
+
+    this.inboundDockPlate = this.add.image(0, 0, "inbound_dock_plate").setAlpha(1).setDepth(3)
+    this.inboundDockPlate.setPosition(this.inboundDockPlate.width / 2, this.inboundDockPlate.height / 2)
+
+    this.aislePlate = this.add.image(0, 0, "aisle_plate").setAlpha(0).setDepth(4)
     this.aislePlate.setPosition(this.aislePlate.width / 2, this.aislePlate.height / 2)
 
-    this.worldContainer.add([this.conveyorPlate, this.aislePlate])
+    this.worldContainer.add([this.conveyorPlate, this.hazmatPlate, this.inboundDockPlate, this.aislePlate])
 
     // Ambient warehouse lighting gradient — screen-space overlay, stays outside
     // worldContainer so it always covers the full viewport.
@@ -838,6 +848,40 @@ export class PhaserWarehouseScene extends Phaser.Scene {
   }
 
   /**
+   * Crossfade plate to inbound dock area
+   */
+  public transitionToInboundDock(duration: number = 800) {
+    if (this.currentPlate === "inbound_dock") return
+    this.currentPlate = "inbound_dock"
+
+    const d = this.motionMs(duration)
+    this.tweens.add({ targets: this.inboundDockPlate, alpha: 1, duration: d, ease: "Linear" })
+    this.tweens.add({ targets: [this.aislePlate, this.conveyorPlate, this.hazmatPlate], alpha: 0, duration: d, ease: "Linear" })
+
+    const { width } = this.scale
+    this.tweens.add({ targets: this.cartContainer, x: width / 2, duration: d, ease: "Cubic.easeOut" })
+    this.conveyorHotspotContainer?.setVisible(false)
+    this.resetToOverview(duration)
+  }
+
+  /**
+   * Crossfade plate to hazmat staging bay
+   */
+  public transitionToHazmat(duration: number = 800) {
+    if (this.currentPlate === "hazmat") return
+    this.currentPlate = "hazmat"
+
+    const d = this.motionMs(duration)
+    this.tweens.add({ targets: this.hazmatPlate, alpha: 1, duration: d, ease: "Linear" })
+    this.tweens.add({ targets: [this.aislePlate, this.conveyorPlate, this.inboundDockPlate], alpha: 0, duration: d, ease: "Linear" })
+
+    const { width } = this.scale
+    this.tweens.add({ targets: this.cartContainer, x: width / 2, duration: d, ease: "Cubic.easeOut" })
+    this.conveyorHotspotContainer?.setVisible(false)
+    this.resetToOverview(duration)
+  }
+
+  /**
    * Crossfade plate to conveyor area
    */
   public transitionToConveyor(duration: number = 800) {
@@ -853,7 +897,7 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     })
 
     this.tweens.add({
-      targets: this.aislePlate,
+      targets: [this.aislePlate, this.inboundDockPlate, this.hazmatPlate],
       alpha: 0,
       duration: d,
       ease: "Linear",
@@ -887,7 +931,7 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     })
 
     this.tweens.add({
-      targets: this.conveyorPlate,
+      targets: [this.conveyorPlate, this.inboundDockPlate, this.hazmatPlate],
       alpha: 0,
       duration: d,
       ease: "Linear",
@@ -988,6 +1032,17 @@ export class PhaserWarehouseScene extends Phaser.Scene {
           bcText.setText(tote.barcode.slice(-6))
         }
 
+        // Apply OSHA Safety Yellow tint to Hazmat isolation totes (TOTE-09-HAZ)
+        const isHazmatTote = Boolean(tote?.barcode?.includes("HAZ") || (slot === 9 && session.cart.taskGroup === "HAZ"))
+        const toteImg = toteSprite.list[0] as Phaser.GameObjects.Image
+        if (toteImg && typeof toteImg.setTint === "function") {
+          if (isHazmatTote) {
+            toteImg.setTint(0xfacc15)
+          } else {
+            toteImg.clearTint()
+          }
+        }
+
         // Highlight ring on active pick target tote
         const currentPick = session.pickQueue[session.currentPickIndex]
         const isTarget = currentPick && currentPick.targetSlot === slot
@@ -999,17 +1054,26 @@ export class PhaserWarehouseScene extends Phaser.Scene {
     })
 
     // ── 2. Handle Plate Transitions & Camera Zooms ─────────────────────────
-    if (
+    const isHazmatStep = step === WorkflowStep.EX_HAZMAT_REDIRECT || (session.cart.taskGroup === "HAZ" && step.startsWith("EX_"))
+    const isConveyorStep = (
       step === WorkflowStep.PK_END_OF_TOTE_DISPLAY ||
       step === WorkflowStep.PK_PRESS_CTRL_A ||
-      step === WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR
-    ) {
+      step === WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR ||
+      step === WorkflowStep.PS_ROUND_COMPLETE
+    )
+    const isBuildCartStep = step.startsWith("BC_")
+
+    if (isHazmatStep) {
+      this.transitionToHazmat()
+      this.shelfHotspotContainer?.setVisible(false)
+    } else if (isConveyorStep) {
       this.transitionToConveyor()
       this.shelfHotspotContainer?.setVisible(false)
+    } else if (isBuildCartStep) {
+      this.transitionToInboundDock()
+      this.shelfHotspotContainer?.setVisible(false)
     } else {
-      if (this.currentPlate === "conveyor") {
-        this.transitionToAisle()
-      }
+      this.transitionToAisle()
 
       // Camera progressive zoom based on workflow step
       if (

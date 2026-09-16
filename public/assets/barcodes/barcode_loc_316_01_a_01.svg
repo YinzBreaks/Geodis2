@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" width="360" height="140">
+  <defs>
+    <filter id="drop" x="-5%" y="-5%" width="110%" height="110%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-opacity="0.2"/>
+    </filter>
+  </defs>
+  <rect x="5" y="5" width="350" height="130" rx="8" fill="#ffffff" stroke="#004A99" stroke-width="2" filter="url(#drop)"/>
+  
+  <!-- Left metadata column -->
+  <rect x="5" y="5" width="70" height="130" rx="6" fill="#004A99"/>
+  <text x="40" y="32" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#93c5fd" text-anchor="middle">AISLE</text>
+  <text x="40" y="56" font-family="'Courier New', Courier, monospace" font-size="20" font-weight="900" fill="#ffffff" text-anchor="middle">316</text>
+  <text x="40" y="86" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#93c5fd" text-anchor="middle">TIER</text>
+  <rect x="18" y="94" width="44" height="28" rx="4" fill="#f59e0b"/>
+  <text x="40" y="114" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="18" font-weight="900" fill="#0f172a" text-anchor="middle">A</text>
+
+  <!-- Middle Barcode Section -->
+  <g transform="translate(68, 5)">
+    <text x="90" y="22" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="10" font-weight="700" fill="#64748b" text-anchor="middle">LEVEL A · FLOOR PALLET</text>
+    <g transform="translate(-10, 8)">
+      <rect x="20.00" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="25.91" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="31.82" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="43.64" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="55.45" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="61.36" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="67.27" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="73.18" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="85.00" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="90.91" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="96.82" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="108.64" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="114.55" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="120.45" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="138.18" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="150.00" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="155.91" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="161.82" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="167.73" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="173.64" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="179.55" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="191.36" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="197.27" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="203.18" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="220.91" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="232.73" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="244.55" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="256.36" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="262.27" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="268.18" y="25" width="5.32" height="55" fill="#111827"/>
+      <rect x="274.09" y="25" width="5.32" height="55" fill="#111827"/>
+    </g>
+    <text x="100" y="104" font-family="'Courier New', Courier, monospace" font-size="15" font-weight="800" fill="#0f172a" text-anchor="middle" letter-spacing="1">316-01-A-01</text>
+  </g>
+
+  <!-- Right Reverse-Contrast Check Digit Box (GEODIS Benchmark Standard) -->
+  <g transform="translate(280, 10)">
+    <rect x="0" y="0" width="65" height="120" rx="6" fill="#090d16" stroke="#1e293b" stroke-width="1.5"/>
+    <text x="32" y="24" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="8" font-weight="800" fill="#94a3b8" text-anchor="middle" letter-spacing="1">CHECK</text>
+    <text x="32" y="36" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="8" font-weight="800" fill="#94a3b8" text-anchor="middle" letter-spacing="1">DIGIT</text>
+    <line x1="8" y1="46" x2="57" y2="46" stroke="#334155" stroke-width="1"/>
+    <text x="32" y="92" font-family="'Courier New', Courier, monospace" font-size="34" font-weight="900" fill="#38bdf8" text-anchor="middle">47</text>
+  </g>
+</svg>

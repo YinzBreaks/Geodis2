@@ -63,8 +63,6 @@ const CONFIRM_BEFORE_SCAN_STEPS = new Set<WorkflowStep>([
   WorkflowStep.BC_PLACE_TOTE_IN_SLOT,
   WorkflowStep.PK_READ_PICK_DISPLAY,
   WorkflowStep.PK_TRAVEL_TO_LOCATION,
-  WorkflowStep.PK_VERIFY_LOCATION,
-  WorkflowStep.PK_VERIFY_ITEM,
 ])
 
 /**
@@ -340,12 +338,30 @@ export const useSimulation = create<SimulationState>((set, get) => ({
     const bundle = SCENARIO_DATA[bundleKey]
     if (!bundle) return
 
-    const session = startSessionWithTasks(
+    let session = startSessionWithTasks(
       "trainee-dev",
       bundle.scenario,
       bundle.pickQueue,
       bundle.cart
     )
+
+    // For scenarios in the workforce simulator, start directly at the picking cycle
+    // (WorkflowStep.PK_VERIFY_LOCATION) with the 9 pre-allocated totes ready to receive picks!
+    const populatedTotes = bundle.cart.totes.map((t, idx) => ({
+      ...t,
+      barcode: t.barcode || `T000000000${String(11701 + idx).padStart(5, "0")}`,
+    }))
+
+    session = {
+      ...session,
+      cart: {
+        ...bundle.cart,
+        isBuilt: true,
+        totes: populatedTotes,
+      },
+      toteStack: [],
+      currentStep: WorkflowStep.PK_VERIFY_LOCATION,
+    }
 
     // Estimate total steps for the progress bar.
     // Build cart ≈ 26 steps + 7 actions per pick + 2 end-of-tote steps per 9 picks.

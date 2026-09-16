@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 280 250" width="280" height="250">
+  <rect width="280" height="250" rx="10" fill="#090d16" stroke="#1e293b" stroke-width="2"/>
+  <!-- Corridor Center Walkway -->
+  <rect x="90" y="15" width="100" height="220" fill="#0f172a" stroke="#334155" stroke-dasharray="4 4"/>
+  
+  <!-- Bays 01 to 04 indicators -->
+  <text x="35" y="45" font-family="'Courier New', Courier, monospace" font-size="10" font-weight="800" fill="#64748b">BAY 01</text>
+  <text x="35" y="105" font-family="'Courier New', Courier, monospace" font-size="10" font-weight="800" fill="#64748b">BAY 02</text>
+  <text x="35" y="165" font-family="'Courier New', Courier, monospace" font-size="10" font-weight="800" fill="#64748b">BAY 03</text>
+  <text x="35" y="225" font-family="'Courier New', Courier, monospace" font-size="10" font-weight="800" fill="#64748b">BAY 04</text>
+
+  <!-- Serpentine S-Curve Pick Path (Gold/Amber) -->
+  <path d="M140,25 L45,45 L140,75 L235,105 L140,135 L45,165 L140,195 L235,225" fill="none" stroke="#f59e0b" stroke-width="3" stroke-dasharray="5 3"/>
+
+  <!-- Pick Waypoint Nodes -->
+  <circle cx="45" cy="45" r="7" fill="#10b981"/>
+  <circle cx="235" cy="105" r="7" fill="#10b981"/>
+  <circle cx="45" cy="165" r="7" fill="#10b981"/>
+  <circle cx="235" cy="225" r="7" fill="#ef4444"/>
+
+  <!-- Current Cart Indicator on Path -->
+  <circle cx="140" cy="135" r="11" fill="#38bdf8" stroke="#ffffff" stroke-width="3"/>
+  <text x="140" y="139" font-family="'Courier New', Courier, monospace" font-size="10" font-weight="900" fill="#000000" text-anchor="middle">C</text>
+</svg>

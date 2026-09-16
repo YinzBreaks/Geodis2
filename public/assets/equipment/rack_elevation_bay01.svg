@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 800" width="1000" height="800">
+  <!-- Steel Upright Posts (GEODIS Blue) -->
+  <rect x="40" y="40" width="40" height="720" rx="4" fill="#004A99" stroke="#172554" stroke-width="3"/>
+  <rect x="920" y="40" width="40" height="720" rx="4" fill="#004A99" stroke="#172554" stroke-width="3"/>
+
+  <!-- Level D (Top Reach - 2.2m) -->
+  <rect x="80" y="140" width="840" height="24" rx="2" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+  <text x="120" y="125" font-family="'Courier New', Courier, monospace" font-size="14" font-weight="900" fill="#f97316">LEVEL D · TOP REACH (2.2M) · CHECK DIGIT: 14</text>
+  <rect x="120" y="60" width="140" height="75" rx="4" fill="#d97706" opacity="0.8"/>
+  <rect x="280" y="60" width="140" height="75" rx="4" fill="#d97706" opacity="0.8"/>
+
+  <!-- Level C (Chest Height - 1.6m) -->
+  <rect x="80" y="320" width="840" height="24" rx="2" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+  <text x="120" y="305" font-family="'Courier New', Courier, monospace" font-size="14" font-weight="900" fill="#f97316">LEVEL C · CHEST HEIGHT (1.6M) · CHECK DIGIT: 62</text>
+  <rect x="120" y="240" width="140" height="75" rx="4" fill="#2563eb" opacity="0.8"/>
+  <rect x="280" y="240" width="140" height="75" rx="4" fill="#2563eb" opacity="0.8"/>
+
+  <!-- Level B (Golden Zone - 1.1m) Prime Target -->
+  <rect x="80" y="500" width="840" height="28" rx="2" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+  <!-- Highlight ring on Golden Zone Level B -->
+  <rect x="75" y="495" width="850" height="38" rx="4" fill="none" stroke="#22c55e" stroke-width="3" stroke-dasharray="8 6"/>
+  <text x="120" y="485" font-family="'Courier New', Courier, monospace" font-size="16" font-weight="900" fill="#22c55e">LEVEL B · ERGONOMIC GOLDEN ZONE (1.1M) · CHECK DIGIT: 83</text>
+  <rect x="120" y="415" width="150" height="80" rx="4" fill="#15803d"/>
+  <text x="195" y="460" font-family="'Courier New', Courier, monospace" font-size="13" font-weight="900" fill="#ffffff" text-anchor="middle">PICK TARGET</text>
+
+  <!-- Level A (Floor Pallet - 0.3m) -->
+  <rect x="80" y="690" width="840" height="30" rx="2" fill="#ea580c" stroke="#9a3412" stroke-width="2"/>
+  <text x="120" y="675" font-family="'Courier New', Courier, monospace" font-size="14" font-weight="900" fill="#f97316">LEVEL A · FLOOR LEVEL (0.3M) · CHECK DIGIT: 47</text>
+  <rect x="120" y="605" width="220" height="80" rx="4" fill="#78350f"/>
+</svg>

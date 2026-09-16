@@ -3,6 +3,7 @@
 import React from "react"
 import type { WarehouseLocation, WarehouseItem, DifficultyLevel } from "@/types/domain"
 import { BarcodeLabel } from "./assets/BarcodeLabel"
+import { getProductAsset, getDefectAsset } from "@/lib/assetRegistry"
 
 export interface PickFaceElevationProps {
   location?: WarehouseLocation
@@ -164,43 +165,58 @@ export function PickFaceElevation({
 
               {/* Product Slot & Shelf Contents */}
               <div className="flex items-center justify-between bg-black/40 rounded p-2 border border-slate-800/80 relative z-10">
-                <div className="flex flex-col">
+                <div className="flex items-center gap-3">
                   {isTargetTier && item ? (
                     <>
-                      <span className="text-white font-bold text-[11px] truncate max-w-[220px]">
-                        {item.description}
-                      </span>
-                      <span className="text-[10px] text-slate-400">
-                        SKU: <span className="text-zinc-200">{item.sku}</span> | Last 4:{" "}
-                        <span className="text-amber-300 font-bold font-mono">
-                          {item.lastFourDigits}
-                        </span>
-                      </span>
+                      {/* Visual Product Thumbnail & Defect Indicator */}
+                      <div className="relative w-12 h-12 rounded bg-slate-950/90 border border-slate-700 flex items-center justify-center p-1 shrink-0 overflow-hidden shadow-inner">
+                        <img
+                          src={getProductAsset(item.sku)}
+                          alt={item.description}
+                          className="w-full h-full object-contain"
+                        />
+                        {defectType && (
+                          <div className="absolute inset-0 bg-red-950/60 border border-red-500 rounded flex items-center justify-center backdrop-blur-[0.5px]">
+                            <img
+                              src={getDefectAsset(defectType)?.path}
+                              alt={defectType}
+                              className="w-8 h-8 object-contain drop-shadow"
+                            />
+                          </div>
+                        )}
+                      </div>
 
-                      {/* Day 4 Defect Visual Overlays */}
-                      {defectType === "SCRATCHED_BARCODE" && (
-                        <div className="mt-1 px-1.5 py-0.5 bg-rose-950/80 border border-rose-500/60 rounded text-[9px] text-rose-300 font-bold flex items-center gap-1">
-                          <span>⚠ BARCODE TORN/SCRATCHED</span>
-                          <span className="text-amber-300 ml-1">USE CTRL+M</span>
-                        </div>
-                      )}
-                      {defectType === "CRUSHED_CARTON" && (
-                        <div className="mt-1 px-1.5 py-0.5 bg-amber-950/80 border border-amber-500/60 rounded text-[9px] text-amber-300 font-bold flex items-center gap-1">
-                          <span>📦 CARTON CRUSHED/OPEN</span>
-                          <span className="text-white ml-1">USE CTRL+D</span>
-                        </div>
-                      )}
-                      {defectType === "HAZMAT_SPILL" && (
-                        <div className="mt-1 px-1.5 py-0.5 bg-red-950 border border-red-500 rounded text-[9px] text-red-200 font-bold flex items-center gap-1 animate-pulse">
-                          <span>🛑 CHEMICAL SPILL HALT</span>
-                          <span className="text-amber-300 ml-1">USE CTRL+H</span>
-                        </div>
-                      )}
+                      <div className="flex flex-col">
+                        <span className="text-white font-bold text-[11px] truncate max-w-[200px]">
+                          {item.description}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          SKU: <span className="text-zinc-200 font-mono">{item.sku}</span> | Last 4:{" "}
+                          <span className="text-amber-300 font-bold font-mono">
+                            {item.lastFourDigits}
+                          </span>
+                        </span>
+
+                        {/* Day 4 Defect Visual Overlays */}
+                        {defectType && (
+                          <div className="mt-1 px-1.5 py-0.5 bg-rose-950/80 border border-rose-500/60 rounded text-[9px] text-rose-300 font-bold flex items-center gap-1">
+                            <span>⚠ {getDefectAsset(defectType)?.label}</span>
+                            <span className="text-amber-300 ml-1">{getDefectAsset(defectType)?.actionHint}</span>
+                          </div>
+                        )}
+                      </div>
                     </>
                   ) : (
-                    <span className="text-slate-500 text-[10px] italic">
-                      {tier.subtitle}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <img
+                        src="/assets/equipment/empty_bin_slot.svg"
+                        alt="Empty Slot"
+                        className="w-7 h-7 opacity-20 object-contain"
+                      />
+                      <span className="text-slate-500 text-[10px] italic">
+                        {tier.subtitle}
+                      </span>
+                    </div>
                   )}
                 </div>
 

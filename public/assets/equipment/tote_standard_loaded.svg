@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 420" width="600" height="420">
+  <defs>
+    <linearGradient id="toteSlate2" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stopColor="#334155"/>
+      <stop offset="100%" stopColor="#0f172a"/>
+    </linearGradient>
+  </defs>
+  <polygon points="50,70 550,70 510,380 90,380" fill="url(#toteSlate2)" stroke="#0f172a" stroke-width="3"/>
+  <rect x="35" y="45" width="530" height="35" rx="6" fill="#475569" stroke="#1e293b" stroke-width="2"/>
+
+  <!-- Picked contents protruding from tote top -->
+  <!-- Box 1 -->
+  <rect x="90" y="25" width="130" height="90" rx="4" fill="#d97706" stroke="#78350f" stroke-width="2"/>
+  <line x1="90" y1="55" x2="220" y2="55" stroke="#92400e" stroke-width="1.5"/>
+  <text x="155" y="75" font-family="'Courier New', Courier, monospace" font-size="11" font-weight="900" fill="#fef3c7" text-anchor="middle">SKU-024505572</text>
+
+  <!-- Box 2 (Widget Blue bottle) -->
+  <rect x="240" y="10" width="110" height="110" rx="8" fill="#1e40af" stroke="#172554" stroke-width="2"/>
+  <rect x="275" y="-5" width="40" height="15" rx="3" fill="#ffffff"/>
+  <text x="295" y="65" font-family="'Courier New', Courier, monospace" font-size="11" font-weight="900" fill="#dbeafe" text-anchor="middle">QTY: 1 EA</text>
+
+  <!-- Pack 3 (Tools) -->
+  <rect x="370" y="30" width="140" height="85" rx="4" fill="#047857" stroke="#064e3b" stroke-width="2"/>
+  <text x="440" y="75" font-family="'Courier New', Courier, monospace" font-size="11" font-weight="900" fill="#d1fae5" text-anchor="middle">TORQUE WRENCH</text>
+
+  <!-- Foreground tote front wall -->
+  <polygon points="50,70 550,70 510,380 90,380" fill="#1e293b" opacity="0.95"/>
+  <rect x="35" y="45" width="530" height="35" rx="6" fill="#334155" stroke="#1e293b" stroke-width="2"/>
+  <rect x="180" y="210" width="240" height="85" rx="4" fill="#ffffff" stroke="#cbd5e1" stroke-width="2"/>
+  <text x="300" y="238" font-family="ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="12" font-weight="900" fill="#004A99" text-anchor="middle">ACTIVE ROUND · 3 ITEMS</text>
+  <rect x="210" y="248" width="180" height="30" fill="#0f172a"/>
+  <text x="300" y="268" font-family="'Courier New', Courier, monospace" font-size="12" font-weight="800" fill="#ffffff" text-anchor="middle">T00000000010001</text>
+</svg>

@@ -28,20 +28,27 @@ export function WarehouseSceneFallback({
   const isItemStep = ctx.scannableAsset === "item"
   const isLocationStep = session.currentStep === WorkflowStep.PK_VERIFY_LOCATION
 
+  const isHazmatTote = isToteStep && (session.cart.totes.find((t) => t.slot === targetSlot)?.barcode?.includes("HAZ") || targetSlot === 9)
+
   const referenceImage = ctx.showShelf
     ? {
-        src: "/images/geodis-reference/geodis-warehouse-reference-01.png",
-        alt: "GEODIS warehouse Pick Front reference",
+        src: "/assets/simulation/aisle_plate.jpg",
+        alt: "GEODIS Selective Pallet Racking Pick Face (Aisle 316)",
       }
     : isToteStep
       ? {
-          src: "/images/geodis-reference/geodis-warehouse-reference-10.png",
-          alt: "GEODIS Tote reference",
+          src: isHazmatTote ? "/assets/equipment/tote_hazmat_empty.svg" : "/assets/equipment/tote_standard_empty.svg",
+          alt: isHazmatTote ? "GEODIS Hazmat Isolation Tote (TOTE-09-HAZ)" : "GEODIS Standard FliPak Storage Tote",
         }
-      : {
-          src: "/images/geodis-reference/geodis-warehouse-reference-04.png",
-          alt: "GEODIS Pick Cart reference",
-        }
+      : session.currentStep.startsWith("BC_")
+        ? {
+            src: "/assets/simulation/inbound_dock_plate.jpg",
+            alt: "GEODIS Inbound Staging & Receiving Dock",
+          }
+        : {
+            src: "/assets/simulation/Aluminum_warehouse_pick_cart.png",
+            alt: "GEODIS 3-Tier Aluminum Order Picking Cart",
+          }
 
   if (ctx.showShelf && pick) {
     const imageScan = isItemStep

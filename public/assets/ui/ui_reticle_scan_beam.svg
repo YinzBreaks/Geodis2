@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 240" width="240" height="240">
+  <defs>
+    <filter id="redBeamGlow">
+      <feGaussianBlur stdDeviation="4" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <!-- 4 Corner Brackets -->
+  <path d="M40,70 L40,40 L70,40" fill="none" stroke="#ef4444" stroke-width="4"/>
+  <path d="M200,70 L200,40 L170,40" fill="none" stroke="#ef4444" stroke-width="4"/>
+  <path d="M40,170 L40,200 L70,200" fill="none" stroke="#ef4444" stroke-width="4"/>
+  <path d="M200,170 L200,200 L170,200" fill="none" stroke="#ef4444" stroke-width="4"/>
+
+  <!-- 650nm Horizontal Scan Beam Sweep Line -->
+  <line x1="20" y1="120" x2="220" y2="120" stroke="#ff0033" stroke-width="4" filter="url(#redBeamGlow)"/>
+  <line x1="20" y1="120" x2="220" y2="120" stroke="#ffffff" stroke-width="1.5"/>
+  <!-- Targeting Crosshair -->
+  <circle cx="120" cy="120" r="16" fill="none" stroke="#ef4444" stroke-width="2"/>
+</svg>
