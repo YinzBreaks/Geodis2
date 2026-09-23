@@ -1,0 +1,13 @@
+{
+  "name": "prompt-organizer-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev:server": "npm run dev --prefix server",
+    "dev:client": "npm run dev --prefix client",
+    "dev": "npm run dev --prefix server",
+    "build:server": "npm run build --prefix server",
+    "build:client": "npm run typecheck --prefix client",
+    "build": "npm run build:server && npm run build:client"
+  }
+}

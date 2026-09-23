@@ -1,0 +1,57 @@
+version: '3.8'
+
+services:
+  # -------------------------------------------------------------
+  # Backend API Server
+  # -------------------------------------------------------------
+  server-api:
+    build:
+      context: .
+      dockerfile: Dockerfile.server
+    container_name: promptorganizer-server-api
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    environment:
+      - PORT=5000
+      - NODE_ENV=production
+      - OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - STRIPE_SECRET_KEY=${STRIPE_SECRET_KEY:-}
+      - SUPABASE_URL=${SUPABASE_URL:-https://placeholder-project.supabase.co}
+      - SUPABASE_ANON_KEY=${SUPABASE_ANON_KEY:-placeholder-anon-key}
+      - CLUSTER_IMAGE_GEN_URL=${CLUSTER_IMAGE_GEN_URL:-}
+      - CLUSTER_VOICE_GEN_URL=${CLUSTER_VOICE_GEN_URL:-}
+      - CLUSTER_MUSIC_GEN_URL=${CLUSTER_MUSIC_GEN_URL:-}
+    networks:
+      - internal-backend-net
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:5000/api/me || exit 0"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
+
+  # -------------------------------------------------------------
+  # Frontend Client Interface (Nginx)
+  # -------------------------------------------------------------
+  client-ui:
+    build:
+      context: .
+      dockerfile: Dockerfile.client
+      args:
+        VITE_SUPABASE_URL: ${VITE_SUPABASE_URL:-https://placeholder-project.supabase.co}
+        VITE_SUPABASE_ANON_KEY: ${VITE_SUPABASE_ANON_KEY:-placeholder-anon-key}
+    container_name: promptorganizer-client-ui
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      server-api:
+        condition: service_started
+    networks:
+      - internal-backend-net
+
+networks:
+  internal-backend-net:
+    driver: bridge

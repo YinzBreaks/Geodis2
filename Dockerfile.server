@@ -1,0 +1,41 @@
+# ==========================================
+# Stage 1: Build (TypeScript Compilation)
+# ==========================================
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Copy server package definitions
+COPY server/package*.json ./
+
+# Install dependencies (including devDependencies for tsc)
+RUN npm install
+
+# Copy source code and configuration
+COPY server/tsconfig.json ./
+COPY server/src ./src
+
+# Build TypeScript to clean JavaScript
+RUN npm run build
+
+# ==========================================
+# Stage 2: Production Runtime
+# ==========================================
+FROM node:20-alpine AS runner
+
+WORKDIR /app
+
+ENV NODE_ENV=production
+
+# Copy package definitions and install only production dependencies
+COPY server/package*.json ./
+RUN npm install --only=production && npm prune --production
+
+# Copy compiled JavaScript output from build stage
+COPY --from=builder /app/dist ./dist
+
+# Expose backend port
+EXPOSE 5000
+
+# Start server
+CMD ["node", "dist/index.js"]
