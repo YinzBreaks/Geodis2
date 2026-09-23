@@ -12,22 +12,22 @@ export const SKU_ASSET_MAP: Record<string, string> = {
   // Primary 14 Inventory SKUs — mapped to photorealistic assets
   "024505572": "/assets/products/item_widget_alpha_photoreal.png",
   "031200000": "/assets/products/item_bracket_steel_photoreal.png",
-  "012345678": "/assets/products/item_foam_packing.svg",
-  "071050030": "/assets/products/item_tape_roll.svg",
-  "041333040": "/assets/products/item_cable_tie_bag.svg",
-  "052000002": "/assets/products/item_label_sheet.svg",
-  "063200012": "/assets/products/item_pallet_wrap.svg",
-  "074300010": "/assets/products/item_corner_protector.svg",
-  "085000009": "/assets/products/item_bubble_wrap.svg",
-  "096100025": "/assets/products/item_cardboard_insert.svg",
-  "107200030": "/assets/products/item_bolt_set_m8.svg",
-  "118300015": "/assets/products/item_washer_pack.svg",
-  "129400020": "/assets/products/item_nut_set_m8.svg",
+  "012345678": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "071050030": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "041333040": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "052000002": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "063200012": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "074300010": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "085000009": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "096100025": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "107200030": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "118300015": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "129400020": "/assets/scenes/geodis-scene-pick-face.jpg",
   "140500035": "/assets/products/item_solvent_cleaner_photoreal.png",
 
   // Specialized scenario items (Day 1-5, tools & twin traps)
   "024505590": "/assets/products/item_torque_wrench_photoreal.png",
-  "024505592": "/assets/products/item_grease_gun.svg",
+  "024505592": "/assets/products/item_torque_wrench_photoreal.png",
   "024505580": "/assets/products/item_alpha_pro_photoreal.png",
   "024505581": "/assets/products/item_alpha_lite_photoreal.png",
 }
@@ -37,20 +37,20 @@ export const ITEM_ID_ASSET_MAP: Record<string, string> = {
   "item-widget-blue": "/assets/products/item_widget_alpha_photoreal.png",
   "item-widget-green": "/assets/products/item_widget_green_photoreal.png",
   "item-002": "/assets/products/item_bracket_steel_photoreal.png",
-  "item-003": "/assets/products/item_foam_packing.svg",
-  "item-004": "/assets/products/item_tape_roll.svg",
-  "item-005": "/assets/products/item_cable_tie_bag.svg",
-  "item-006": "/assets/products/item_label_sheet.svg",
-  "item-007": "/assets/products/item_pallet_wrap.svg",
-  "item-008": "/assets/products/item_corner_protector.svg",
-  "item-009": "/assets/products/item_bubble_wrap.svg",
-  "item-010": "/assets/products/item_cardboard_insert.svg",
-  "item-011": "/assets/products/item_bolt_set_m8.svg",
-  "item-012": "/assets/products/item_washer_pack.svg",
-  "item-013": "/assets/products/item_nut_set_m8.svg",
+  "item-003": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-004": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-005": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-006": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-007": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-008": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-009": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-010": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-011": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-012": "/assets/scenes/geodis-scene-pick-face.jpg",
+  "item-013": "/assets/scenes/geodis-scene-pick-face.jpg",
   "item-014": "/assets/products/item_solvent_cleaner_photoreal.png",
   "item-torque-wrench": "/assets/products/item_torque_wrench_photoreal.png",
-  "item-grease-gun": "/assets/products/item_grease_gun.svg",
+  "item-grease-gun": "/assets/products/item_torque_wrench_photoreal.png",
   "item-alpha-pro": "/assets/products/item_alpha_pro_photoreal.png",
   "item-alpha-lite": "/assets/products/item_alpha_lite_photoreal.png",
 }
@@ -76,32 +76,48 @@ export const DEFECT_ASSET_MAP: Record<string, { path: string; label: string; act
 export const EQUIPMENT_ASSETS = {
   cart: {
     svg: "/assets/equipment/pick_cart.svg",
-    sprite: "/assets/equipment/pick_cart_photoreal.png",
+    sprite: "/assets/scenes/geodis-scene-cart-loaded.jpg",
   },
   toteStandard: {
     empty: "/assets/equipment/tote_standard_empty.svg",
     loaded: "/assets/equipment/tote_standard_loaded.svg",
-    sprite: "/assets/equipment/tote_standard_photoreal.png",
+    sprite: "/assets/scenes/geodis-scene-tote-slot.jpg",
   },
   toteHazmat: {
     empty: "/assets/equipment/tote_hazmat_empty.svg",
     loaded: "/assets/equipment/tote_hazmat_loaded.svg",
-    sprite: "/assets/equipment/tote_hazmat_photoreal.png",
+    sprite: "/assets/equipment/tote_hazmat_loaded.svg",
   },
-  terminal: "/assets/equipment/wearable_terminal_photoreal.png",
-  ringScanner: "/assets/equipment/ring_scanner_photoreal.png",
-  reachTruck: "/assets/equipment/reach_truck_photoreal.png",
+  terminal: "/assets/equipment/wearable_terminal_wt4000.svg",
+  ringScanner: "/assets/equipment/ring_scanner_rs5100.svg",
+  reachTruck: "/assets/equipment/reach_truck_crown.svg",
   columnBollard: "/assets/equipment/column_bollard_geodis.svg",
   rackElevation: "/assets/equipment/rack_elevation_bay01.svg",
   emptyBin: "/assets/equipment/empty_bin_slot.svg",
   partialBin: "/assets/equipment/partial_bin_slot.svg",
 }
 
+export const GEODIS_SCENES = {
+  commandCenter: "/assets/scenes/geodis-scene-command-center.jpg",
+  cartStaging: "/assets/scenes/geodis-scene-cart-staging.jpg",
+  cartLoaded: "/assets/scenes/geodis-scene-cart-loaded.jpg",
+  zonePlacard: "/assets/scenes/geodis-scene-zone-placard.jpg",
+  cartBarcode: "/assets/scenes/geodis-scene-cart-barcode.jpg",
+  toteSlot: "/assets/scenes/geodis-scene-tote-slot.jpg",
+  pickFace: "/assets/scenes/geodis-scene-pick-face.jpg",
+  putwall: "/assets/scenes/geodis-scene-putwall.jpg",
+} as const
+
 export const ENVIRONMENT_PLATES = {
-  inboundDock: "/assets/simulation/inbound_dock_plate.jpg",
-  aisle: "/assets/simulation/aisle_plate.jpg",
-  rackPickFace: "/assets/simulation/photoreal_pick_face_carton.jpg",
-  conveyor: "/assets/simulation/conveyor_plate.jpg",
+  inboundDock: "/assets/scenes/geodis-scene-command-center.jpg",
+  cartStaging: "/assets/scenes/geodis-scene-cart-staging.jpg",
+  cartLoaded: "/assets/scenes/geodis-scene-cart-loaded.jpg",
+  zonePlacard: "/assets/scenes/geodis-scene-zone-placard.jpg",
+  cartBarcode: "/assets/scenes/geodis-scene-cart-barcode.jpg",
+  toteSlot: "/assets/scenes/geodis-scene-tote-slot.jpg",
+  aisle: "/assets/scenes/geodis-scene-pick-face.jpg",
+  rackPickFace: "/assets/scenes/geodis-scene-pick-face.jpg",
+  conveyor: "/assets/scenes/geodis-scene-putwall.jpg",
   hazmat: "/assets/simulation/hazmat_staging_bay.jpg",
 }
 
@@ -124,7 +140,7 @@ export const UI_ASSETS = {
 }
 
 export function getProductAsset(skuOrId: string): string {
-  return SKU_ASSET_MAP[skuOrId] || ITEM_ID_ASSET_MAP[skuOrId] || "/assets/products/item_widget_alpha.svg"
+  return SKU_ASSET_MAP[skuOrId] || ITEM_ID_ASSET_MAP[skuOrId] || "/assets/products/item_widget_alpha_photoreal.png"
 }
 
 export function getDefectAsset(defectType?: string | null) {
@@ -136,16 +152,49 @@ export function getEnvironmentPlateForStep(step: WorkflowStep, isHazmatScenario:
   if (isHazmatScenario && (step === WorkflowStep.EX_HAZMAT_REDIRECT || step.startsWith("EX_"))) {
     return ENVIRONMENT_PLATES.hazmat
   }
-  if (step.startsWith("BC_")) {
-    return ENVIRONMENT_PLATES.inboundDock
+  // §5.1.1–5.1.2: Command Center
+  if (step === WorkflowStep.BC_TRAVEL_TO_CC || step === WorkflowStep.BC_RECEIVE_TOTE_COUNT) {
+    return GEODIS_SCENES.commandCenter
   }
+  // §5.1.3: Cart staging lane
+  if (step === WorkflowStep.BC_OBTAIN_CART) {
+    return GEODIS_SCENES.cartStaging
+  }
+  // §5.1.9: Zone placard at aisle entrance
+  if (step === WorkflowStep.BC_SCAN_ZONE_TASK_GROUP) {
+    return GEODIS_SCENES.zonePlacard
+  }
+  // §5.1.11: Cart barcode close-up
+  if (step === WorkflowStep.BC_SCAN_CART_BARCODE) {
+    return GEODIS_SCENES.cartBarcode
+  }
+  // §5.1.12–13: Tote seated in numbered slot
+  if (step === WorkflowStep.BC_PLACE_TOTE_IN_SLOT || step === WorkflowStep.BC_SCAN_TOTE_BARCODE) {
+    return GEODIS_SCENES.toteSlot
+  }
+  // §5.1.4, login, ^E, pickup: Loaded cart
+  if (
+    step === WorkflowStep.BC_LOAD_TOTES ||
+    step === WorkflowStep.BC_LOGIN_RF ||
+    step === WorkflowStep.BC_SELECT_BBWD ||
+    step === WorkflowStep.BC_SELECT_OUTBOUND_PHASE_2 ||
+    step === WorkflowStep.BC_CTRL_T_TASK_GROUP ||
+    step === WorkflowStep.BC_ENTER_TASK_GROUP ||
+    step === WorkflowStep.BC_CONFIRM_TASK_GROUP ||
+    step === WorkflowStep.BC_SELECT_MAKE_TOTE_CART ||
+    step === WorkflowStep.BC_PRESS_CTRL_E
+  ) {
+    return GEODIS_SCENES.cartLoaded
+  }
+  // §5.2.14–5.2.16: Putwall / takeaway conveyor
   if (
     step === WorkflowStep.PK_END_OF_TOTE_DISPLAY ||
     step === WorkflowStep.PK_PRESS_CTRL_A ||
     step === WorkflowStep.PK_PLACE_TOTE_ON_CONVEYOR ||
     step === WorkflowStep.PS_ROUND_COMPLETE
   ) {
-    return ENVIRONMENT_PLATES.conveyor
+    return GEODIS_SCENES.putwall
   }
-  return ENVIRONMENT_PLATES.aisle
+  // §5.2.5–5.2.9: Pick face with cartons
+  return GEODIS_SCENES.pickFace
 }
